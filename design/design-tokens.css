@@ -1,0 +1,78 @@
+/* Happy Little Sheeps — design tokens · direzione "Lana & Inchiostro" */
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap");
+
+:root {
+  /* Colori base */
+  --colore-sfondo: #E4E9F2;      /* Nebbia — fondo del tavolo */
+  --colore-carta: #FBFAF5;       /* Gesso — carte, pannelli */
+  --colore-vello: #FBFAF5;       /* Gesso — vello chiaro */
+  --colore-inchiostro: #23264A;  /* Notte — tratto unico e testo */
+  --colore-menta: #9ED9C3;
+  --colore-lilla: #C4B3EE;
+  --colore-albicocca: #F7B98B;
+  --colore-limone: #F2E27A;
+  --colore-fango: #CDB08F;
+  --colore-celeste: #B5D6F2;   /* vello di Garzina */
+  --colore-pericolo: #D93A22;    /* Vermiglio — SOLO avvisi di pericolo, testo Gesso sopra (5,7:1) */
+  --colore-ombra-pulsante: #0E1030;
+  --colore-nota: #2A78D6;        /* solo annotazioni dei modelli, mai in gioco */
+
+  /* Colori semantici */
+  --colore-meteo: var(--colore-lilla);
+  --colore-predatori: var(--colore-fango);
+  --colore-drammi: var(--colore-albicocca);
+  --colore-tosatura: var(--colore-limone);
+  --colore-pascolo: var(--colore-menta);     /* faccia dado "Pascolo", case piene dell'Ovile */
+  --colore-furto: var(--colore-albicocca);   /* faccia dado "Furto" */
+  --colore-testata: var(--colore-limone);    /* faccia dado "Testata", corno del montone */
+  --colore-ovile-tetto: var(--colore-albicocca);
+  --colore-vittoria: var(--colore-limone);   /* avviso "un agnellino alla vittoria" */
+
+  /* Colori giocatore (fondo avatar) */
+  --colore-ricciolo: var(--colore-limone);
+  --colore-brontolana: var(--colore-albicocca);
+  --colore-sospirella: var(--colore-lilla);
+  --colore-nerina: var(--colore-menta);
+  --colore-garzina: var(--colore-sfondo);
+
+  /* Font */
+  --font-titoli: "Bricolage Grotesque", system-ui, sans-serif; /* 800 titoli, 600 sottotitoli */
+  --font-testo: "Atkinson Hyperlegible", system-ui, sans-serif; /* 400 testo, 700 etichette, 400 italic testi di colore */
+  --testo-xs: 11px; --testo-s: 13px; --testo-m: 15px; --testo-l: 17px; --testo-xl: 24px; --testo-xxl: 34px;
+  --spaziatura-etichetta: 0.12em; /* etichette maiuscole */
+
+  /* Tratti (unità SVG; a scala carta 250×350) */
+  --tratto-cornice: 6;
+  --tratto: 4;
+  --tratto-dettaglio: 3;
+  --tratto-ui: 2.5px;
+  --tratto-ui-forte: 3px;
+
+  /* Raggi */
+  --raggio-carta: 16px;      /* su 250 di larghezza = 6,4% */
+  --raggio-riquadro: 10px;   /* illustrazione dentro la carta, case dell'Ovile */
+  --raggio-pannello: 14px;
+  --raggio-pulsante: 14px;
+  --raggio-beeeno: 20px;
+  --raggio-pillola: 999px;
+
+  /* Spaziature */
+  --spazio-1: 4px; --spazio-2: 8px; --spazio-3: 12px; --spazio-4: 16px;
+  --spazio-5: 20px; --spazio-6: 24px; --spazio-7: 32px; --spazio-8: 48px;
+
+  /* Ombre: solo ombre piene, niente sfocature */
+  --ombra-piena: 0 4px 0 var(--colore-inchiostro);          /* carta attiva, carta scelta */
+  --ombra-pulsante: 0 4px 0 var(--colore-ombra-pulsante);
+  --ombra-pulsante-hover: 0 6px 0 var(--colore-ombra-pulsante);
+  --ombra-beeeno: 0 6px 0 var(--colore-inchiostro);
+  --ombra-terra-opacita: 0.15;                               /* ellisse sotto pecore e agnellini */
+
+  /* Dimensioni */
+  --carta-rapporto: 5 / 7;
+  --carta-mano: 88px;
+  --carta-attiva: 140px;
+  --agnello-min: 20px;
+  --avatar: 36px;
+  --pulsante-altezza: 52px;
+  --beeeno-altezza: 64px;
+}

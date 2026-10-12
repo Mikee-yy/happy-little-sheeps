@@ -1,0 +1,40 @@
+{
+  "manoIniziale": 5,
+  "agnelliniIniziali": 3,
+  "perNumeroGiocatori": {
+    "2": { "postiOvile": 18, "agnelliniTotali": 36 },
+    "3": { "postiOvile": 15, "agnelliniTotali": 45 },
+    "4": { "postiOvile": 12, "agnelliniTotali": 44 }
+  },
+  "varianteDueGiocatori": {
+    "valoriTrovateTolti": [1, 2, 3]
+  },
+  "eliminazione": {
+    "normale": [
+      { "regola": "uguali", "quanti": 3 },
+      { "regola": "diversi", "quanti": 3 }
+    ],
+    "dueGiocatori": [
+      { "regola": "uguali", "quanti": 4 },
+      { "regola": "perTipo", "quanti": 2 }
+    ]
+  },
+  "dado": [
+    { "id": "pascolo_piccolo", "effetto": "pascolo", "quantita": 3, "copie": 1 },
+    { "id": "pascolo_grande", "effetto": "pascolo", "quantita": 5, "copie": 1 },
+    { "id": "furto_piccolo", "effetto": "furto", "quantita": 2, "copie": 1 },
+    { "id": "furto_grande", "effetto": "furto", "quantita": 4, "copie": 1 },
+    { "id": "testata", "effetto": "testata", "quantita": 3, "copie": 2 }
+  ],
+  "testata": {
+    "esitoMassimo": 3,
+    "probabilitaEsitoSimulatore": [0.2, 0.4, 0.3, 0.1]
+  },
+  "pecore": [
+    { "id": "ricciolo", "nome": "Ricciolo", "titolo": "il meteorologo", "bonus": "meteo", "malus": "predatori" },
+    { "id": "brontolana", "nome": "Brontolana", "titolo": "l'attaccabrighe", "bonus": "predatori", "malus": "drammi" },
+    { "id": "sospirella", "nome": "Sospirella", "titolo": "la filosofa", "bonus": "drammi", "malus": "meteo" },
+    { "id": "nerina", "nome": "Nerina", "titolo": "la pecora nera", "bonus": "predatori", "malus": "meteo" }
+  ],
+  "finestraReazioneSecondi": 6
+}
