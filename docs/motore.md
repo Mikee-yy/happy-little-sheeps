@@ -175,6 +175,7 @@ Entrando:
 - **Finestra**: quando una voce va in cima, `finestra = { voce: id, inAttesa: tutti i non eliminati tranne l'autore della cima }`.
 - **`giocaBelato` con Beee-NO!**: ammesso solo con pila non vuota, `voce` = id della cima (altrimenti `voce_non_in_cima`), giocatore in `finestra.inAttesa`, carta Beee-NO! in mano. Diventa la nuova cima con una finestra nuova. Chi non è in `inAttesa` (autore della cima, chi ha già passato su questa cima, eliminati) non può giocarlo.
 - **`passa`** con finestra aperta: il giocatore deve essere in `inAttesa` e ne esce. Quando `inAttesa` è vuota la cima si risolve.
+- **`passa.voce`**: id della cima a cui si risponde, oppure `null` per passare nella fase (Belati di punteggio, salvataggio). Se non corrisponde a ciò che è aperto adesso l'azione è rifiutata (`voce_non_in_cima`): con più dispositivi un "Lascia passare" non deve finire su una finestra aperta nel frattempo. Senza `voce` non si controlla. `azioniPossibili` la compila sempre.
 - **`scadenza`** (sistema): tutti i rimasti passano, la cima si risolve. Chiude solo la finestra corrente.
 - **Risoluzione della cima**:
   - se è un Beee-NO!: annulla la voce subito sotto (eventi `annullata` e `risolta`) e la toglie dalla pila. Se resta qualcosa nella pila, si apre una finestra nuova sulla nuova cima (tutti possono rispondere di nuovo); se la pila è vuota, la voce base è stata annullata e la fase prosegue di conseguenza.

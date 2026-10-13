@@ -993,3 +993,228 @@ button.carta {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ─── Più dispositivi ────────────────────────────────────────────────────── */
+
+.campo {
+  display: grid;
+  gap: var(--spazio-1);
+}
+.campo input,
+.campo select {
+  font: inherit;
+  padding: 10px 12px;
+  border: 2px solid var(--colore-inchiostro);
+  border-radius: 10px;
+  background: var(--colore-carta);
+  color: var(--colore-inchiostro);
+}
+.input-codice {
+  font-family: var(--font-titoli) !important;
+  font-weight: 800;
+  font-size: var(--testo-xl) !important;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.scelta-pecora .scelta:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.sala {
+  display: grid;
+  gap: var(--spazio-4);
+  padding-top: var(--spazio-5);
+}
+.codice-box {
+  display: grid;
+  justify-items: center;
+  gap: var(--spazio-2);
+  background: var(--colore-carta);
+  border: var(--tratto-ui-forte) solid var(--colore-inchiostro);
+  border-radius: var(--raggio-pannello);
+  padding: var(--spazio-4);
+  text-align: center;
+}
+.codice-grande {
+  font-family: var(--font-titoli);
+  font-weight: 800;
+  font-size: var(--testo-xxl);
+  letter-spacing: 0.25em;
+  padding-left: 0.25em;
+}
+.qr .qr-fondo {
+  fill: var(--colore-carta);
+}
+.qr .qr-moduli {
+  fill: var(--colore-inchiostro);
+}
+.lista-giocatori {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.lista-giocatori li {
+  display: flex;
+  align-items: center;
+  gap: var(--spazio-2);
+  background: var(--colore-carta);
+  border: 2px solid var(--colore-inchiostro);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+.lista-giocatori li.scollegato {
+  border-style: dashed;
+  opacity: 0.6;
+}
+.link-tavolo,
+.link {
+  color: var(--colore-inchiostro);
+  font-weight: 700;
+  text-align: center;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: var(--testo-s);
+}
+.rientro {
+  display: grid;
+  gap: 4px;
+}
+.opzione {
+  display: flex;
+  gap: var(--spazio-2);
+  align-items: center;
+  font-size: var(--testo-s);
+}
+.opzione input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--colore-inchiostro);
+}
+
+.conto {
+  position: relative;
+  height: 26px;
+  border: 2px solid var(--colore-inchiostro);
+  border-radius: var(--raggio-pillola);
+  background: var(--colore-carta);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: var(--testo-s);
+  margin-bottom: var(--spazio-2);
+}
+.conto-barra {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--colore-limone);
+  transition: width 0.2s linear;
+}
+.conto span {
+  position: relative;
+}
+
+.spettacolo {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  z-index: 5;
+  background: color-mix(in srgb, var(--colore-sfondo) 70%, transparent);
+}
+.spettacolo-scena {
+  display: grid;
+  justify-items: center;
+  gap: var(--spazio-2);
+  background: var(--colore-carta);
+  border: var(--tratto-ui-forte) solid var(--colore-inchiostro);
+  border-radius: var(--raggio-pannello);
+  box-shadow: var(--ombra-piena);
+  padding: var(--spazio-4) var(--spazio-5);
+  text-align: center;
+  font-weight: 700;
+  max-width: 90vw;
+}
+.spettacolo-scena p {
+  margin: 0;
+}
+.spettacolo-dado svg {
+  animation: rotola 0.9s ease-out forwards, sparisci 0.01s 0.9s forwards;
+}
+.spettacolo-faccia {
+  opacity: 0;
+  animation: compari 0.25s 0.9s ease-out forwards;
+  margin-top: -110px;
+}
+@keyframes sparisci {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes compari {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.spettacolo-montone {
+  animation: carica 0.5s ease-in;
+}
+@keyframes carica {
+  from {
+    transform: translateX(-60px);
+  }
+}
+
+.tavolo-proiettore {
+  max-width: 1100px;
+}
+@media (min-width: 900px) {
+  #app:has(.tavolo-proiettore) {
+    max-width: 1100px;
+  }
+}
+
+.area-azione.bloccata {
+  pointer-events: none;
+  opacity: 0.7;
+}
+.lista-giocatori .togli {
+  margin-left: auto;
+}
+
+/* Pagina di prova per lo sviluppo (client/prova.html). */
+#prova {
+  background: var(--colore-sfondo);
+  min-height: 100dvh;
+}
+.prova-telefoni {
+  display: grid;
+  grid-template-columns: repeat(3, 390px);
+  gap: 16px;
+  padding: 12px;
+  overflow-x: auto;
+}
+.prova-telefono {
+  height: calc(100dvh - 24px);
+  overflow-y: auto;
+  border: 3px solid var(--colore-inchiostro);
+  border-radius: 24px;
+  padding: 12px;
+  background: var(--colore-sfondo);
+}
+.prova-telefono .velo,
+.prova-telefono .spettacolo {
+  position: sticky;
+}

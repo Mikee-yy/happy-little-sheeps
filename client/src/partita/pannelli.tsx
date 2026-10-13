@@ -177,7 +177,7 @@ export function PannelloDomanda(p: {
   );
 }
 
-export function PannelloReazione({ v, giocatore, azioni, invia, onIndietro }: PropsPannello & { onIndietro: () => void }) {
+export function PannelloReazione({ v, giocatore, azioni, invia, onIndietro }: PropsPannello & { onIndietro?: () => void }) {
   const cima = v.pila[v.pila.length - 1];
   const beeeNo = filtra(azioni, 'giocaBelato')[0];
   const passa = filtra(azioni, 'passa')[0];
@@ -191,15 +191,17 @@ export function PannelloReazione({ v, giocatore, azioni, invia, onIndietro }: Pr
           {T.azioni.passa}
         </Pulsante>
       )}
-      <Pulsante largo secondario onClick={onIndietro}>
-        {T.azioni.annulla}
-      </Pulsante>
+      {onIndietro && (
+        <Pulsante largo secondario onClick={onIndietro}>
+          {T.azioni.annulla}
+        </Pulsante>
+      )}
       <Mano carte={mano(v, giocatore)} />
     </div>
   );
 }
 
-export function PannelloPunteggio({ v, giocatore, azioni, invia, onIndietro }: PropsPannello & { onIndietro: () => void }) {
+export function PannelloPunteggio({ v, giocatore, azioni, invia, onIndietro }: PropsPannello & { onIndietro?: () => void }) {
   const belati = filtra(azioni, 'giocaBelato');
   const passa = filtra(azioni, 'passa')[0];
   const [carta, setCarta] = useState<IdCarta | null>(null);
@@ -232,9 +234,11 @@ export function PannelloPunteggio({ v, giocatore, azioni, invia, onIndietro }: P
           {T.azioni.passa}
         </Pulsante>
       )}
-      <Pulsante largo secondario onClick={onIndietro}>
-        {T.azioni.annulla}
-      </Pulsante>
+      {onIndietro && (
+        <Pulsante largo secondario onClick={onIndietro}>
+          {T.azioni.annulla}
+        </Pulsante>
+      )}
     </div>
   );
 }
@@ -422,7 +426,8 @@ export function PannelloConsolazione({ v, giocatore, azioni, invia }: PropsPanne
 
 // ─── Fasi automatiche ────────────────────────────────────────────────────────
 
-export function PannelloAutomatico({ v, onContinua }: { v: Vista; onContinua: () => void }) {
+/** Senza onContinua (ospiti a più dispositivi) si mostra che la partita prosegue da sola. */
+export function PannelloAutomatico({ v, onContinua, extra }: { v: Vista; onContinua?: () => void; extra?: React.ReactNode }) {
   const f = v.fase;
   let contenuto: React.ReactNode = null;
   if (f.nome === 'guaio') {
@@ -466,9 +471,14 @@ export function PannelloAutomatico({ v, onContinua }: { v: Vista; onContinua: ()
   return (
     <div className="pannello">
       {contenuto}
-      <Pulsante largo onClick={onContinua}>
-        {T.azioni.continua}
-      </Pulsante>
+      {extra}
+      {onContinua ? (
+        <Pulsante largo onClick={onContinua}>
+          {T.azioni.continua}
+        </Pulsante>
+      ) : (
+        <p className="aiuto">{T.stanza.prosegue}</p>
+      )}
     </div>
   );
 }

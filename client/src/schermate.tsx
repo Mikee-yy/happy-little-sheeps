@@ -3,12 +3,25 @@ import { useState } from 'react';
 import { CATALOGO, SETUP } from '../../engine/src';
 import type { IdPecora } from '../../engine/src';
 import type { GiocatoreLocale } from '../../sync/locale';
+import type { Iscrizione } from '../../sync/stanza';
 import logo from '../../design/svg/logo-chiaro.svg';
 import { Avatar, IconaGuaio, Pecora } from './grafica';
 import { Pulsante } from './partita/componenti';
 import { REGOLE, T } from './testi';
 
-export function Home(p: { salvata: boolean; onNuova: () => void; onRiprendi: () => void; onRegole: () => void }) {
+export function Home(p: {
+  salvata: boolean;
+  multigiocatore: boolean;
+  iscrizione: Iscrizione | null;
+  avviso: string | null;
+  onNuova: () => void;
+  onRiprendi: () => void;
+  onCrea: () => void;
+  onEntra: () => void;
+  onRientra: () => void;
+  onDimentica: () => void;
+  onRegole: () => void;
+}) {
   return (
     <main className="home">
       <h1 className="logo">
@@ -29,13 +42,24 @@ export function Home(p: { salvata: boolean; onNuova: () => void; onRiprendi: () 
         <Pulsante largo secondario={p.salvata} onClick={p.onNuova}>
           {T.home.giocaQui}
         </Pulsante>
-        <Pulsante largo secondario disabled>
+        {p.multigiocatore && p.iscrizione && (
+          <div className="rientro">
+            <Pulsante largo onClick={p.onRientra}>
+              {T.stanza.rientra(p.iscrizione.codice)}
+            </Pulsante>
+            <button type="button" className="link" onClick={p.onDimentica}>
+              {T.home.dimentica}
+            </button>
+          </div>
+        )}
+        <Pulsante largo secondario disabled={!p.multigiocatore} onClick={p.onCrea}>
           {T.home.creaStanza}
         </Pulsante>
-        <Pulsante largo secondario disabled>
+        <Pulsante largo secondario disabled={!p.multigiocatore} onClick={p.onEntra}>
           {T.home.entraStanza}
         </Pulsante>
-        <p className="aiuto">{T.home.prossimamente}</p>
+        {!p.multigiocatore && <p className="aiuto">{T.stanza.nonConfigurato}</p>}
+        {p.avviso && <p className="errore">{p.avviso}</p>}
         <Pulsante largo secondario onClick={p.onRegole}>
           {T.home.regole}
         </Pulsante>

@@ -367,7 +367,7 @@ describe('finestra dei Belati di punteggio: apertura e chiusura (4.5, D18)', () 
         { tipo: 'giocaBelato', giocatore: 'g3', carta: idGruppo, bersaglio: 'g1' },
         { tipo: 'giocaBelato', giocatore: 'g3', carta: idGruppo, bersaglio: 'g2' },
         { tipo: 'giocaBelato', giocatore: 'g3', carta: idMondo },
-        { tipo: 'passa', giocatore: 'g3' },
+        { tipo: 'passa', giocatore: 'g3', voce: null },
       ]),
     );
     expect(diG3).toHaveLength(4);
@@ -377,11 +377,11 @@ describe('finestra dei Belati di punteggio: apertura e chiusura (4.5, D18)', () 
       expect.arrayContaining([
         { tipo: 'giocaBelato', giocatore: 'g1', carta: idPernacchia, bersaglio: 'g1' },
         { tipo: 'giocaBelato', giocatore: 'g1', carta: idPernacchia, bersaglio: 'g2' },
-        { tipo: 'passa', giocatore: 'g1' },
+        { tipo: 'passa', giocatore: 'g1', voce: null },
       ]),
     );
     expect(diG1).toHaveLength(3);
-    expect(azioniPossibili(s, 'g2')).toEqual([{ tipo: 'passa', giocatore: 'g2' }]);
+    expect(azioniPossibili(s, 'g2')).toEqual([{ tipo: 'passa', giocatore: 'g2', voce: null }]);
 
     for (const g of ['g1', 'g2', 'g3']) {
       for (const a of azioniPossibili(s, g)) expect(() => applica(s, a)).not.toThrow();

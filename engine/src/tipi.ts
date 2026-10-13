@@ -354,7 +354,17 @@ export type Azione =
       /** Cura: Guaio da togliere dal proprio Angolo. */
       guaio?: IdCarta;
     }
-  | { tipo: 'passa'; giocatore: IdGiocatore }
+  | {
+      tipo: 'passa';
+      giocatore: IdGiocatore;
+      /**
+       * A cosa si risponde: id della voce in cima alla pila (finestra di reazione), oppure null per passare
+       * nella fase (Belati di punteggio, salvataggio). Se non corrisponde a ciò che è aperto adesso, l'azione è
+       * rifiutata: con più dispositivi un "passa" non deve finire su una finestra che il giocatore non ha visto.
+       * Se manca non si controlla.
+       */
+      voce?: IdVoce | null;
+    }
   | { tipo: 'lanciaDado'; giocatore: IdGiocatore }
   | {
       tipo: 'dichiaraDado';

@@ -26,7 +26,7 @@ import type { Scena } from './regia';
 import { Intestazione, Tavolo } from './Tavolo';
 import { Testata } from './Testata';
 
-function useAggiornamenti(s: Sessione) {
+export function useAggiornamenti(s: { ascolta(cb: () => void): () => void }) {
   const [, aggiorna] = useReducer((x: number) => x + 1, 0);
   useEffect(() => s.ascolta(aggiorna), [s]);
 }
@@ -45,7 +45,19 @@ function PassaDispositivo({ v, giocatore, onSonoIo }: { v: Vista; giocatore: IdG
   );
 }
 
-function FinePartita({ v, onRigioca, onHome }: { v: Vista; onRigioca: () => void; onHome: () => void }) {
+export function FinePartita({
+  v,
+  onRigioca,
+  onHome,
+  testoRigioca = T.finePartita.rigioca,
+  nota,
+}: {
+  v: Vista;
+  onRigioca?: () => void;
+  onHome: () => void;
+  testoRigioca?: string;
+  nota?: string;
+}) {
   const esito = v.esito;
   const vincitori = esito?.vincitori ?? [];
   const classifica = [...v.giocatori].sort(
@@ -73,9 +85,12 @@ function FinePartita({ v, onRigioca, onHome }: { v: Vista; onRigioca: () => void
           </li>
         ))}
       </ol>
-      <Pulsante largo onClick={onRigioca}>
-        {T.finePartita.rigioca}
-      </Pulsante>
+      {onRigioca && (
+        <Pulsante largo onClick={onRigioca}>
+          {testoRigioca}
+        </Pulsante>
+      )}
+      {nota && <p className="aiuto">{nota}</p>}
       <Pulsante largo secondario onClick={onHome}>
         {T.finePartita.home}
       </Pulsante>
@@ -83,11 +98,22 @@ function FinePartita({ v, onRigioca, onHome }: { v: Vista; onRigioca: () => void
   );
 }
 
-function Menu({ onRegole, onEsci, onChiudi }: { onRegole: () => void; onEsci: () => void; onChiudi: () => void }) {
+export function Menu({
+  onRegole,
+  onEsci,
+  onChiudi,
+  children,
+}: {
+  onRegole: () => void;
+  onEsci: () => void;
+  onChiudi: () => void;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="velo" role="dialog" aria-modal="true" aria-label={T.menu.titolo}>
       <div className="menu">
         <h2>{T.menu.titolo}</h2>
+        {children}
         <Pulsante largo secondario onClick={onRegole}>
           {T.menu.regole}
         </Pulsante>

@@ -666,7 +666,7 @@ describe('Belati di salvataggio (brief sez. 3 passo 9 e "Casi limite"; 4.10, 7, 
       g3: ['faccio-finta-di-niente'],
     });
     const azioni = azioniPossibili(s, 'g2');
-    expect(azioni).toContainEqual({ tipo: 'passa', giocatore: 'g2' });
+    expect(azioni).toContainEqual({ tipo: 'passa', giocatore: 'g2', voce: null });
     expect(azioni).toContainEqual(
       expect.objectContaining({ tipo: 'giocaBelato', giocatore: 'g2', carta: carta(s, 'g2', 'faccio-finta-di-niente') }),
     );

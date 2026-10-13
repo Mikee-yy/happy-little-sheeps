@@ -6,7 +6,9 @@ Gioco di carte nel browser per 2–4 giocatori. Brief canonico: `brief-codice2.m
 
 - `engine/` — motore puro in TypeScript: `src/` (codice), `data/` (`cards.json`, `setup.json`), `test/` (Vitest; aiuti in `test/aiuti.ts`).
 - `design/` — pacchetto grafico definitivo (SVG, token, guida di stile). Non ridisegnare.
-- `client/`, `sync/` — arriveranno nelle fasi 3 e 4.
+- `client/` — interfaccia React (Vite, radice `client/`): `src/partita/` modalità "Passa il telefono", `src/remoto/` più dispositivi, `src/testi.ts` tutte le stringhe. `client/prova.html` (solo sviluppo, non pubblicata): tre telefoni affiancati su un database in memoria.
+- `sync/` — interfaccia `Sessione` con due implementazioni: `locale.ts` (un dispositivo) e `host.ts`/`ospite.ts` (stanze). Il servizio realtime sta dietro `Trasporto`: `trasporto-firebase.ts` (vero) e `trasporto-memoria.ts` (test, riproduce `database.rules.json`).
+- `database.rules.json` — regole di accesso di Firebase, da incollare nella console (guida in `docs/firebase.md`).
 - `docs/` — specifiche.
 
 ## Comandi

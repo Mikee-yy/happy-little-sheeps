@@ -1,0 +1,88 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "attivita": {
+      ".read": "auth != null && query.orderByValue == true && query.endAt <= now - 86400000 && query.limitToFirst <= 20",
+      ".indexOn": ".value",
+      "$codice": {
+        ".write": "auth != null && ((newData.exists() && newData.parent().parent().child('stanze/' + $codice + '/meta/host').val() === auth.uid) || (!newData.exists() && data.val() < now - 86400000))",
+        ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+      }
+    },
+    "stanze": {
+      "$codice": {
+        ".write": "auth != null && !newData.exists() && root.child('attivita/' + $codice).val() < now - 86400000",
+        "meta": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() || data.child('host').val() === auth.uid)",
+          ".validate": "$codice.matches(/^[A-Z]{4}$/) && newData.hasChildren(['host', 'creata']) && newData.child('host').val() === auth.uid && newData.child('creata').isNumber() && newData.parent().parent().parent().child('attivita/' + $codice).isNumber()",
+          "host": { ".validate": "newData.isString()" },
+          "creata": { ".validate": "newData.isNumber()" },
+          "sessione": { ".validate": "newData.isString() && newData.val().length <= 64" },
+          "$altro": { ".validate": false }
+        },
+        "membri": {
+          ".read": "auth != null",
+          ".write": "auth != null && newData.parent().child('meta/host').val() === auth.uid",
+          "$g": {
+            ".validate": "$g.matches(/^g[1-4]$/) && newData.isString() && newData.val().length <= 128"
+          }
+        },
+        "pubblico": {
+          ".read": "auth != null",
+          ".write": "auth != null && newData.parent().child('meta/host').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length <= 300000"
+        },
+        "viste": {
+          "$g": {
+            ".read": "auth != null && root.child('stanze/' + $codice + '/membri/' + $g).val() === auth.uid",
+            ".write": "auth != null && newData.parent().parent().child('meta/host').val() === auth.uid",
+            ".validate": "$g.matches(/^g[1-4]$/) && newData.isString() && newData.val().length <= 300000"
+          }
+        },
+        "ingressi": {
+          ".read": "auth != null && root.child('stanze/' + $codice + '/meta/host').val() === auth.uid",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && root.child('stanze/' + $codice + '/meta').exists()",
+            ".validate": "newData.hasChildren(['nome', 'pecora', 'gettone'])",
+            "nome": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24" },
+            "pecora": { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "gettone": { ".validate": "newData.isString() && newData.val().length <= 64" },
+            "rientro": { ".validate": "newData.isString() && newData.val().matches(/^g[1-4]$/)" },
+            "quando": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+            "$altro": { ".validate": false }
+          }
+        },
+        "azioni": {
+          ".read": "auth != null && root.child('stanze/' + $codice + '/meta/host').val() === auth.uid",
+          ".write": "auth != null && root.child('stanze/' + $codice + '/meta/host').val() === auth.uid",
+          "$chiave": {
+            ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid && root.child('stanze/' + $codice + '/meta').exists()",
+            ".validate": "newData.hasChildren(['uid', 'azione'])",
+            "uid": { ".validate": "newData.isString()" },
+            "azione": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+            "$altro": { ".validate": false }
+          }
+        },
+        "rifiuti": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && root.child('stanze/' + $codice + '/meta/host').val() === auth.uid",
+            ".validate": "newData.hasChildren(['messaggio', 'quando']) && newData.child('messaggio').isString() && newData.child('messaggio').val().length <= 200"
+          }
+        },
+        "presenza": {
+          ".read": "auth != null",
+          "$uid": {
+            "$connessione": {
+              ".write": "auth != null && auth.uid === $uid && (!newData.exists() || root.child('stanze/' + $codice + '/meta').exists())",
+              ".validate": "newData.isBoolean()"
+            }
+          }
+        }
+      }
+    }
+  }
+}

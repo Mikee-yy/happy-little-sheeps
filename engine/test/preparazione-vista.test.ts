@@ -1334,11 +1334,11 @@ describe('azioniPossibili (specifica §2): ogni azione elencata è accettata da 
     const di = controlla(finestra);
     expect(chiaviDi(di('g2'))).toEqual(
       chiaviDi([
-        { tipo: 'passa', giocatore: 'g2' },
+        { tipo: 'passa', giocatore: 'g2', voce: cima(finestra) },
         { tipo: 'giocaBelato', giocatore: 'g2', carta: 'beee-no', voce: cima(finestra) },
       ]),
     );
-    expect(chiaviDi(di('g3'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g3' }]));
+    expect(chiaviDi(di('g3'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g3', voce: cima(finestra) }]));
     expect(di('g1')).toEqual([]); // autore della cima, anche se ha un Beee-NO!
     expect(di('sistema')).toEqual([{ tipo: 'scadenza' }]);
 
@@ -1347,12 +1347,12 @@ describe('azioniPossibili (specifica §2): ogni azione elencata è accettata da 
     const di2 = controlla(contro);
     expect(chiaviDi(di2('g1'))).toEqual(
       chiaviDi([
-        { tipo: 'passa', giocatore: 'g1' },
+        { tipo: 'passa', giocatore: 'g1', voce: cima(contro) },
         { tipo: 'giocaBelato', giocatore: 'g1', carta: 'beee-no', voce: cima(contro) },
       ]),
     );
     expect(di2('g2')).toEqual([]);
-    expect(chiaviDi(di2('g3'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g3' }]));
+    expect(chiaviDi(di2('g3'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g3', voce: cima(contro) }]));
     expect(di2('sistema')).toEqual([{ tipo: 'scadenza' }]);
   });
 
@@ -1362,16 +1362,16 @@ describe('azioniPossibili (specifica §2): ogni azione elencata è accettata da 
     const partecipanti = ['g1', 'g2', 'g3'];
     const piuMeno = (giocatore: IdGiocatore, tipoCarta: IdTipoCarta): Azione[] =>
       partecipanti.map((bersaglio) => ({ tipo: 'giocaBelato', giocatore, carta: tipoCarta, bersaglio }));
-    expect(chiaviDi(di('g1'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g1' }, ...piuMeno('g1', 'belato-di-gruppo')]));
+    expect(chiaviDi(di('g1'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g1', voce: null }, ...piuMeno('g1', 'belato-di-gruppo')]));
     expect(chiaviDi(di('g2'))).toEqual(
       chiaviDi([
-        { tipo: 'passa', giocatore: 'g2' },
+        { tipo: 'passa', giocatore: 'g2', voce: null },
         { tipo: 'giocaBelato', giocatore: 'g2', carta: 'mondo-alla-rovescia' },
       ]),
     );
     // Né Faccio finta di niente, né Beee-NO! (pila vuota), né Visita di Garzina.
-    expect(chiaviDi(di('g3'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g3' }, ...piuMeno('g3', 'pernacchia')]));
-    expect(chiaviDi(di('g4'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g4' }, ...piuMeno('g4', 'belato-di-gruppo')]));
+    expect(chiaviDi(di('g3'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g3', voce: null }, ...piuMeno('g3', 'pernacchia')]));
+    expect(chiaviDi(di('g4'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g4', voce: null }, ...piuMeno('g4', 'belato-di-gruppo')]));
     expect(di('sistema')).toEqual([{ tipo: 'scadenza' }]);
   });
 
@@ -1380,14 +1380,14 @@ describe('azioniPossibili (specifica §2): ogni azione elencata è accettata da 
     const s = applica(s0, { tipo: 'giocaBelato', giocatore: 'g1', carta: carta(s0, 'g1', 'belato-di-gruppo'), bersaglio: 'g2' });
     const di = controlla(s);
     expect(di('g1')).toEqual([]);
-    expect(chiaviDi(di('g2'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g2' }]));
+    expect(chiaviDi(di('g2'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g2', voce: cima(s) }]));
     expect(chiaviDi(di('g3'))).toEqual(
       chiaviDi([
-        { tipo: 'passa', giocatore: 'g3' },
+        { tipo: 'passa', giocatore: 'g3', voce: cima(s) },
         { tipo: 'giocaBelato', giocatore: 'g3', carta: 'beee-no', voce: cima(s) },
       ]),
     );
-    expect(chiaviDi(di('g4'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g4' }]));
+    expect(chiaviDi(di('g4'))).toEqual(chiaviDi([{ tipo: 'passa', giocatore: 'g4', voce: cima(s) }]));
     expect(di('sistema')).toEqual([{ tipo: 'scadenza' }]);
   });
 
@@ -1503,7 +1503,7 @@ describe('azioniPossibili (specifica §2): ogni azione elencata è accettata da 
     const di = controlla(s);
     expect(chiaviDi(di('g2'))).toEqual(
       chiaviDi([
-        { tipo: 'passa', giocatore: 'g2' },
+        { tipo: 'passa', giocatore: 'g2', voce: null },
         { tipo: 'giocaBelato', giocatore: 'g2', carta: 'faccio-finta-di-niente' },
         { tipo: 'giocaBelato', giocatore: 'g2', carta: 'finta-svenuta', bersaglio: 'g1' },
         { tipo: 'giocaBelato', giocatore: 'g2', carta: 'finta-svenuta', bersaglio: 'g3' },

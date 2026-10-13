@@ -105,7 +105,7 @@ export function azioniPossibili(stato: Stato, chi: IdGiocatore | 'sistema'): Azi
   if (stato.pila.length > 0) {
     const f = stato.finestra;
     if (!f || !f.inAttesa.includes(id)) return [];
-    const azioni: Azione[] = [{ tipo: 'passa', giocatore: id }];
+    const azioni: Azione[] = [{ tipo: 'passa', giocatore: id, voce: f.voce }];
     for (const carta of belatiInMano(g.mano, ['beee_no'])) {
       azioni.push({ tipo: 'giocaBelato', giocatore: id, carta, voce: f.voce });
     }
@@ -147,7 +147,7 @@ export function azioniPossibili(stato: Stato, chi: IdGiocatore | 'sistema'): Azi
       break;
     }
     case 'belati_punteggio': {
-      if (fase.inAttesa.includes(id)) azioni.push({ tipo: 'passa', giocatore: id });
+      if (fase.inAttesa.includes(id)) azioni.push({ tipo: 'passa', giocatore: id, voce: null });
       for (const carta of belatiInMano(g.mano, ['modifica_punteggio'])) {
         for (const b of stato.datiRound.partecipanti) {
           azioni.push({ tipo: 'giocaBelato', giocatore: id, carta, bersaglio: b });
@@ -183,7 +183,7 @@ export function azioniPossibili(stato: Stato, chi: IdGiocatore | 'sistema'): Azi
       break;
     case 'belati_salvataggio':
       if (fase.destinatario !== id) break;
-      azioni.push({ tipo: 'passa', giocatore: id });
+      azioni.push({ tipo: 'passa', giocatore: id, voce: null });
       for (const carta of belatiInMano(g.mano, ['guaio_in_fondo'])) azioni.push({ tipo: 'giocaBelato', giocatore: id, carta });
       for (const carta of belatiInMano(g.mano, ['devia_guaio'])) {
         for (const b of bersagliDeviazione(stato, id)) azioni.push({ tipo: 'giocaBelato', giocatore: id, carta, bersaglio: b });

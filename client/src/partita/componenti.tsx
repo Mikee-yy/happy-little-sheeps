@@ -77,13 +77,13 @@ export function Carta(p: {
   const stile = d.famiglia === 'guaio' ? { background: `var(--colore-${d.tipo})` } : undefined;
   if (p.onClick) {
     return (
-      <button type="button" className={classi} style={stile} onClick={p.onClick} aria-pressed={p.selezionata} {...p.gesti}>
+      <button type="button" className={classi} style={stile} onClick={p.onClick} aria-pressed={p.selezionata} data-carta={p.id} {...p.gesti}>
         {contenuto}
       </button>
     );
   }
   return (
-    <div className={classi} style={stile} {...p.gesti}>
+    <div className={classi} style={stile} data-carta={p.id} {...p.gesti}>
       {contenuto}
     </div>
   );

@@ -51,6 +51,9 @@ function esegui(s: Stato, a: Azione): void {
     case 'passa':
       giocatoreAttivo(s, a.giocatore);
       if (s.richiesta) errore('richiesta_in_corso', 'Un giocatore deve completare un effetto');
+      if (a.voce !== undefined && a.voce !== (s.finestra ? s.finestra.voce : null)) {
+        errore('voce_non_in_cima', 'Ciò a cui rispondi non è più aperto');
+      }
       if (s.finestra) passaInFinestra(s, a.giocatore);
       else if (s.fase.nome === 'belati_punteggio') passaPunteggio(s, a.giocatore);
       else if (s.fase.nome === 'belati_salvataggio') passaSalvataggio(s, a.giocatore);

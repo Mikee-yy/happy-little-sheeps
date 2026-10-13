@@ -248,11 +248,11 @@ describe('Pila di reazione: voci e finestra (specifica sez. 5)', () => {
     expect(azioniPossibili(s, 'g1')).toEqual([]);
     expect(azioniPossibili(s, 'sistema')).toEqual([{ tipo: 'scadenza' }]);
     // g3 ha solo un Belato di punteggio: con la pila non vuota può soltanto passare.
-    expect(azioniPossibili(s, 'g3')).toEqual([{ tipo: 'passa', giocatore: 'g3' }]);
+    expect(azioniPossibili(s, 'g3')).toEqual([{ tipo: 'passa', giocatore: 'g3', voce }]);
 
     const perG2 = azioniPossibili(s, 'g2');
     expect(perG2).toHaveLength(2);
-    expect(perG2).toContainEqual({ tipo: 'passa', giocatore: 'g2' });
+    expect(perG2).toContainEqual({ tipo: 'passa', giocatore: 'g2', voce });
     expect(perG2).toContainEqual({ tipo: 'giocaBelato', giocatore: 'g2', carta: carta(s, 'g2', 'beee-no'), voce });
 
     for (const chi of ['g1', 'g2', 'g3', 'sistema'] as const) {
