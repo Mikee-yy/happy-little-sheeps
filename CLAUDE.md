@@ -10,6 +10,7 @@ Gioco di carte nel browser per 2–4 giocatori. Brief canonico: `brief-codice2.m
 - `sync/` — interfaccia `Sessione` con due implementazioni: `locale.ts` (un dispositivo) e `host.ts`/`ospite.ts` (stanze). Il servizio realtime sta dietro `Trasporto`: `trasporto-firebase.ts` (vero) e `trasporto-memoria.ts` (test, riproduce `database.rules.json`).
 - `database.rules.json` — regole di accesso di Firebase, da incollare nella console (guida in `docs/firebase.md`).
 - `docs/` — specifiche.
+- `bozze/` — lavori in corso fuori dal sito: `scena/` (bozza della scena 2,5D: si modifica solo `scena.src.html`; anteprima con `server.cjs`, banco di prova `prove.js`), passaggio di consegne, piani e `da-fare.md` (la lista di ciò che resta).
 
 ## Comandi
 

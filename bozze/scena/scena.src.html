@@ -1,0 +1,2656 @@
+<title>Il Prato di Happy Little Sheeps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Scena unica, sempre di giorno sul prato: un solo aspetto voluto, niente tema scuro.
+   La scena è disegnata in un riquadro logico 390×844 (telefono in verticale) e scalata per stare nello schermo. */
+:root {
+  --notte: #23264A; --gesso: #FBFAF5; --nebbia: #E4E9F2; --menta: #9ED9C3; --lilla: #C4B3EE;
+  --albicocca: #F7B98B; --limone: #F2E27A; --fango: #CDB08F; --celeste: #B5D6F2; --ombra-pulsante: #0E1030;
+  --f-titoli: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --f-testo: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+  color-scheme: light;
+}
+@property --cielo { syntax: '<color>'; inherits: true; initial-value: #B5D6F2; }
+@property --orizzonte { syntax: '<color>'; inherits: true; initial-value: #E4E9F2; }
+@property --prato { syntax: '<color>'; inherits: true; initial-value: #9ED9C3; }
+@property --sole { syntax: '<color>'; inherits: true; initial-value: #F2E27A; }
+@property --stelle { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --nuvola { syntax: '<color>'; inherits: true; initial-value: #FBFAF5; }
+
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #B5D6F2; }
+body { font-family: var(--f-testo); color: var(--notte); -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+#schermo { position: relative; height: 100%; overflow: hidden; background: var(--cielo);
+  --collina: color-mix(in srgb, var(--prato) 58%, var(--orizzonte));
+  --pavimento: color-mix(in srgb, var(--fango) 42%, var(--prato));
+  --sabbia: color-mix(in srgb, #F2E27A 48%, #CDB08F);
+  --erba: color-mix(in srgb, var(--prato) 80%, var(--notte));
+  transition: --cielo 2.6s, --orizzonte 2.6s, --prato 2.6s, --sole 2.6s, --stelle 2.6s, --nuvola 2.6s; }
+#schermo.ora-giorno { --cielo: #B5D6F2; --orizzonte: #E4E9F2; --prato: #9ED9C3; --sole: #F2E27A; --stelle: 0; --nuvola: #FBFAF5; }
+#schermo.ora-pomeriggio { --cielo: #B5D6F2; --orizzonte: #F2E27A; --prato: #9ED9C3; --sole: #F2E27A; --stelle: 0; --nuvola: #FBFAF5; }
+#schermo.ora-tramonto { --cielo: #C4B3EE; --orizzonte: #F7B98B; --prato: color-mix(in srgb, #9ED9C3 84%, #F7B98B); --sole: #F7B98B; --stelle: 0; --nuvola: color-mix(in srgb, #FBFAF5 75%, #F7B98B); }
+#schermo.ora-sera { --cielo: color-mix(in srgb, #C4B3EE 58%, #23264A); --orizzonte: #C4B3EE; --prato: color-mix(in srgb, #9ED9C3 76%, #23264A); --sole: #F7B98B; --stelle: 1; --nuvola: color-mix(in srgb, #FBFAF5 70%, #C4B3EE); }
+/* Temporale (eventi meteo): vince sull'ora del giorno finché dura */
+#schermo.tempesta { --cielo: color-mix(in srgb, #C4B3EE 50%, #23264A); --orizzonte: color-mix(in srgb, #E4E9F2 65%, #C4B3EE); --prato: color-mix(in srgb, #9ED9C3 80%, #23264A); --nuvola: color-mix(in srgb, #E4E9F2 72%, #23264A); }
+
+#scena { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 0 0; }
+#camera { position: absolute; inset: 0; transform-origin: 0 0; }
+#mondo { position: absolute; inset: 0; }
+#ui { position: absolute; inset: 0; pointer-events: none; }
+#hud, #eventi, #azioni-carta, #lettura, #finale { pointer-events: auto; }
+#consiglio { pointer-events: none; }
+.abs { position: absolute; }
+
+/* Cielo e paesaggio: fasce piatte che vanno oltre i bordi del riquadro, così lo schermo largo resta pieno */
+#cielo { position: absolute; left: -1400px; top: -2400px; width: 3190px; height: 2560px; background: var(--cielo); }
+#fascia { display: none; } /* cielo di un solo colore: niente fascia sull orizzonte */
+#cielo-svg, #nuvole-svg, #paesaggio, #flora { position: absolute; left: 0; top: 0; overflow: visible; }
+#stelle { opacity: var(--stelle); }
+/* Quando una nuvola copre il sole il prato si scurisce appena; le ombre sotto le cose seguono il sole */
+#penombra { position: absolute; left: -1400px; top: -600px; width: 3190px; height: 1700px; background: var(--notte); opacity: 0; pointer-events: none; z-index: 1950; }
+.ombra-recinto { fill: var(--notte); opacity: var(--oop, .15); }
+
+/* Pecore */
+.pecora { position: absolute; transform-origin: 50% 92%; }
+.pecora .reazione { transform-origin: 50% 92%; }
+.pecora svg { display: block; width: 100%; height: auto; overflow: visible; }
+.targa { position: absolute; transform: translateX(-50%); white-space: nowrap; font: 800 11px/1 var(--f-titoli); letter-spacing: .08em; text-transform: uppercase;
+  background: var(--gesso); border: 2px solid var(--notte); border-radius: 999px; padding: 4px 9px 3px; }
+.targa.turno { background: var(--limone); }
+.ventaglio { position: absolute; width: 0; height: 0; }
+.ventaglio i { position: absolute; left: -11px; top: -29px; width: 22px; height: 31px; transform-origin: 50% 115%; }
+/* Il tappetino davanti a ogni avversario: lì stanno le sue carte coperte e i suoi Guai, su un fondo pulito */
+.tappetino { position: absolute; background: var(--gesso); border: 2px solid var(--notte); border-radius: 12px; box-shadow: 0 3px 0 rgba(35,38,74,.18); z-index: 290; }
+.ventaglio svg, .mini svg { display: block; width: 100%; height: 100%; }
+.mini { position: absolute; transform-origin: 50% 100%; }
+
+/* Recinti */
+.recinto { position: absolute; overflow: visible; pointer-events: none; }
+.cartello { position: absolute; transform: translateX(-50%); font: 800 14px/1 var(--f-titoli); font-variant-numeric: tabular-nums; background: var(--fango);
+  border: 2.5px solid var(--notte); border-radius: 6px; padding: 5px 8px 4px; white-space: nowrap; }
+.cartello.piccolo { font-size: 10px; padding: 3px 5px 2px; border-width: 2px; }
+.cartello.quasi { background: var(--limone); }
+
+/* Agnellini */
+.agn { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.agn svg.ombra { position: absolute; left: -14px; top: -25.8px; width: 28px; height: 28px; transform-origin: 14px 25.8px; filter: brightness(0); opacity: var(--oop, .15); pointer-events: none; }
+.agn .corpo { position: absolute; left: 0; top: 0; width: 28px; height: 28px; transform-origin: 14px 25.8px; cursor: pointer; }
+.agn svg { display: block; width: 28px; height: 28px; overflow: visible; }
+/* Meteo */
+.pozza, .saetta { position: absolute; overflow: visible; pointer-events: none; }
+.saetta { left: 0; top: 0; z-index: 3200; }
+.pozza .cerchio { transform-box: fill-box; transform-origin: 50% 50%; animation: increspa 1.8s ease-out infinite; }
+.pozza .cerchio.due { animation-delay: -.9s; }
+@keyframes increspa { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.pozza .occhi-lupo { transform-box: fill-box; transform-origin: 50% 50%; animation: an-palpebra 2.6s ease-in-out infinite; }
+.lampo { position: absolute; left: -1400px; top: -600px; width: 3190px; height: 1700px; background: var(--gesso); z-index: 3250; pointer-events: none; opacity: 0; }
+.gelo { position: absolute; left: -1400px; top: -600px; width: 3190px; height: 1700px; background: var(--celeste); z-index: 1940; pointer-events: none; opacity: 0; mix-blend-mode: multiply; }
+#nebbia-svg { position: absolute; left: 0; top: 0; overflow: visible; z-index: 1900; pointer-events: none; opacity: .84; }
+#flora path { transition: stroke .8s, opacity .8s, stroke-width .8s; }
+#flora.ghiacciato path { stroke: var(--gesso); opacity: .95; stroke-width: 2.6; }
+.pozza .mulinello { transform-box: view-box; transform-origin: 0 0; animation: mulinello 1.4s linear infinite; }
+@keyframes mulinello { to { transform: rotate(-360deg); } }
+.pozza .nuvoletta { transform-box: fill-box; transform-origin: 50% 50%; }
+.agn .corpo svg.extra { position: absolute; left: 0; top: 0; pointer-events: none; }
+[data-chi], .agn { transition: opacity .6s; }
+.linee-zoom { position: absolute; overflow: visible; pointer-events: none; z-index: 2400; }
+.terreno { position: absolute; overflow: visible; z-index: 290; pointer-events: none; }
+#mano.ventoso .cm svg { transform-origin: 50% 100%; animation: svolazza .32s ease-in-out infinite alternate; }
+@keyframes svolazza { from { transform: rotate(-2deg) skewX(-2deg); } to { transform: rotate(2.5deg) skewX(2deg); } }
+/* Illustrazioni delle carte in primo piano */
+.anima .an { transform-box: fill-box; transform-origin: 50% 50%; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+.anima .an-germoglio { transform-origin: 50% 100%; animation-name: an-oscilla; animation-duration: 2.6s; }
+.anima .an-luccica { animation-name: an-luccica; animation-duration: 2.2s; }
+.anima .an-calza { transform-origin: 55% 4%; animation-name: an-oscilla-piccola; animation-duration: 1.9s; }
+.anima .an-r2 { animation-delay: -1s; }
+.anima .an-ondeggia { transform-origin: 50% 100%; animation-name: an-oscilla-piccola; animation-duration: 3s; }
+.anima .an-gocce { animation-name: an-cade; animation-duration: 1.3s; animation-timing-function: ease-in; }
+.anima .an-campana { transform-origin: 50% 0%; animation-name: an-campana; animation-duration: 1.4s; }
+.anima .an-batacchio { transform-origin: 50% -140%; animation-name: an-campana; animation-duration: 1.4s; animation-direction: reverse; }
+.anima .an-onde { animation-name: an-onde; animation-duration: .7s; animation-timing-function: ease-out; }
+.anima .an-urlo { animation-name: an-urlo; animation-duration: 1.6s; }
+.anima .an-pop { transform-origin: 50% 80%; animation-name: an-pop; animation-duration: 2.4s; animation-timing-function: ease-out; }
+.anima .an-tratteggio { animation-name: an-tratteggio; animation-duration: .8s; animation-timing-function: linear; }
+.anima .an-zampe { transform-origin: 50% 100%; animation-name: an-zampe; animation-duration: 1.2s; }
+.anima .an-stella { animation-name: an-stella; animation-duration: 2.2s; animation-timing-function: linear; }
+.anima .an-nuvola { animation-name: an-galleggia; animation-duration: 3s; }
+.anima .an-chicco { animation-name: an-chicco; animation-duration: 1.6s; animation-timing-function: cubic-bezier(.5,0,.8,.6); }
+.anima .an-cespuglio { transform-origin: 50% 100%; animation-name: an-fruscia; animation-duration: 2.8s; }
+.anima .an-occhi { animation-name: an-palpebra; animation-duration: 3.4s; }
+.anima .an-pupille { animation-name: an-pupille; animation-duration: 3.4s; }
+.anima .an-lampo { animation-name: an-lampo; animation-duration: 2.2s; animation-timing-function: steps(1); }
+.anima .an-pioggia { animation-name: an-pioggia; animation-duration: .45s; animation-timing-function: linear; }
+.anima .an-banco { animation-name: an-banco; animation-duration: 4s; }
+.anima .an-vortice { animation-name: an-vortice; animation-duration: 1s; animation-timing-function: linear; }
+.anima .an-ciuffo { animation-name: an-ciuffo; animation-duration: 1.8s; }
+.anima .an-ruota { animation-name: an-ruota; animation-duration: 14s; animation-timing-function: linear; }
+.anima .an-pulsa { animation-name: an-pulsa; animation-duration: 2s; }
+.anima .an-increspa { animation-name: an-increspa; animation-duration: 2s; animation-timing-function: ease-out; }
+@keyframes an-oscilla { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes an-oscilla-piccola { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes an-luccica { 0%, 55%, 100% { transform: scale(0) rotate(0); } 70% { transform: scale(1.2) rotate(45deg); } 85% { transform: scale(.9) rotate(80deg); } }
+@keyframes an-cade { 0% { transform: translateY(-10px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(34px); opacity: 0; } }
+@keyframes an-campana { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(13deg); } }
+@keyframes an-onde { 0% { transform: scale(.8); opacity: .2; } 45% { opacity: 1; } 100% { transform: scale(1.18); opacity: 0; } }
+@keyframes an-urlo { 0%, 58%, 100% { transform: scale(1) rotate(0); } 64% { transform: scale(1.09) rotate(-2.5deg); } 70% { transform: scale(1.07) rotate(2.5deg); } 76% { transform: scale(1.08) rotate(-1.5deg); } 84% { transform: scale(1) rotate(0); } }
+@keyframes an-pop { 0%, 30%, 100% { transform: scale(1); } 8% { transform: scale(1.14); } 16% { transform: scale(.95); } 22% { transform: scale(1.02); } }
+@keyframes an-tratteggio { to { stroke-dashoffset: -12; } }
+@keyframes an-zampe { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-7deg); } 80% { transform: rotate(6deg); } 90% { transform: rotate(-3deg); } }
+@keyframes an-stella { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.3); } 100% { transform: rotate(360deg) scale(1); } }
+@keyframes an-galleggia { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes an-chicco { 0% { transform: translateY(-48px); opacity: 0; } 15% { opacity: 1; } 68% { transform: translateY(0); } 78% { transform: translateY(-7px); } 88% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(0); opacity: 0; } }
+@keyframes an-fruscia { 0%, 40%, 100% { transform: rotate(0); } 46% { transform: rotate(-2deg); } 52% { transform: rotate(2deg); } 58% { transform: rotate(-1deg); } 64% { transform: rotate(0); } }
+@keyframes an-palpebra { 0%, 42%, 50%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.08); } }
+@keyframes an-pupille { 0%, 15% { transform: translateX(0); } 25%, 38% { transform: translateX(-4px); } 55%, 80% { transform: translateX(4px); } 92%, 100% { transform: translateX(0); } }
+@keyframes an-lampo { 0%, 100% { opacity: 1; } 8% { opacity: .25; } 12% { opacity: 1; } 16% { opacity: .35; } 20% { opacity: 1; } }
+@keyframes an-pioggia { to { stroke-dashoffset: -22; } }
+@keyframes an-banco { 0%, 100% { transform: translateX(-10px); } 50% { transform: translateX(12px); } }
+@keyframes an-vortice { to { stroke-dashoffset: -35; } }
+@keyframes an-ciuffo { 0%, 100% { transform: translate(0, 0) rotate(-10deg); } 50% { transform: translate(10px, -10px) rotate(14deg); } }
+@keyframes an-ruota { to { transform: rotate(360deg); } }
+@keyframes an-pulsa { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes an-increspa { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+.decoro { position: absolute; z-index: 1500; pointer-events: none; }
+.decoro svg { display: block; overflow: visible; }
+.belino { display: block; transform: translate(-50%, -100%); font: 800 11px/1 var(--f-titoli); background: var(--gesso); border: 1.8px solid var(--notte); border-radius: 999px; padding: 3px 7px 2px; white-space: nowrap; }
+.belino.piccolo { font-size: 9px; padding: 2px 5px 1px; }
+.zeta { position: absolute; font: 800 11px var(--f-titoli); color: var(--notte); pointer-events: none; z-index: 1500; }
+
+/* Coperta da picnic in prospettiva: le carte ci stanno sopra con il loro spessore */
+#piano { position: absolute; z-index: 355; left: 20px; top: 130px; width: 350px; height: 350px; perspective: 640px; perspective-origin: 50% 30%; pointer-events: none; }
+#coperta { position: absolute; inset: 0; transform-origin: 50% 100%; transform: rotateX(50deg); transform-style: preserve-3d; border: 3px solid var(--notte); border-radius: 24px;
+  /* Tovaglia da picnic a quadri rossi e bianchi: due righe rosse semitrasparenti che si incrociano */
+  --rosso-tovaglia: rgba(214, 64, 52, .55);
+  background-color: var(--gesso);
+  background-image: repeating-linear-gradient(90deg, var(--rosso-tovaglia) 0 25px, transparent 25px 50px),
+                    repeating-linear-gradient(0deg, var(--rosso-tovaglia) 0 25px, transparent 25px 50px); }
+.pila { position: absolute; width: 74px; height: 104px; transform-style: preserve-3d; pointer-events: auto; cursor: pointer; }
+.pila::before { content: ""; position: absolute; inset: 0; transform: translate(var(--ox, 5px), var(--oy, 6px)); background: var(--notte); opacity: var(--oop, .16); border-radius: 7px; }
+.strato { position: absolute; inset: 0; background: var(--gesso); border: 1.5px solid var(--notte); border-radius: 6px; }
+.strato.cima { border: 0; background: none; }
+.strato.cima svg { display: block; width: 100%; height: 100%; }
+.vuoto { position: absolute; inset: 0; border: 2.5px dashed var(--notte); border-radius: 7px; opacity: .45; }
+.scarto { position: absolute; inset: 0; }
+.scarto svg { display: block; width: 100%; height: 100%; }
+.dicitura { position: absolute; transform: translateX(-50%); font: 800 13px/1 var(--f-titoli); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; color: var(--notte);
+  background: var(--gesso); border: 2px solid var(--notte); border-radius: 999px; padding: 5px 9px 4px; }
+/* Il dado vive su una copia trasparente della tovaglia, un gradino sopra: così mentre rotola non finisce mai "sotto"
+   la tovaglia o le carte. Sulla tovaglia vera resta solo la sua ombra. */
+#dado-piano { position: absolute; z-index: 356; left: 20px; top: 130px; width: 350px; height: 350px; perspective: 640px; perspective-origin: 50% 30%; pointer-events: none; }
+#dado-coperta { position: absolute; inset: 0; transform-origin: 50% 100%; transform: rotateX(50deg); transform-style: preserve-3d; border: 3px solid transparent; }
+#dado-base, #dado-pos { position: absolute; left: 150px; top: 218px; width: 48px; height: 48px; }
+#dado-pos { transform-style: preserve-3d; pointer-events: auto; cursor: pointer; }
+#dado-ombra { position: absolute; inset: 3px; background: var(--notte); border-radius: 10px; }
+#dado-ombra-sole { position: absolute; inset: 0; opacity: var(--oop, .16); transform: translate(var(--ox, 6px), var(--oy, 7px)) scale(1.05); }
+#dado-salto { position: absolute; inset: 0; transform-style: preserve-3d; }
+#dado { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 1.15s cubic-bezier(.2,.75,.3,1); }
+/* Facce piene: gli angoli fuori dal disegno della faccia sono color inchiostro, come uno spigolo, mai trasparenti */
+.fd { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 4px; background: var(--notte); }
+.fd svg { display: block; width: 100%; height: 100%; }
+
+/* Carte in mano e carte in volo */
+#mano { position: absolute; inset: 0; pointer-events: none; z-index: 2000; }
+.cm, .volante { position: absolute; left: 0; top: 0; width: 250px; height: 350px; transform-origin: 50% 50%; }
+.cm { pointer-events: auto; touch-action: none; cursor: grab; transition: transform .4s cubic-bezier(.3,1.25,.5,1), filter .3s;
+  filter: drop-shadow(0 7px 0 rgba(35,38,74,.22)); }
+.cm.attiva { filter: drop-shadow(0 26px 0 rgba(35,38,74,.16)); }
+.cm.spenta { filter: drop-shadow(0 7px 0 rgba(35,38,74,.22)) brightness(.93); }
+.cm.trascinata { transition: none; cursor: grabbing; filter: drop-shadow(0 30px 0 rgba(35,38,74,.14)); }
+.cm svg { display: block; width: 100%; height: 100%; }
+.volante { transform-style: preserve-3d; z-index: 3000; pointer-events: none; filter: drop-shadow(0 18px 0 rgba(35,38,74,.16)); }
+.faccia { position: absolute; inset: 0; backface-visibility: hidden; }
+.faccia svg { display: block; width: 100%; height: 100%; }
+.retro { transform: rotateY(180deg); }
+#azioni-carta { position: absolute; left: 0; right: 0; top: 628px; display: flex; justify-content: center; gap: 12px; z-index: 2600; }
+
+/* Interfaccia: pulsanti, suggerimenti, fumetti */
+.btn { font: 800 13px/1 var(--f-titoli); letter-spacing: .06em; text-transform: uppercase; color: var(--notte); background: var(--gesso);
+  border: 2.5px solid var(--notte); border-radius: 14px; box-shadow: 0 4px 0 var(--ombra-pulsante); padding: 10px 14px 9px; cursor: pointer; }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ombra-pulsante); }
+.btn.primario { background: var(--limone); }
+.btn:focus-visible { outline: 3px solid var(--notte); outline-offset: 3px; }
+#hud { position: absolute; left: 12px; right: 12px; top: 10px; display: flex; justify-content: space-between; z-index: 4000; }
+#hud .btn { padding: 8px 12px 7px; font-size: 12px; }
+#consiglio { position: absolute; left: 50%; top: 54px; transform: translateX(-50%); z-index: 3900; white-space: nowrap; font: 700 12px/1 var(--f-testo);
+  background: var(--gesso); border: 2px solid var(--notte); border-radius: 999px; padding: 6px 12px 5px; transition: opacity .4s; }
+/* Menu Opzioni: sotto il pulsante a sinistra, nello stile del pannello di prova */
+#opzioni { position: absolute; left: 12px; top: 56px; z-index: 4100; background: var(--gesso); border: 2.5px solid var(--notte); border-radius: 14px;
+  box-shadow: 0 6px 0 var(--notte); padding: 12px; display: grid; gap: 9px; width: 210px; }
+#opzioni .btn { text-align: left; font-size: 12px; box-shadow: 0 3px 0 var(--ombra-pulsante); }
+#opzioni [role=switch][aria-checked="true"] { background: var(--limone); }
+#eventi { position: absolute; right: 12px; top: 56px; z-index: 4100; background: var(--gesso); border: 2.5px solid var(--notte); border-radius: 14px;
+  box-shadow: 0 6px 0 var(--notte); padding: 12px; display: grid; gap: 9px; width: 230px; }
+#eventi .btn { text-align: left; font-size: 12px; box-shadow: 0 3px 0 var(--ombra-pulsante); }
+.griglia-eventi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+#eventi .btn.chip { padding: 6px 9px 5px; font-size: 11px; box-shadow: 0 2px 0 var(--ombra-pulsante); }
+#eventi .btn.chip.attivo { background: var(--limone); }
+.griglia-eventi .btn { padding: 8px 8px 7px; }
+#eventi p { margin: 0 0 2px; font: 700 11px var(--f-testo); letter-spacing: .12em; text-transform: uppercase; }
+.fumetto { position: absolute; z-index: 3500; font: 800 15px/1.1 var(--f-titoli); background: var(--gesso); border: 2.5px solid var(--notte); border-radius: 14px;
+  padding: 7px 11px 6px; white-space: nowrap; pointer-events: none; transform-origin: 50% 100%; }
+.fumetto::after { content: ""; position: absolute; left: var(--coda, 50%); bottom: -9px; width: 12px; height: 12px; background: var(--gesso);
+  border-right: 2.5px solid var(--notte); border-bottom: 2.5px solid var(--notte); transform: translateX(-50%) rotate(45deg); }
+#scoppio { position: absolute; left: 195px; top: 380px; width: 270px; height: 150px; margin: -75px 0 0 -135px; z-index: 3600; pointer-events: none; opacity: 0; }
+#lettura { position: absolute; inset: -400px -600px 0; z-index: 5000; background: rgba(35,38,74,.62); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 150px; gap: 16px; }
+#lettura .grande { width: 270px; height: 378px; filter: drop-shadow(0 10px 0 rgba(14,16,48,.5)); }
+#lettura .grande svg { width: 100%; height: 100%; display: block; }
+#lettura span { font: 700 13px var(--f-testo); color: var(--gesso); }
+#finale { position: absolute; inset: -400px -600px 0; z-index: 5200; display: flex; align-items: flex-start; justify-content: center; padding-top: 650px; background: rgba(35,38,74,.35); }
+#finale .pannello { background: var(--gesso); border: 3px solid var(--notte); border-radius: 18px; box-shadow: 0 8px 0 var(--notte); padding: 18px 22px; text-align: center; width: 300px; display: grid; gap: 10px; justify-items: center; }
+/* Mano a misura di dito: queste parti crescono di --kd (calcolato in adatta) attorno al loro punto d'appoggio.
+   Mano e pulsanti della carta attorno al centro in basso; pulsanti in alto, suggerimento e menu attorno al centro in alto. */
+#mano { transform: scale(var(--kd, 1)); transform-origin: 195px 844px; }
+#azioni-carta { transform: scale(var(--kd, 1)); transform-origin: 195px 216px; }
+#hud { transform: scale(var(--kd, 1)); transform-origin: 183px 0; }
+#consiglio { transform: translateX(-50%) scale(var(--kd, 1)); transform-origin: 50% -44px; }
+#opzioni { transform: scale(var(--kd, 1)); transform-origin: 183px -46px; }
+#eventi { transform: scale(var(--kd, 1)); transform-origin: calc(100% - 183px) -46px; }
+#lettura .grande, #lettura span { transform: scale(var(--kd, 1)); transform-origin: 50% 100%; }
+#finale .pannello { transform: scale(var(--kd, 1)); transform-origin: 50% 100%; }
+/* Modo leggero (telefoni lenti): l'ombra disegnata sulla forma della carta diventa un'ombra netta del riquadro, molto meno pesante */
+.leggero .cm, .leggero .cm.attiva, .leggero .cm.trascinata, .leggero .volante { filter: none; box-shadow: 0 7px 0 rgba(35,38,74,.22); border-radius: 18px; }
+.leggero .cm.spenta { filter: brightness(.93); box-shadow: 0 7px 0 rgba(35,38,74,.22); border-radius: 18px; }
+#finale h2 { margin: 0; font: 800 32px/1 var(--f-titoli); text-transform: uppercase; letter-spacing: .01em; }
+#finale p { margin: 0; font: 400 15px var(--f-testo); }
+.coriandolo { position: absolute; width: 9px; height: 14px; border: 1.5px solid var(--notte); border-radius: 2px; z-index: 5100; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .an { animation: none !important; }
+}
+</style>
+
+<div id="schermo" class="ora-giorno">
+  <div id="scena">
+    <div id="camera"><div id="mondo">
+      <div id="cielo"></div>
+      <div id="fascia"></div>
+      <svg id="cielo-svg" width="390" height="844" aria-hidden="true">
+        <g id="stelle" fill="#FBFAF5" stroke="#23264A" stroke-width="1.5">
+          <circle cx="40" cy="30" r="2.5"/><circle cx="120" cy="22" r="2"/><circle cx="168" cy="44" r="2.5"/><circle cx="246" cy="18" r="2"/>
+          <circle cx="352" cy="34" r="2.5"/><circle cx="84" cy="58" r="2"/><circle cx="-60" cy="40" r="2.5"/><circle cx="460" cy="26" r="2.5"/>
+        </g>
+        <g id="sole" transform="translate(306 86)"></g>
+      </svg>
+      <svg id="nuvole-svg" width="390" height="844" aria-hidden="true"></svg>
+      <svg id="paesaggio" width="390" height="844" aria-hidden="true"></svg>
+      <svg id="flora" width="390" height="844" aria-hidden="true"></svg>
+      <div id="penombra"></div>
+
+      <div id="piano"><div id="coperta">
+        <div class="pila" id="mazzo" style="left:42px;top:52px" role="button" aria-label="Mazzo: pesca una carta"></div>
+        <div class="pila" id="scarti" style="left:138px;top:52px"></div>
+        <div class="pila" id="mazzo-guai" style="left:234px;top:52px"></div>
+        <div class="dicitura" id="dic-mazzo" style="left:79px;top:166px">Mazzo</div>
+        <div class="dicitura" style="left:175px;top:166px">Scarti</div>
+        <div class="dicitura" id="dic-guai" style="left:271px;top:166px">Guai</div>
+        <div id="dado-base"><div id="dado-ombra-sole"><div id="dado-ombra"></div></div></div>
+      </div></div>
+      <div id="dado-piano"><div id="dado-coperta">
+        <div id="dado-pos" role="button" aria-label="Tira il dado"><div id="dado-salto"><div id="dado"></div></div></div>
+      </div></div>
+
+      <svg id="nebbia-svg" width="390" height="844" aria-hidden="true"></svg>
+    </div></div>
+    <!-- Interfaccia: resta ferma anche quando l'inquadratura del prato si avvicina a un giocatore -->
+    <div id="ui">
+      <div id="mano"></div>
+      <div id="azioni-carta" hidden>
+        <button class="btn" id="rimetti" type="button">Rimetti</button>
+        <button class="btn primario" id="gioca" type="button">Gioca la carta</button>
+      </div>
+      <svg id="scoppio" viewBox="0 0 270 150" aria-hidden="true">
+        <path d="M135 6 L156 38 L196 16 L192 52 L246 46 L216 76 L264 104 L210 108 L222 144 L176 124 L150 148 L126 122 L76 144 L84 110 L14 116 L52 82 L6 56 L60 54 L50 16 L98 36 Z"
+          fill="#23264A" transform="translate(0 7)"/>
+        <path d="M135 6 L156 38 L196 16 L192 52 L246 46 L216 76 L264 104 L210 108 L222 144 L176 124 L150 148 L126 122 L76 144 L84 110 L14 116 L52 82 L6 56 L60 54 L50 16 L98 36 Z"
+          fill="#F2E27A" stroke="#23264A" stroke-width="4" stroke-linejoin="round"/>
+        <text x="135" y="90" text-anchor="middle" style="font:800 34px 'Bricolage Grotesque',sans-serif;fill:#23264A">BEEE-NO!</text>
+      </svg>
+
+      <div id="hud">
+        <button class="btn" id="apri-opzioni" type="button" aria-expanded="false" aria-controls="opzioni">Opzioni</button>
+        <button class="btn" id="apri-eventi" type="button" aria-expanded="false">Prova eventi</button>
+      </div>
+      <div id="consiglio">Tocca il mazzo per pescare e il dado per tirare</div>
+      <div id="opzioni" hidden></div>
+      <div id="eventi" hidden></div>
+    </div>
+  </div>
+</div>
+<!--SPRITE-->
+
+<script>
+'use strict';
+const W = 390, H = 844;
+const $ = (s) => document.querySelector(s);
+const schermo = $('#schermo'), scena = $('#scena'), mondo = $('#mondo'), ui = $('#ui'), camera = $('#camera');
+const NS = 'http://www.w3.org/2000/svg';
+const P = { notte: '#23264A', gesso: '#FBFAF5', menta: '#9ED9C3', lilla: '#C4B3EE', albicocca: '#F7B98B', limone: '#F2E27A', fango: '#CDB08F', nebbia: '#E4E9F2', celeste: '#B5D6F2' };
+const RIDOTTO = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const rand = (a, b) => a + Math.random() * (b - a);
+const scegliUno = (l) => l[Math.floor(Math.random() * l.length)];
+const esc =(t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+/* ---------- Scala della scena ---------- */
+// S: il prato si rimpicciolisce per starci tutto. D: mano, pulsanti, fumetti e lettura seguono la larghezza dello schermo,
+// mai più piccoli del prato e al massimo un quarto più grandi (per lo schermo girato). KD = D / S è l'ingrandimento in più.
+let S = 1, KD = 1;
+function misuraDito(w, h) {
+  const s = Math.min(w / W, h / H);
+  return { S: s, D: Math.max(s, Math.min(w / W, 1.25 * s)) };
+}
+function adatta() {
+  const w = schermo.clientWidth, h = schermo.clientHeight, m = misuraDito(w, h);
+  S = m.S; KD = m.D / m.S;
+  scena.style.transform = `translate(${(w - W * S) / 2}px, ${h - H * S}px) scale(${S})`;
+  scena.style.setProperty('--kd', KD.toFixed(4));
+}
+// Punti della mano (che sta ingrandita di KD attorno al centro in basso) e punti della scena
+const manoInScena = (p) => ({ ...p, x: 195 + (p.x - 195) * KD, y: H + (p.y - H) * KD, k: p.k * KD });
+const scenaInMano = (p) => ({ ...p, x: 195 + (p.x - 195) / KD, y: H + (p.y - H) / KD });
+addEventListener('resize', () => { adatta(); adattaTela(); });
+adatta();
+function inScena(el) {
+  const r = el.getBoundingClientRect(), m = ui.getBoundingClientRect();
+  return { x: (r.left - m.left) / S, y: (r.top - m.top) / S, w: r.width / S, h: r.height / S,
+    cx: (r.left + r.width / 2 - m.left) / S, cy: (r.top + r.height / 2 - m.top) / S };
+}
+function puntatore(e) { const m = ui.getBoundingClientRect(); return { x: (e.clientX - m.left) / S, y: (e.clientY - m.top) / S }; }
+
+/* ---------- Orologio della scena ----------
+   I timer degli eventi seguono il tempo della scena, che può correre più veloce (animazioni veloci, salto).
+   Avanza nel ciclo principale; quelli dell'interfaccia e dello sfondo restano sul tempo vero (setTimeout, attesaVera). */
+const OROLOGIO = { ms: 0, velocita: 1, timer: new Map(), prossimo: 1 };
+// Stesso ordine degli argomenti di setTimeout e setInterval
+function dopo(fn, ms = 0) { const id = OROLOGIO.prossimo++; OROLOGIO.timer.set(id, { quando: OROLOGIO.ms + Math.max(0, ms), fn }); return id; }
+function ogni(fn, ms) { const id = OROLOGIO.prossimo++, passo = Math.max(4, ms); OROLOGIO.timer.set(id, { quando: OROLOGIO.ms + passo, fn, ogni: passo }); return id; }
+function annulla(id) { OROLOGIO.timer.delete(id); }
+const attesa = (ms) => new Promise((r) => dopo(r, ms));
+const attesaVera = (ms) => new Promise((r) => setTimeout(r, ms));
+// Al ritorno da un'altra scheda il buco può essere lungo: al massimo 1 s alla volta, così i timer non partono a raffica
+function avanzaOrologio(msReali) {
+  const fine = OROLOGIO.ms + Math.min(Math.max(msReali, 0), 1000) * OROLOGIO.velocita;
+  for (;;) {
+    let prossimo = null, pid = 0;
+    for (const [id, t] of OROLOGIO.timer) if (t.quando <= fine && (!prossimo || t.quando < prossimo.quando)) { prossimo = t; pid = id; }
+    if (!prossimo) break;
+    OROLOGIO.ms = Math.max(OROLOGIO.ms, prossimo.quando);
+    if (prossimo.ogni) prossimo.quando += prossimo.ogni; else OROLOGIO.timer.delete(pid);
+    try { prossimo.fn(); } catch (e) { console.error(e); }
+  }
+  OROLOGIO.ms = fine;
+}
+// Le animazioni una tantum della scena ricevono la stessa velocità; quelle della mano e dei pulsanti no
+const ANIMAZIONI_SCENA = new Set();
+const inInterfaccia = (el) => !!(el && el.closest && el.closest('#mano, #hud, #opzioni, #eventi, #azioni-carta, #lettura, #finale'));
+const animaVero = Element.prototype.animate;
+Element.prototype.animate = function (fotogrammi, opzioni) {
+  const a = animaVero.call(this, fotogrammi, opzioni);
+  if (!inInterfaccia(this)) {
+    if (OROLOGIO.velocita !== 1) a.playbackRate = OROLOGIO.velocita;
+    ANIMAZIONI_SCENA.add(a);
+    const via = () => ANIMAZIONI_SCENA.delete(a);
+    a.addEventListener('finish', via); a.addEventListener('cancel', via);
+  }
+  return a;
+};
+function impostaVelocita(v) {
+  if (v === OROLOGIO.velocita) return;
+  OROLOGIO.velocita = v;
+  // Assegnata subito (mantiene il punto in cui si trova l'animazione): updatePlaybackRate aspetterebbe il fotogramma dopo
+  for (const a of ANIMAZIONI_SCENA) a.playbackRate = v;
+}
+
+/* ---------- Regia degli eventi ----------
+   La scena sa sempre se un evento è in corso (Guaio, meteo, furto, Beee-NO!, dado, vittoria…): solo allora può
+   accelerare (animazioni veloci) o saltare. Nel gioco vero lo stesso segnale farà partire il conto del Beee-NO!. */
+/* ---------- Opzioni del telefono ----------
+   Salvate su questo dispositivo. Se il salvataggio non funziona (navigazione privata) valgono quelle predefinite. */
+const CHIAVE_OPZIONI = 'hls-opzioni', CHIAVE_CONSIGLI = 'hls-consigli-visti';
+const PUO_VIBRARE = typeof navigator.vibrate === 'function'; // in pratica Android: Safari su iPhone non vibra
+function leggiOpzioni() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CHIAVE_OPZIONI) || 'null');
+    if (s && typeof s === 'object') return { suoni: s.suoni === true, vibrazione: s.vibrazione !== false, veloci: s.veloci === true };
+  } catch (e) { /* salvataggio bloccato o rotto */ }
+  return { suoni: false, vibrazione: true, veloci: false };
+}
+function salvaOpzioni() { try { localStorage.setItem(CHIAVE_OPZIONI, JSON.stringify(OPZIONI)); } catch (e) { /* non si salva */ } }
+let OPZIONI = leggiOpzioni();
+const REGIA ={ aperti: 0, salto: false };
+const IN_VIAGGIO = new Set(); // agnellini che corrono o volano da un recinto all'altro
+function apriEvento(nome) {
+  REGIA.aperti++;
+  let chiuso = false;
+  return () => { if (!chiuso) { chiuso = true; REGIA.aperti--; } };
+}
+function eventoInCorso() {
+  // Chi non corre né vola più (preso in regia, tolto dalla scena) non è più in viaggio
+  for (const g of IN_VIAGGIO) if (!AGNELLI.has(g) || (g.stato !== 'corre' && g.stato !== 'vola')) IN_VIAGGIO.delete(g);
+  return REGIA.aperti > 0 || meteoAttivo !== null || OROLOGIO.timer.size > 0 || IN_VIAGGIO.size > 0;
+}
+const velocitaScena = () => (!eventoInCorso() ? 1 : REGIA.salto ? 6 : OPZIONI.veloci ? 2 : 1);
+function saltaEvento() { if (eventoInCorso()) REGIA.salto = true; }
+/* ---------- Telefoni modesti ----------
+   Riposo: 20 s senza tocchi né eventi e lo sfondo si aggiorna 20 volte al secondo invece di 60.
+   Modo leggero: se per 5 s di fila la scena va sotto i 30 fotogrammi al secondo, meno particelle e ombre più semplici.
+   Non torna indietro durante la partita, così l'aspetto non cambia a scatti. */
+const RISPARMIO = { ultimoTocco: performance.now(), riposo: false, leggero: false, accumulo: 0, finestra: { inizio: 0, fotogrammi: 0 }, secondiLenti: 0 };
+const limiteParticelle = () => (RISPARMIO.leggero ? 60 : 140);
+function misuraFluidita(ora, dtReale) {
+  const f = RISPARMIO.finestra;
+  // A riposo, con la pagina nascosta o al ritorno da un'altra scheda (fotogramma lunghissimo) non si misura
+  if (RISPARMIO.leggero || RISPARMIO.riposo || document.hidden || dtReale > 0.25) { f.inizio = ora; f.fotogrammi = 0; return; }
+  f.fotogrammi++;
+  if (ora - f.inizio < 1000) return;
+  RISPARMIO.secondiLenti = f.fotogrammi < 30 ? RISPARMIO.secondiLenti + 1 : 0;
+  f.inizio = ora; f.fotogrammi = 0;
+  if (RISPARMIO.secondiLenti >= 5) { RISPARMIO.leggero = true; scena.classList.add('leggero'); }
+}
+// Le funzioni che fanno partire un evento lo tengono "in corso" finché non hanno finito (anche quelle che aspettano)
+function conEvento(nome, fn) {
+  return function (...argomenti) {
+    const chiudi = apriEvento(nome);
+    let r;
+    try { r = fn.apply(this, argomenti); } catch (e) { chiudi(); throw e; }
+    if (r && typeof r.then === 'function') return r.finally(chiudi);
+    chiudi(); return r;
+  };
+}
+guaio = conEvento('guaio', guaio); beeeNoDi = conEvento('beeeNo', beeeNoDi); gioca = conEvento('gioca', gioca);
+tiraDado = conEvento('dado', tiraDado); furto = conEvento('furto', furto); rubaA = conEvento('furto', rubaA);
+vittoria = conEvento('vittoria', vittoria); distribuisci = conEvento('distribuzione', distribuisci);
+
+/* ---------- Suoni creati in codice ---------- */
+const Suono = {
+  ctx: null, attivo: false, uscita: null, buf: null,
+  accendi() {
+    if (!this.ctx) {
+      const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+      this.ctx = new C(); this.uscita = this.ctx.createGain(); this.uscita.connect(this.ctx.destination); this.vento();
+    }
+    this.ctx.resume(); this.attivo = true; this.uscita.gain.setTargetAtTime(0.9, this.ctx.currentTime, 0.1);
+  },
+  spegni() { this.attivo = false; if (this.ctx) this.uscita.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1); },
+  rumore() {
+    if (this.buf) return this.buf;
+    const c = this.ctx, b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return (this.buf = b);
+  },
+  inviluppo(g, t, picco, att, dur) { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(picco, t + att); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); },
+  vento() {
+    const c = this.ctx, s = c.createBufferSource(); s.buffer = this.rumore(); s.loop = true;
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420;
+    const g = c.createGain(); g.gain.value = 0.03;
+    const lfo = c.createOscillator(); lfo.frequency.value = 0.11; const lg = c.createGain(); lg.gain.value = 0.022;
+    lfo.connect(lg); lg.connect(g.gain); s.connect(f); f.connect(g); g.connect(this.uscita); s.start(); lfo.start();
+    setInterval(() => { if (this.attivo && Math.random() < 0.55) this.campanaccio(0.35); }, 8000);
+  },
+  campanaccio(vol = 1) {
+    const c = this.ctx, t = c.currentTime;
+    [[540, 1], [1290, 0.45], [2170, 0.2]].forEach(([fq, a]) => {
+      const o = c.createOscillator(); o.frequency.value = fq * rand(0.98, 1.02); const g = c.createGain();
+      this.inviluppo(g, t, 0.05 * a * vol, 0.004, 1.5); o.connect(g); g.connect(this.uscita); o.start(t); o.stop(t + 1.6);
+    });
+  },
+  beee(alto = 1) {
+    const c = this.ctx, t = c.currentTime, base = rand(210, 250) * alto;
+    const o = c.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(base, t); o.frequency.linearRampToValueAtTime(base * 1.1, t + 0.09); o.frequency.linearRampToValueAtTime(base * 0.9, t + 0.5);
+    const v = c.createOscillator(); v.frequency.value = 7.5; const vg = c.createGain(); vg.gain.value = base * 0.06; v.connect(vg); vg.connect(o.frequency);
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1050 * alto; f.Q.value = 2.2;
+    const g = c.createGain(); this.inviluppo(g, t, 0.2, 0.05, 0.62);
+    o.connect(f); f.connect(g); g.connect(this.uscita); o.start(t); v.start(t); o.stop(t + 0.65); v.stop(t + 0.65);
+  },
+  colpo(freq, q, vol, dur, quando = 0) {
+    const c = this.ctx, t = c.currentTime + quando, s = c.createBufferSource(); s.buffer = this.rumore();
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+    const g = c.createGain(); this.inviluppo(g, t, vol, 0.003, dur);
+    s.connect(f); f.connect(g); g.connect(this.uscita); s.start(t, rand(0, 1.5)); s.stop(t + dur + 0.05);
+  },
+  fruscio() { this.colpo(3200, 0.6, 0.14, 0.2); },
+  dado() { for (let i = 0; i < 7; i++) this.colpo(2400 + rand(-400, 400), 3, 0.25 * (1 - i / 8), 0.05, 0.05 + i * 0.07 + i * i * 0.012); },
+  tono(f0, f1, tipo, vol, dur, quando = 0) {
+    const c = this.ctx, t = c.currentTime + quando, o = c.createOscillator(); o.type = tipo;
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    const g = c.createGain(); this.inviluppo(g, t, vol, 0.01, dur); o.connect(g); g.connect(this.uscita); o.start(t); o.stop(t + dur + 0.05);
+  },
+  pop() { this.tono(520, 980, 'sine', 0.07, 0.09); },
+  tonfo() { this.tono(150, 48, 'sine', 0.35, 0.35); },
+  fanfara() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => this.tono(f, f * 1.01, 'triangle', 0.09, 0.22, i * 0.13)); },
+  ticchettio() { this.colpo(3800 + rand(-600, 600), 5, 0.05, 0.03); },
+  tuono() {
+    const c = this.ctx, t = c.currentTime, s = c.createBufferSource(); s.buffer = this.rumore();
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(120, t + 1.8);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.5, t + 0.04); g.gain.exponentialRampToValueAtTime(0.12, t + 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+    s.connect(f); f.connect(g); g.connect(this.uscita); s.start(t); s.stop(t + 2.5);
+  },
+  pioggiaInizia() {
+    if (this.pioggia) return;
+    const c = this.ctx, s = c.createBufferSource(); s.buffer = this.rumore(); s.loop = true;
+    const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1400;
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, c.currentTime); g.gain.linearRampToValueAtTime(0.07, c.currentTime + 1.5);
+    s.connect(f); f.connect(g); g.connect(this.uscita); s.start(); this.pioggia = { s, g };
+  },
+  pioggiaFine() {
+    if (!this.pioggia) return;
+    const { s, g } = this.pioggia, t = this.ctx.currentTime; g.gain.setTargetAtTime(0.0001, t, 0.5); s.stop(t + 2.5); this.pioggia = null;
+  },
+  folata(forza = 1, durata = 2.4) {
+    const c = this.ctx, t = c.currentTime, s = c.createBufferSource(); s.buffer = this.rumore(); s.loop = true;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.7;
+    f.frequency.setValueAtTime(380, t); f.frequency.linearRampToValueAtTime(900, t + durata * 0.45); f.frequency.linearRampToValueAtTime(420, t + durata);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.09 * forza, t + durata * 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + durata);
+    s.connect(f); f.connect(g); g.connect(this.uscita); s.start(t); s.stop(t + durata + 0.1);
+  },
+};
+// Mentre si salta un evento i suoni tacciono, così non si accavallano
+// Vibrazione per i momenti forti, dove il telefono lo permette (in pratica Android) e se non è spenta nelle Opzioni
+const RITMI = { guaio: [60, 50, 60], beeeNo: [140], vittoria: [80, 60, 80, 60, 220] };
+function vibra(nome) {
+  if (!PUO_VIBRARE || !OPZIONI.vibrazione || REGIA.salto) return;
+  try { navigator.vibrate(RITMI[nome]); } catch (e) { /* vibrazione non disponibile */ }
+}
+function suona(nome, ...a) { if (REGIA.salto) return; if (Suono.attivo && Suono.ctx) { try { Suono[nome](...a); } catch (e) { /* audio non disponibile */ } } }
+
+/* ---------- Carte (testi dal file dati del gioco) ---------- */
+const CARTE = {
+  'sasso-comodo': { fam: 'trovata', nome: 'Sasso comodo', valore: 2, ill: 'c-sasso', testo: 'Ci si siede sopra a pensare.', colore: true },
+  'calzino-gemello': { fam: 'trovata', nome: 'Calzino gemello', valore: 3, gemella: true, ill: 'c-calzino', testo: "Giocalo con un'altra Gemella: i due valori si sommano." },
+  'ombrello-bucato': { fam: 'trovata', nome: 'Ombrello bucato', valore: 7, ill: 'c-ombrello', testo: 'Ripara dalla pioggia. Da quella che non cade.', colore: true },
+  'campanaccio-stonato': { fam: 'trovata', nome: 'Campanaccio stonato', valore: 4, ill: 'c-campanaccio', testo: 'Un agnellino di un avversario torna nel Gregge.' },
+  'beee-no': { fam: 'belato', nome: 'Beee-NO!', quando: 'sempre', ill: 'b-beeeno', testo: "Annulla l'effetto di una Trovata, un Belato o il dado appena dichiarato. Anche un altro Beee-NO!" },
+  'belato-di-gruppo': { fam: 'belato', nome: 'Belato di gruppo', quando: 'punteggio', ill: 'b-gruppo', testo: '+2 al punteggio di una pecora a tua scelta.' },
+  'finta-svenuta': { fam: 'belato', nome: 'Finta svenuta', quando: 'salvataggio', ill: 'b-svenuta', testo: "Il Guaio che stai per prendere va a un'altra pecora a tua scelta." },
+  'grandine-a-sorpresa': { fam: 'guaio', tipo: 'meteo', nome: 'Grandine a sorpresa', ill: 'g-grandine', testo: 'Almeno adesso hai la permanente.' },
+  'lupo-vegetariano': { fam: 'guaio', tipo: 'predatori', nome: 'Lupo vegetariano', ill: 'g-lupo', testo: 'Dice di esserlo. Ti fissa da tre ore.' },
+  'fulmine-curioso': { fam: 'guaio', tipo: 'meteo', nome: 'Fulmine curioso', testo: 'Voleva solo vedere come si arriccia la lana.' },
+  'pioggia-di-traverso': { fam: 'guaio', tipo: 'meteo', nome: 'Pioggia di traverso', testo: 'Arriva di lato, come le brutte notizie.' },
+  'nebbia-fitta': { fam: 'guaio', tipo: 'meteo', nome: 'Nebbia fitta', testo: 'Hai seguito il gregge. Il gregge era un cespuglio.' },
+  'vento-dispettoso': { fam: 'guaio', tipo: 'meteo', nome: 'Vento dispettoso', testo: 'Ti ha spettinata e spostata di due prati.' },
+  'gelata-di-agosto': { fam: 'guaio', tipo: 'meteo', nome: 'Gelata di agosto', testo: "Nessuno se l'aspettava. Tu meno di tutti." },
+  'pozzanghera-senza-fondo': { fam: 'guaio', tipo: 'meteo', nome: 'Pozzanghera senza fondo', testo: 'Hai toccato il fondo. Poi hai continuato.' },
+};
+const TIPI = { meteo: ['METEO', P.lilla], predatori: ['PREDATORI', P.fango], drammi: ['DRAMMI', P.albicocca], tosatura: ['TOSATURA', P.limone] };
+const QUANDO = { punteggio: 'CALCOLO DEL PUNTEGGIO', salvataggio: 'PRENDI UN GUAIO', sempre: 'IN QUALSIASI MOMENTO', dopo_guaio: 'DOPO UN GUAIO' };
+const misura = document.createElement('canvas').getContext('2d');
+function righe(testo, font, larg) {
+  misura.font = font; const out = []; let r = '';
+  for (const p of testo.split(' ')) { const t = r ? r + ' ' + p : p; if (r && misura.measureText(t).width > larg) { out.push(r); r = p; } else r = t; }
+  if (r) out.push(r); return out;
+}
+function nomeSVG(nome, y) {
+  const u = nome.toUpperCase(); let size = 16.5;
+  misura.font = `800 ${size}px 'Bricolage Grotesque'`;
+  const w = misura.measureText(u).width + u.length * size * 0.02;
+  if (w > 204) size = (size * 204) / w;
+  return `<text x="125" y="${y}" text-anchor="middle" style="font:800 ${size.toFixed(2)}px 'Bricolage Grotesque',sans-serif;letter-spacing:.02em;fill:${P.notte}">${esc(u)}</text>`;
+}
+function testoSVG(testo, corsivo, y0, y1) {
+  const stile = corsivo ? 'italic 400' : '400';
+  let size = 14, passo = 19.5, font = `${stile} ${size}px 'Atkinson Hyperlegible'`, r = righe(testo, font, 206);
+  if (r.length > 3) { size = 12.5; passo = 16.5; font = `${stile} ${size}px 'Atkinson Hyperlegible'`; r = righe(testo, font, 214); }
+  const centro = (y0 + y1) / 2, alto = centro - ((r.length - 1) * passo) / 2 + size * 0.35;
+  return `<text text-anchor="middle" style="font:${stile} ${size}px 'Atkinson Hyperlegible',sans-serif;fill:${P.notte}">` +
+    r.map((l, i) => `<tspan x="125" y="${(alto + i * passo).toFixed(1)}">${esc(l)}</tspan>`).join('') + '</text>';
+}
+const piede = (t) => `<text x="226" y="334" text-anchor="end" style="font:700 10px 'Atkinson Hyperlegible',sans-serif;letter-spacing:.18em;fill:${P.notte}">${t}</text>`;
+const cornice = (fondo) => `<rect x="3" y="3" width="244" height="344" rx="16" fill="${fondo}" stroke="${P.notte}" stroke-width="6"/>`;
+/* Illustrazioni animate: si smonta il disegno del pacchetto e si mettono in movimento le sue parti.
+   Le animazioni partono solo dentro una carta con la classe "anima" (carta in primo piano). */
+const avvolgi = (cls, html, stile = '') => `<g class="an ${cls}"${stile ? ` style="${stile}"` : ''}>${html}</g>`;
+function illAnimata(ill) {
+  const sim = document.getElementById(ill); if (!sim) return null;
+  const ch = [...sim.children], h = (...i) => i.map((n) => ch[n].outerHTML).join('');
+  const figli = (n, cls, passo) => {
+    const g = ch[n], tr = g.getAttribute('transform');
+    return `<g style="${g.getAttribute('style') || ''}"${tr ? ` transform="${tr}"` : ''}>` +
+      [...g.children].map((c, k) => avvolgi(cls, c.outerHTML, `animation-delay:${(k * passo).toFixed(2)}s`)).join('') + '</g>';
+  };
+  switch (ill) {
+    case 'c-sasso': return h(1, 2, 3, 4) + avvolgi('an-germoglio', h(5)) + avvolgi('an-luccica', `<path d="M0 -7 L1.8 -1.8 L7 0 L1.8 1.8 L0 7 L-1.8 1.8 L-7 0 L-1.8 -1.8 Z" transform="translate(178 118)" fill="${P.gesso}" stroke="${P.notte}" stroke-width="2" stroke-linejoin="round"/>`);
+    case 'c-calzino': return h(1) + avvolgi('an-calza', h(2)) + avvolgi('an-calza an-r2', h(3));
+    case 'c-ombrello': return h(1) + avvolgi('an-ondeggia', h(2, 3, 4)) + avvolgi('an-gocce', h(5));
+    case 'c-campanaccio': {
+      const g = ch[2], p = [...g.children].map((c) => c.outerHTML);
+      return h(1) + `<g style="${g.getAttribute('style')}" transform="${g.getAttribute('transform')}">` +
+        avvolgi('an-campana', p[0] + p[1] + p[2] + avvolgi('an-batacchio', p[3])) + avvolgi('an-onde', p[4]) + '</g>';
+    }
+    case 'b-beeeno': return h(1) + avvolgi('an-urlo', h(2, 3, 4));
+    case 'b-gruppo': {
+      const g = ch[2], p = [...g.children].map((c) => c.outerHTML);
+      return h(1) + `<g style="${g.getAttribute('style')}">` + [0, 2, 4].map((i, k) => avvolgi('an-pop', p[i] + p[i + 1], `animation-delay:${k * 0.35}s`)).join('') + '</g>' + avvolgi('an-tratteggio', h(3));
+    }
+    case 'b-svenuta': return h(1) + avvolgi('an-zampe', h(2)) + h(3) + figli(4, 'an-stella', 0.4);
+    case 'g-grandine': return h(4) + avvolgi('an-nuvola', h(5, 6)) + figli(7, 'an-chicco', 0.3);
+    case 'g-lupo': return h(4) + avvolgi('an-cespuglio', h(5, 6)) + h(7) + avvolgi('an-occhi', h(8) + avvolgi('an-pupille', h(9)));
+    default: return null;
+  }
+}
+// Illustrazioni dei Guai meteo che nel pacchetto non ci sono ancora: disegnate nello stesso stile
+const nuvolaIll = (cx, cy, colore) => {
+  const f = `<circle cx="${cx - 30}" cy="${cy + 4}" r="20"/><circle cx="${cx}" cy="${cy - 8}" r="26"/><circle cx="${cx + 30}" cy="${cy + 6}" r="18"/><rect x="${cx - 48}" y="${cy + 2}" width="96" height="24" rx="12"/>`;
+  return `<g fill="${P.notte}" stroke="${P.notte}" stroke-width="8">${f}</g><g fill="${colore}">${f}</g>`;
+};
+const fondoGuaio = `<rect x="22" y="72" width="206" height="146" rx="10" fill="${P.gesso}" stroke="${P.notte}" stroke-width="4"/>`;
+const ILL_METEO = {
+  'fulmine-curioso': () => fondoGuaio + avvolgi('an-nuvola', nuvolaIll(125, 104, P.nebbia)) +
+    avvolgi('an-lampo', `<path d="M131 130 L111 168 L126 168 L114 208 L150 158 L134 158 L145 130 Z" fill="${P.limone}" stroke="${P.notte}" stroke-width="4" stroke-linejoin="round"/>` +
+      avvolgi('an-pupille', `<circle cx="127" cy="153" r="2.4" fill="${P.notte}"/><circle cx="135" cy="151" r="2.4" fill="${P.notte}"/>`)),
+  'pioggia-di-traverso': () => fondoGuaio + avvolgi('an-pioggia', [62, 88, 114, 140, 166, 192, 218].map((x) => `<path d="M${x} 126 L${x - 26} 216" stroke="${P.notte}" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 12"/>`).join('')) +
+    avvolgi('an-nuvola', nuvolaIll(125, 100, P.nebbia)),
+  'nebbia-fitta': () => {
+    const f = `<circle cx="100" cy="178" r="20"/><circle cx="125" cy="164" r="26"/><circle cx="150" cy="178" r="20"/><rect x="82" y="176" width="86" height="18" rx="9"/>`;
+    return fondoGuaio + `<g fill="${P.notte}"><rect x="96" y="190" width="7" height="18" rx="3.5"/><rect x="110" y="192" width="7" height="16" rx="3.5"/><rect x="134" y="192" width="7" height="16" rx="3.5"/><rect x="148" y="190" width="7" height="18" rx="3.5"/></g>` +
+      avvolgi('an-cespuglio', `<g fill="${P.notte}" stroke="${P.notte}" stroke-width="8">${f}</g><g fill="${P.menta}">${f}</g>`) +
+      [[24, 116, 140, ''], [96, 148, 128, ' an-r2'], [30, 182, 120, '']].map(([x, y, w, r]) => avvolgi('an-banco' + r, `<rect x="${x}" y="${y}" width="${w}" height="16" rx="8" fill="${P.nebbia}" stroke="${P.notte}" stroke-width="3"/>`)).join('');
+  },
+  'vento-dispettoso': () => fondoGuaio + avvolgi('an-vortice',
+      `<path d="M34 126 Q74 104 114 126 T190 122 q24 -6 18 -24 q-5 -12 -17 -5" fill="none" stroke="${P.notte}" stroke-width="4" stroke-linecap="round" stroke-dasharray="26 9"/>` +
+      `<path d="M46 170 Q88 150 128 170 T204 166" fill="none" stroke="${P.notte}" stroke-width="4" stroke-linecap="round" stroke-dasharray="20 8"/>`) +
+    avvolgi('an-ciuffo', `<g transform="translate(150 192) scale(.42) translate(-125 -104)">${nuvolaIll(125, 104, P.gesso)}</g>`),
+  'gelata-di-agosto': () => {
+    let r = '';
+    for (const a of [0, 60, 120]) r += `<path d="M0 -42 L0 42 M-9 -30 L0 -21 L9 -30 M-9 30 L0 21 L9 30" transform="rotate(${a})"/>`;
+    return fondoGuaio + avvolgi('an-pulsa', `<circle cx="188" cy="100" r="13" fill="${P.limone}" stroke="${P.notte}" stroke-width="3"/>`) +
+      avvolgi('an-ruota', `<g transform="translate(116 150)" fill="none" stroke-linecap="round" stroke-linejoin="round"><g stroke="${P.notte}" stroke-width="10">${r}</g><g stroke="${P.celeste}" stroke-width="5">${r}</g></g>`);
+  },
+  'pozzanghera-senza-fondo': () => fondoGuaio + `<ellipse cx="125" cy="178" rx="84" ry="27" fill="${P.celeste}" stroke="${P.notte}" stroke-width="4"/><ellipse cx="125" cy="181" rx="50" ry="14" fill="${P.lilla}" stroke="${P.notte}" stroke-width="3"/><ellipse cx="125" cy="183" rx="20" ry="5.5" fill="${P.notte}"/>` +
+    avvolgi('an-increspa', `<ellipse cx="125" cy="178" rx="34" ry="10" fill="none" stroke="${P.notte}" stroke-width="2.5"/>`) +
+    avvolgi('an-increspa an-r2', `<ellipse cx="125" cy="178" rx="34" ry="10" fill="none" stroke="${P.notte}" stroke-width="2.5"/>`) +
+    avvolgi('an-gocce', `<path d="M125 104 q6 10 0 14 q-6 -4 0 -14 Z" fill="${P.celeste}" stroke="${P.notte}" stroke-width="2.5" stroke-linejoin="round"/>`),
+};
+function illustrazione(c, id, animata, x, y, w, h) {
+  const interno = ILL_METEO[id] ? ILL_METEO[id]() : (animata && illAnimata(c.ill)) || `<use href="#${c.ill}" width="250" height="350"/>`;
+  return `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="${x} ${y} ${w} ${h}">${interno}</svg>`;
+}
+const cacheCarte = {};
+function cartaSVG(id, animata = false) {
+  const chiave = id + (animata ? '+' : '');
+  if (cacheCarte[chiave]) return cacheCarte[chiave];
+  const c = CARTE[id]; let s = '';
+  if (c.fam === 'trovata') {
+    s += cornice(P.gesso) + illustrazione(c, id, animata, 22, 22, 206, 196);
+    s += `<path d="M3 19 Q3 3 19 3 L72 3 L72 64 Q72 76 60 76 L3 76 Z" fill="${P.notte}"/>`;
+    s += `<text x="37" y="60" text-anchor="middle" style="font:800 50px 'Bricolage Grotesque',sans-serif;fill:${P.limone}">${c.valore}</text>`;
+    if (c.gemella) s += `<circle cx="208" cy="42" r="21" fill="${P.gesso}" stroke="${P.notte}" stroke-width="4"/><use href="#qf" x="194" y="28" width="28" height="28"/>`;
+    s += `<rect x="14" y="204" width="222" height="40" rx="8" fill="${P.limone}" stroke="${P.notte}" stroke-width="4"/>` + nomeSVG(c.nome, 230);
+    s += testoSVG(c.testo, c.colore, 252, 320) + piede('TROVATA');
+  } else if (c.fam === 'belato') {
+    s += cornice(P.gesso) + illustrazione(c, id, animata, 22, 80, 206, 126);
+    s += `<path d="M14 22 Q14 14 22 14 L228 14 Q236 14 236 22 L236 50 Q236 58 228 58 L60 58 L44 72 L46 58 L22 58 Q14 58 14 50 Z" fill="${P.limone}" stroke="${P.notte}" stroke-width="4" stroke-linejoin="round"/>` + nomeSVG(c.nome, 43);
+    s += `<rect x="22" y="216" width="206" height="28" rx="14" fill="${P.notte}"/><text x="125" y="234.5" text-anchor="middle" style="font:700 10.5px 'Atkinson Hyperlegible',sans-serif;letter-spacing:.06em;fill:${P.limone}">${QUANDO[c.quando]}</text>`;
+    s += testoSVG(c.testo, false, 254, 322) + piede('BELATO');
+  } else {
+    const [nomeTipo, colore] = TIPI[c.tipo];
+    s += cornice(colore) + `<path d="M3 19 Q3 3 19 3 L231 3 Q247 3 247 19 L247 58 L3 58 Z" fill="${P.notte}"/><use href="#ico-${c.tipo}" x="12" y="9" width="40" height="40"/>`;
+    s += `<text x="62" y="37" style="font:800 15px 'Bricolage Grotesque',sans-serif;letter-spacing:.14em;fill:${P.gesso}">${nomeTipo}</text>`;
+    s += illustrazione(c, id, animata, 22, 72, 206, 146);
+    s += `<rect x="14" y="204" width="222" height="40" rx="8" fill="${P.gesso}" stroke="${P.notte}" stroke-width="4"/>` + nomeSVG(c.nome, 230);
+    s += testoSVG(c.testo, true, 254, 320) + piede('GUAIO');
+  }
+  return (cacheCarte[chiave] = `<svg viewBox="0 0 250 350" aria-hidden="true"${animata ? ' class="anima"' : ''}>${s}</svg>`);
+}
+const retroSVG = (guai) => `<svg viewBox="0 0 250 350" aria-hidden="true"><use href="#${guai ? 'back-guai' : 'back-main'}"/></svg>`;
+const famiglia = (id) => CARTE[id].fam;
+
+/* ---------- Paesaggio ---------- */
+function disegnaPaesaggio() {
+  const doppio = (forme, colore) =>
+    `<g fill="${P.notte}" stroke="${P.notte}" stroke-width="5" stroke-linejoin="round">${forme}</g><g style="fill:${colore}">${forme}</g>`;
+  const ell = (l) => l.map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>`).join('');
+  const albero = (x, y, k) => {
+    const chioma = `<circle cx="${x}" cy="${y - 20 * k}" r="${11 * k}"/><circle cx="${x - 9 * k}" cy="${y - 12 * k}" r="${9 * k}"/><circle cx="${x + 9 * k}" cy="${y - 12 * k}" r="${9 * k}"/>`;
+    return `<rect x="${x - 2.5 * k}" y="${y - 8 * k}" width="${5 * k}" height="${12 * k}" rx="${2 * k}" fill="${P.notte}"/>` + doppio(chioma, 'var(--menta)');
+  };
+  let s = '';
+  s += doppio(ell([[-430, 182, 440, 100], [52, 156, 150, 54], [246, 146, 168, 48], [478, 158, 196, 60], [930, 182, 440, 100]]), 'var(--collina)');
+  s += albero(36, 112, 1) + albero(292, 104, 0.9) + albero(-90, 120, 1.1) + albero(500, 108, 1);
+  s += doppio(ell([[-520, 214, 600, 66], [195, 186, 300, 32], [910, 214, 600, 66]]) + `<rect x="-1400" y="194" width="3190" height="2400"/>`, 'var(--prato)');
+  // In lontananza: una piccola stalla sulla collina e puntini di fiori sui prati lontani
+  const bx = 176, by = 111;
+  s += `<g stroke="${P.notte}" stroke-width="2" stroke-linejoin="round"><rect x="${bx - 13}" y="${by - 14}" width="26" height="14" fill="${P.gesso}"/>` +
+    `<path d="M${bx - 17} ${by - 12} L${bx} ${by - 26} L${bx + 17} ${by - 12} Z" fill="${P.albicocca}"/><rect x="${bx - 4}" y="${by - 9}" width="8" height="9" fill="${P.fango}" stroke-width="1.6"/>` +
+    `<path d="M${bx - 11} ${by} L${bx + 11} ${by}"/></g>`;
+  $('#paesaggio').innerHTML = s;
+}
+
+/* ---------- Prato vivo: piante che si piegano al vento ---------- */
+function rng(seme) {
+  return () => { seme |= 0; seme = (seme + 0x6d2b79f5) | 0; let t = Math.imul(seme ^ (seme >>> 15), 1 | seme); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+// Zone libere da piante: avversari, recinti, gregge, coperta, la tua pecora, il tuo Ovile e la mano
+const VIETATI_IO = [[0, 512, 138, 634], [124, 488, 396, 658], [0, 610, 148, 692], [22, 700, 368, 900]];
+let VIETATI = [...VIETATI_IO];
+function libero(x, y) {
+  if (VIETATI.some(([a, b, c, d]) => x > a && x < c && y > b && y < d)) return false;
+  if (y > 240 && y < 494) { const t = (y - 250) / 233, l = 73 + (22 - 73) * t, r = 321 + (374 - 321) * t; if (x > l - 12 && x < r + 12) return false; }
+  return true;
+}
+const FLORA = [];
+const scalaPianta = (y) => 0.8 + ((y - 190) / 654) * 0.4;
+function pianta(tipo, caso) {
+  const N = P.notte, r = (a, b) => a + caso() * (b - a);
+  const stelo = (h, c) => `<path d="M0 0 Q${c} ${-h / 2} 0 ${-h}" fill="none" stroke="${N}" stroke-width="1.6" stroke-linecap="round"/>`;
+  const fili = (n, hMin, hMax) => {
+    let s = `<g style="fill:var(--erba)" stroke="${N}" stroke-width="1.3" stroke-linejoin="round">`;
+    for (let i = 0; i < n; i++) { const h = r(hMin, hMax), a = (i - (n - 1) / 2) * 15 + r(-5, 5); s += `<path d="M-2 0 Q-2.4 ${(-h * 0.55).toFixed(1)} ${r(-3, 3).toFixed(1)} ${(-h).toFixed(1)} Q1.4 ${(-h * 0.5).toFixed(1)} 2 0 Z" transform="rotate(${a.toFixed(1)})"/>`; }
+    return s + '</g>';
+  };
+  switch (tipo) {
+    case 'ciuffo': {
+      // Lo stesso segno leggero della prima bozza (tratto sottile, semitrasparente), ma fatto di fili:
+      // la base resta piantata e al vento si piegano solo le punte.
+      const n = 4 + Math.floor(r(0, 2)), fili = [];
+      for (let i = 0; i < n; i++) {
+        const c = i - (n - 1) / 2;
+        fili.push({ bx: c * 2.2, h: r(11, 17) * (1 - Math.abs(c) * 0.12), inclina: c * 3.2 + r(-1.5, 1.5), morbido: r(0.8, 1.2) });
+      }
+      return { s: `<path fill="none" stroke="${N}" stroke-width="1.9" stroke-linecap="round" opacity=".55"/>`, flex: 1, h: 14, fili };
+    }
+    case 'erbaAlta': return { s: fili(4 + Math.floor(r(0, 3)), 16, 26), flex: 1.15, h: 22 };
+    case 'margherita': {
+      const h = r(10, 17); let p = '';
+      for (let i = 0; i < 7; i++) p += `<ellipse cx="0" cy="-3.6" rx="1.8" ry="3.4" transform="rotate(${(i * 360) / 7})"/>`;
+      return { s: stelo(h, r(-3, 3)) + `<g transform="translate(0 ${-h})"><g fill="${P.gesso}" stroke="${N}" stroke-width="1">${p}</g><circle r="2.2" fill="${P.limone}" stroke="${N}" stroke-width="1"/></g>`, flex: 0.9, h, petali: P.gesso };
+    }
+    case 'ranuncolo': {
+      const h = r(8, 13); let p = '';
+      for (let i = 0; i < 5; i++) p += `<circle cx="0" cy="-2.6" r="2.3" transform="rotate(${i * 72})"/>`;
+      return { s: stelo(h, r(-2, 2)) + `<g transform="translate(0 ${-h})"><g fill="${P.limone}" stroke="${N}" stroke-width="1">${p}</g><circle r="1.3" fill="${P.albicocca}"/></g>`, flex: 0.9, h, petali: P.limone };
+    }
+    case 'campanula': {
+      const h = r(12, 18), campana = (x, y, a) => `<path d="M-3.4 0 Q-3.4 -6 0 -6 Q3.4 -6 3.4 0 L4.4 1.6 L-4.4 1.6 Z" transform="translate(${x} ${y}) rotate(${a})" fill="${P.lilla}" stroke="${N}" stroke-width="1.1" stroke-linejoin="round"/>`;
+      return { s: `<path d="M0 0 Q1 ${-h * 0.7} 5 ${-h}" fill="none" stroke="${N}" stroke-width="1.5" stroke-linecap="round"/>` + campana(6, -h + 6, 160) + campana(1.5, -h * 0.55 + 5, 200), flex: 0.9, h, petali: P.lilla };
+    }
+    case 'soffione': {
+      const h = r(13, 19); let semi = '';
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; semi += `<path d="M0 0 L${(Math.cos(a) * 4.6).toFixed(1)} ${(Math.sin(a) * 4.6).toFixed(1)}"/>`; }
+      return { s: stelo(h, r(-2, 2)) + `<g transform="translate(0 ${-h})" class="testa-soffione"><circle r="5.6" fill="${P.gesso}" stroke="${N}" stroke-width="1.1"/><g stroke="${N}" stroke-width="0.7" opacity=".55">${semi}</g><circle r="1.2" fill="${N}"/></g>`, flex: 0.8, h, semi: 6 };
+    }
+    case 'trifoglio': {
+      const f = (a) => `<circle cx="0" cy="-3" r="2.7" transform="rotate(${a})"/>`;
+      return { s: `<g transform="translate(0 -3)" style="fill:var(--erba)" stroke="${N}" stroke-width="1.1">${f(0)}${f(120)}${f(240)}</g>`, flex: 0.25, h: 6 };
+    }
+    case 'sasso': { const w = r(5, 9); return { s: `<ellipse cx="0" cy="-${(w * 0.45).toFixed(1)}" rx="${w.toFixed(1)}" ry="${(w * 0.55).toFixed(1)}" fill="${P.fango}" stroke="${N}" stroke-width="1.5"/><path d="M${(-w * 0.4).toFixed(1)} ${(-w * 0.6).toFixed(1)} q${(w * 0.3).toFixed(1)} -2 ${(w * 0.6).toFixed(1)} -1" fill="none" stroke="${P.gesso}" stroke-width="1.2" stroke-linecap="round"/>`, flex: 0, h: 5 }; }
+    default: return { s: `<rect x="-1.8" y="-6" width="3.6" height="6" rx="1.5" fill="${P.gesso}" stroke="${N}" stroke-width="1.1"/><path d="M-6 -5 Q-6 -11 0 -11 Q6 -11 6 -5 Z" fill="${P.albicocca}" stroke="${N}" stroke-width="1.2" stroke-linejoin="round"/><circle cx="-2.2" cy="-8" r="1" fill="${P.gesso}"/><circle cx="2" cy="-7" r="0.9" fill="${P.gesso}"/>`, flex: 0, h: 8 };
+  }
+}
+function disegnaFlora() {
+  FLORA.length = 0;
+  const caso = rng(29), punti = [];
+  const prova = (x0, x1, quanti, tentativi) => {
+    for (let i = 0; i < tentativi && quanti > 0; i++) {
+      const x = x0 + caso() * (x1 - x0), y = 196 + Math.pow(caso(), 0.8) * 640;
+      if (!libero(x, y)) continue;
+      const k = scalaPianta(y);
+      if (punti.some((p) => Math.hypot(p.x - x, (p.y - y) * 1.3) < 46 * k)) continue;
+      punti.push({ x, y }); quanti--;
+    }
+  };
+  // Solo ciuffi d'erba, radi: il prato deve restare uno sfondo calmo
+  prova(0, 390, 18, 6000); prova(-420, 0, 12, 1500); prova(390, 810, 12, 1500);
+  punti.sort((a, b) => a.y - b.y);
+  const svg = $('#flora'); let s = '';
+  punti.forEach((p, i) => {
+    const tipo = 'ciuffo';
+    const d = pianta(tipo, caso), k = scalaPianta(p.y);
+    s += `<g transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) scale(${k.toFixed(2)})"><g id="pianta-${i}">${d.s}</g></g>`;
+    FLORA.push({ i, x: p.x, y: p.y, k, tipo, flex: d.flex, h: d.h, petali: d.petali, semi: d.semi || 0, fili: d.fili, el: null, ph: caso() * 6.28 });
+  });
+  svg.innerHTML = s;
+  FLORA.forEach((f) => {
+    f.el = document.getElementById('pianta-' + f.i);
+    if (f.tipo === 'soffione') f.testa = f.el.querySelector('.testa-soffione');
+    if (f.fili) f.tratto = f.el.querySelector('path');
+  });
+}
+function aggiornaFlora(dt) {
+  for (const f of FLORA) {
+    if (!f.flex) continue;
+    const w = ventoIn(f.x);
+    if (f.fili) {
+      // Ogni filo si curva: base ferma, punta spinta dal vento e un po' più bassa quando si piega
+      let d = '';
+      for (const fi of f.fili) {
+        const spinta = clamp(w * 0.95 * fi.morbido + 0.07 * Math.sin(T * 1.8 + f.ph + fi.bx), -0.95, 0.95) * fi.h * (1 - geloErba);
+        const tx = fi.bx + fi.inclina + spinta, ty = -fi.h + Math.abs(spinta) * 0.38;
+        const cx = fi.bx + fi.inclina * 0.35 + spinta * 0.25, cy = -fi.h * 0.55;
+        d += `M${fi.bx.toFixed(1)} 0 Q${cx.toFixed(1)} ${cy.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)}`;
+      }
+      f.tratto.setAttribute('d', d);
+      continue;
+    }
+    const a = clamp(f.flex * (w * 42 + 2.4 * Math.sin(T * 1.7 + f.ph + f.x * 0.05)), -40, 40);
+    f.el.setAttribute('transform', `rotate(${a.toFixed(1)})`);
+    // Le raffiche strappano petali e semi
+    if (w > 0.45 && f.x > -40 && f.x < 430 && PARTICELLE.length < limiteParticelle()) {
+      const cima = { x: f.x + Math.sin((a * Math.PI) / 180) * f.h * f.k, y: f.y - Math.cos((a * Math.PI) / 180) * f.h * f.k };
+      if (f.petali && Math.random() < dt * 3.2 * w) particella('petalo', cima.x, cima.y, { colore: f.petali, k: f.k });
+      if (f.tipo === 'soffione' && f.semi > 0 && Math.random() < dt * 4 * w) {
+        particella('seme', cima.x, cima.y, { k: f.k }); f.semi--;
+        if (f.testa) f.testa.style.opacity = (0.35 + (f.semi / 6) * 0.65).toFixed(2);
+      }
+    }
+    if (f.tipo === 'soffione' && f.semi < 6 && Math.random() < dt * 0.05) { f.semi++; if (f.testa) f.testa.style.opacity = (0.35 + (f.semi / 6) * 0.65).toFixed(2); }
+  }
+  // Ogni tanto una foglia si stacca dagli alberi lontani
+  if (VENTO.raffica && Math.random() < dt * 1.2) { const albero = scegliUno([[36, 92], [292, 86]]); if (Math.abs(albero[0] - VENTO.raffica.fronte) < 120) particella('foglia', albero[0], albero[1], { k: 0.7 }); }
+}
+
+/* ---------- Particelle (petali, semi, foglie; più avanti pioggia e grandine) disegnate su un'unica tela ---------- */
+const PARTICELLE = [];
+let tela = null, pennello = null, DPR = 1, VISTA = { x: 0, y: 0, w: W, h: H }, telaSporca = false;
+function creaTela() {
+  tela = document.createElement('canvas'); tela.id = 'particelle'; tela.setAttribute('aria-hidden', 'true');
+  tela.style.cssText = 'position:absolute;z-index:3150;pointer-events:none';
+  mondo.appendChild(tela); pennello = tela.getContext('2d'); adattaTela();
+}
+function adattaTela() {
+  if (!tela) return;
+  const w = schermo.clientWidth, h = schermo.clientHeight, ox = (w - W * S) / 2, oy = h - H * S;
+  VISTA = { x: -ox / S, y: -oy / S, w: w / S, h: h / S }; DPR = Math.min(2, devicePixelRatio || 1);
+  Object.assign(tela.style, { left: VISTA.x + 'px', top: VISTA.y + 'px', width: VISTA.w + 'px', height: VISTA.h + 'px' });
+  tela.width = Math.round(w * DPR); tela.height = Math.round(h * DPR);
+}
+const SFONDO_LEGGERO = new Set(['petalo', 'seme', 'foglia']);
+function particella(tipo, x, y, opz = {}) {
+  const p = { tipo, x, y, vx: opz.vx ?? rand(20, 60), vy: opz.vy ?? rand(-30, 0), rot: rand(0, 6.28), vr: rand(-6, 6), vita: opz.vita ?? rand(2.5, 4.5), ph: rand(0, 6.28), ...opz };
+  p.vita0 = p.vita;
+  // In modo leggero: al massimo 60, circa la metà di quelle di sfondo e meno anche negli effetti del meteo
+  if (RISPARMIO.leggero && (PARTICELLE.length >= 60 || Math.random() > (SFONDO_LEGGERO.has(tipo) ? 0.5 : 0.7))) return p;
+  PARTICELLE.push(p); return p;
+}
+function aggiornaParticelle(dt) {
+  if (!PARTICELLE.length) { if (telaSporca) { pennello.setTransform(1, 0, 0, 1, 0, 0); pennello.clearRect(0, 0, tela.width, tela.height); telaSporca = false; } return; }
+  const c = pennello; c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, tela.width, tela.height);
+  c.setTransform(S * DPR, 0, 0, S * DPR, -VISTA.x * S * DPR, -VISTA.y * S * DPR); telaSporca = true;
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  for (let i = PARTICELLE.length - 1; i >= 0; i--) {
+    const p = PARTICELLE[i]; p.vita -= dt;
+    if (p.vita <= 0 || p.x > VISTA.x + VISTA.w + 40 || p.y > VISTA.y + VISTA.h + 40) { PARTICELLE.splice(i, 1); continue; }
+    const w = ventoIn(p.x), alfa = Math.min(1, p.vita / 0.6, (p.vita0 - p.vita) / 0.2 + 0.2);
+    c.globalAlpha = alfa;
+    if (p.tipo === 'petalo' || p.tipo === 'foglia') {
+      p.vx += (w * 240 + 25 - p.vx) * dt * 1.4; p.vy += (Math.sin(T * 3 + p.ph) * 26 + 14 - p.vy) * dt * 1.2;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.scale(p.k || 1, p.k || 1);
+      c.beginPath();
+      if (p.tipo === 'petalo') c.ellipse(0, 0, 3.2, 1.8, 0, 0, Math.PI * 2);
+      else { c.moveTo(-4, 0); c.quadraticCurveTo(0, -3.4, 4, 0); c.quadraticCurveTo(0, 3.4, -4, 0); }
+      c.fillStyle = p.tipo === 'petalo' ? p.colore : P.menta; c.fill(); c.strokeStyle = P.notte; c.lineWidth = 0.9; c.stroke(); c.restore();
+    } else if (p.tipo === 'seme') {
+      p.vx += (w * 200 + 18 - p.vx) * dt; p.vy += (-12 + Math.sin(T * 2 + p.ph) * 10 - p.vy) * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      c.save(); c.translate(p.x, p.y); c.scale(p.k || 1, p.k || 1); c.strokeStyle = P.notte; c.lineWidth = 0.8;
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 5); c.moveTo(-3, -2); c.lineTo(0, 0); c.lineTo(3, -2); c.moveTo(0, -3); c.lineTo(0, 0); c.stroke();
+      c.beginPath(); c.arc(0, 5.5, 1, 0, Math.PI * 2); c.fillStyle = P.notte; c.fill(); c.restore();
+    } else if (p.tipo === 'goccia') {
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      const k = profondita(p.terra);
+      if (p.y >= p.terra) { p.tipo = 'schizzo'; p.y = p.terra; p.vita = p.vita0 = 0.28; continue; }
+      c.strokeStyle = P.notte; c.globalAlpha = 0.5; c.lineWidth = 1.6 * k;
+      c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x - p.vx * 0.028 * k, p.y - p.vy * 0.028 * k); c.stroke();
+    } else if (p.tipo === 'schizzo') {
+      const k = profondita(p.y), q = 1 - p.vita / p.vita0;
+      c.strokeStyle = P.notte; c.globalAlpha = 0.45 * (1 - q); c.lineWidth = 1.2 * k;
+      c.beginPath(); c.ellipse(p.x, p.y, (2 + q * 6) * k, (0.8 + q * 2) * k, 0, Math.PI, Math.PI * 2); c.stroke();
+    } else if (p.tipo === 'chicco') {
+      const k = profondita(p.terra);
+      if (!p.fermo) {
+        p.vy += 1300 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.y >= p.terra) { p.y = p.terra; p.rimbalzi = (p.rimbalzi || 0) + 1; p.vy = -p.vy * 0.36; p.vx *= 0.5; if (p.rimbalzi > 2) p.fermo = true; else if (Math.random() < 0.15) suona('ticchettio'); }
+      }
+      const sciolto = Math.min(1, p.vita / 1.2);
+      c.beginPath(); c.arc(p.x, p.y - 2 * k, 2.8 * k * sciolto, 0, Math.PI * 2); c.fillStyle = P.gesso; c.fill(); c.strokeStyle = P.notte; c.lineWidth = 1.1 * k; c.stroke();
+    } else if (p.tipo === 'cristallo') {
+      const k = profondita(p.y), q = Math.min(1, (p.vita0 - p.vita) / 0.8);
+      c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.scale(k * q, k * q); c.strokeStyle = P.notte; c.lineWidth = 1.2;
+      c.beginPath(); for (let a = 0; a < 3; a++) { const r = (a * Math.PI) / 3; c.moveTo(-Math.cos(r) * 4, -Math.sin(r) * 4); c.lineTo(Math.cos(r) * 4, Math.sin(r) * 4); } c.stroke();
+      c.beginPath(); c.arc(0, 0, 1.2, 0, Math.PI * 2); c.fillStyle = P.gesso; c.fill(); c.restore();
+    } else if (p.tipo === 'scintilla' || p.tipo === 'gocciolina' || p.tipo === 'lanetta') {
+      p.vy += (p.tipo === 'lanetta' ? 20 : 600) * dt;
+      if (p.tipo === 'lanetta') { p.vx += (ventoIn(p.x) * 300 - p.vx) * dt; p.rot += dt * 3; }
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.scale(p.k || 1, p.k || 1); c.beginPath();
+      if (p.tipo === 'scintilla') { for (let a = 0; a < 10; a++) { const r = a % 2 ? 1.6 : 4, t = (a * Math.PI) / 5; c.lineTo(Math.cos(t) * r, Math.sin(t) * r); } c.closePath(); c.fillStyle = P.limone; }
+      else if (p.tipo === 'gocciolina') { c.ellipse(0, 0, 1.6, 2.4, 0, 0, Math.PI * 2); c.fillStyle = P.celeste; }
+      else { c.arc(-2, 0, 3, 0, Math.PI * 2); c.arc(2, -1, 3.4, 0, Math.PI * 2); c.fillStyle = p.colore || P.gesso; }
+      c.fill(); c.strokeStyle = P.notte; c.lineWidth = 1; c.stroke(); c.restore();
+    } else if (p.tipo === 'fumo') {
+      const q = 1 - p.vita / p.vita0; p.x += (p.vx + ventoIn(p.x) * 40) * dt; p.y += p.vy * dt;
+      c.globalAlpha = 0.85 * (1 - q) * Math.min(1, q * 6); c.beginPath(); c.arc(p.x, p.y, (3 + q * 9) * (p.k || 1), 0, Math.PI * 2);
+      c.fillStyle = GRIGIO_FUMO; c.fill(); c.strokeStyle = P.notte; c.lineWidth = 1.1; c.stroke();
+    } else if (p.tipo === 'vapore') {
+      const q = 1 - p.vita / p.vita0; p.y -= 14 * dt; p.x += 6 * dt;
+      c.globalAlpha = 0.75 * (1 - q); c.beginPath(); c.arc(p.x, p.y, (2 + q * 6) * (p.k || 1), 0, Math.PI * 2); c.fillStyle = P.gesso; c.fill(); c.strokeStyle = P.notte; c.lineWidth = 1; c.stroke();
+    }
+  }
+  c.globalAlpha = 1;
+}
+
+/* ---------- Cielo: sole con i raggi, nuvole che cambiano forma, luce e ombre ---------- */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+let T = 0;
+const SOLE = { x: 306, y: 86, meta: 86, copertura: 0 };
+const ALTEZZA_SOLE = { giorno: 86, pomeriggio: 104, tramonto: 132, sera: 206 };
+// La luce arriva da dietro a destra: le ombre cadono verso chi guarda e un po' a sinistra, più lunghe quando il sole è basso.
+const LUCE = { lung: 0.45, op: 0.16, dx: -0.55, chiave: '' };
+const vettoreOmbra = (h) => ({ x: LUCE.dx * LUCE.lung * h, y: 0.42 * LUCE.lung * h });
+let tempesta = 0;
+
+function creaSole() {
+  let s = '';
+  for (let i = 0; i < 12; i++) {
+    const h = i % 2 ? 11 : 17;
+    s += `<rect x="-3.5" y="${-h / 2}" width="7" height="${h}" rx="3.5" style="fill:var(--sole)" stroke="${P.notte}" stroke-width="2"/>`;
+  }
+  $('#sole').innerHTML = `<g id="raggi">${s}</g><circle r="24" style="fill:var(--sole)" stroke="${P.notte}" stroke-width="2.5"/>`;
+}
+function aggiornaSole(dt) {
+  SOLE.y += (SOLE.meta - SOLE.y) * Math.min(1, dt * 0.6);
+  const raggi = $('#raggi').children, giro = T * 5, spento = 1 - SOLE.copertura * 0.6;
+  for (let i = 0; i < raggi.length; i++) {
+    const d = (i % 2 ? 32 : 35) + Math.sin(T * 2.1 + i * 1.7) * 2.6 * spento;
+    raggi[i].setAttribute('transform', `rotate(${(giro + i * 30).toFixed(2)}) translate(0 ${(-d).toFixed(2)})`);
+  }
+  $('#sole').setAttribute('transform', `translate(${SOLE.x} ${SOLE.y.toFixed(2)})`);
+  LUCE.lung = clamp(0.45 + ((SOLE.y - 86) / 46) * 0.75, 0.45, 1.7);
+  LUCE.op = 0.17 * (1 - 0.72 * SOLE.copertura) * clamp((172 - SOLE.y) / 40, 0, 1) * (1 - tempesta * 0.8);
+  $('#penombra').style.opacity = (SOLE.copertura * 0.055 + tempesta * 0.1).toFixed(3);
+  const chiave = `${LUCE.lung.toFixed(2)}|${LUCE.op.toFixed(3)}`;
+  if (chiave !== LUCE.chiave) {
+    LUCE.chiave = chiave;
+    mondo.style.setProperty('--ox', `${(LUCE.dx * LUCE.lung * 10).toFixed(1)}px`);
+    mondo.style.setProperty('--oy', `${(LUCE.lung * 9).toFixed(1)}px`);
+    mondo.style.setProperty('--oop', LUCE.op.toFixed(3));
+    aggiornaOmbreRecinti();
+  }
+}
+
+/* Vento: un respiro leggero sempre, e ogni tanto una raffica che attraversa il prato da sinistra a destra */
+const VENTO = { prossima: 5, raffica: null, extra: 0 };
+function ventoIn(x) {
+  let w = 0.1 * Math.sin(T * 1.1 + x * 0.018) + 0.05 * Math.sin(T * 2.6 + x * 0.05);
+  const r = VENTO.raffica;
+  if (r) { const d = (x - r.fronte) / 120; w += r.forza * Math.exp(-d * d); }
+  return w + VENTO.extra * (0.85 + 0.15 * Math.sin(T * 3 + x * 0.03));
+}
+function aggiornaVento(dt) {
+  VENTO.prossima -= dt;
+  if (!VENTO.raffica && VENTO.prossima <= 0) {
+    VENTO.raffica = { fronte: -300, forza: rand(0.55, 1) }; VENTO.prossima = rand(7, 13);
+    suona('folata', VENTO.raffica.forza);
+  }
+  if (VENTO.raffica) { VENTO.raffica.fronte += 330 * dt; if (VENTO.raffica.fronte > 760) VENTO.raffica = null; }
+}
+
+const NUVOLE = [];
+function nuovaNuvola(x, opz = {}) {
+  const tipo = opz.tipo || scegliUno(['cumulo', 'cumulo', 'piccola', 'striata', 'torre', 'cumulo', 'piccola']);
+  const n = { x, y: opz.y ?? (tipo === 'striata' ? rand(16, 38) : rand(30, 72)), vel: opz.vel ?? rand(3, 8), tipo, sbuffi: [], timer: rand(1.5, 4),
+    temporanea: !!opz.temporanea, meta: opz.meta ?? null, W: 60, bassa: !!opz.bassa };
+  n.g = document.createElementNS(NS, 'g');
+  n.tratto = document.createElementNS(NS, 'g'); n.tratto.setAttribute('fill', P.notte); n.tratto.setAttribute('stroke', P.notte); n.tratto.setAttribute('stroke-width', '5');
+  n.pieno = document.createElementNS(NS, 'g'); n.pieno.setAttribute('style', 'fill:var(--nuvola)');
+  n.g.append(n.tratto, n.pieno); (opz.contenitore || $('#nuvole-svg')).appendChild(n.g);
+  formaNuvola(n); NUVOLE.push(n); return n;
+}
+function sbuffo(n, dx, dy, rx, ry, opz = {}) {
+  const s = { dx, dy, rx0: rx, ry0: ry, ph: rand(0, 6.28), f: rand(0.25, 0.6), vita: opz.vita ?? 1, dv: opz.dv ?? 0, fisso: !!opz.fisso };
+  s.eT = document.createElementNS(NS, 'ellipse'); s.eP = document.createElementNS(NS, 'ellipse');
+  n.tratto.appendChild(s.eT); n.pieno.appendChild(s.eP); n.sbuffi.push(s); return s;
+}
+function formaNuvola(n) {
+  n.sbuffi.forEach((s) => { s.eT.remove(); s.eP.remove(); }); n.sbuffi = [];
+  if (n.tipo === 'cumulo') {
+    const W = rand(80, 140), m = 5 + Math.floor(rand(0, 3)); n.W = W;
+    for (let i = 0; i < m; i++) { const t = i / (m - 1), r = rand(12, 18) + (1 - Math.abs(t - 0.5) * 2) * rand(6, 13); sbuffo(n, -W / 2 + t * W + rand(-6, 6), -r * 0.55 + rand(-3, 3), r, r); }
+    sbuffo(n, 0, 5, W / 2 + 10, 9, { fisso: true });
+  } else if (n.tipo === 'piccola') {
+    const W = rand(30, 52), m = 3 + Math.floor(rand(0, 2)); n.W = W;
+    for (let i = 0; i < m; i++) { const r = rand(8, 13); sbuffo(n, -W / 2 + (i / (m - 1)) * W, -r * 0.4 + rand(-2, 2), r, r); }
+    sbuffo(n, 0, 3, W / 2 + 6, 6, { fisso: true });
+  } else if (n.tipo === 'nebbia') {
+    // Banco di nebbia: una nuvola bassa e larga, gonfia sopra e piatta sotto
+    const W = 470, m = 11; n.W = W;
+    for (let i = 0; i < m; i++) { const t = i / (m - 1), r = rand(34, 48) + (1 - Math.abs(t - 0.5) * 2) * rand(10, 22); sbuffo(n, -W / 2 + t * W + rand(-10, 10), -r * 0.45 + rand(-6, 6), r, r); }
+    for (let i = 0; i < 6; i++) sbuffo(n, -W / 2 + 40 + (i / 5) * (W - 80) + rand(-12, 12), rand(18, 30), rand(30, 42), rand(24, 32));
+    sbuffo(n, 0, 34, W / 2 + 26, 26, { fisso: true });
+  } else if (n.tipo === 'striata') {
+    const W = rand(110, 170), m = 3 + Math.floor(rand(0, 3)); n.W = W;
+    for (let i = 0; i < m; i++) sbuffo(n, -W / 2 + (i / (m - 1)) * W + rand(-8, 8), rand(-6, 6), rand(18, 34), rand(4.5, 7));
+  } else {
+    n.W = 50;
+    for (let i = 0; i < 6; i++) { const r = 21 - i * 2 + rand(-2, 2); sbuffo(n, rand(-10, 10) + (i % 2 ? 8 : -8), -i * 10, r, r); }
+    sbuffo(n, 0, 6, 34, 9, { fisso: true });
+  }
+}
+function aggiornaNuvole(dt) {
+  let copre = 0;
+  for (let i = NUVOLE.length - 1; i >= 0; i--) {
+    const n = NUVOLE[i];
+    if (n.meta != null) n.x += (n.meta - n.x) * Math.min(1, dt * 0.5);
+    else n.x += n.vel * (1 + (n.bassa ? 0.4 : 3) * Math.max(0, ventoIn(n.x))) * dt;
+    if (n.x - n.W > 830) {
+      if (n.temporanea) { n.g.remove(); NUVOLE.splice(i, 1); continue; }
+      n.x = -460 - rand(0, 120); n.tipo = scegliUno(['cumulo', 'piccola', 'striata', 'torre', 'cumulo']); n.y = n.tipo === 'striata' ? rand(16, 38) : rand(30, 72); formaNuvola(n);
+    }
+    // Le nuvole cambiano forma: uno sbuffo si scioglie e un altro nasce accanto
+    n.timer -= dt;
+    if (n.timer <= 0) {
+      n.timer = rand(2, 4.5);
+      const vivi = n.sbuffi.filter((s) => !s.fisso && s.dv >= 0);
+      if (vivi.length > 2) scegliUno(vivi).dv = -0.28;
+      const base = scegliUno(vivi.length ? vivi : n.sbuffi);
+      if (base) {
+        const r = n.tipo === 'striata' ? rand(16, 30) : n.tipo === 'nebbia' ? rand(32, 54) : rand(9, 20), ry = n.tipo === 'striata' ? rand(4.5, 7) : r;
+        sbuffo(n, clamp(base.dx + rand(-1, 1) * base.rx0, -n.W / 2 - 8, n.W / 2 + 8), base.dy + rand(-0.6, 0.3) * base.ry0, r, ry, { vita: 0, dv: 0.28 });
+      }
+    }
+    for (let j = n.sbuffi.length - 1; j >= 0; j--) {
+      const s = n.sbuffi[j];
+      s.vita += s.dv * dt;
+      if (s.vita >= 1) { s.vita = 1; s.dv = 0; }
+      if (s.vita <= 0 && s.dv < 0) { s.eT.remove(); s.eP.remove(); n.sbuffi.splice(j, 1); continue; }
+      if (!s.fisso) s.dx += Math.sin(T * 0.2 + s.ph) * dt * 0.9;
+      const k = Math.max(0, s.vita) * (1 + (s.fisso ? 0.02 : 0.07) * Math.sin(T * s.f + s.ph));
+      const cx = n.x + s.dx, cy = n.y + s.dy, rx = s.rx0 * k, ry = s.ry0 * k;
+      for (const e of [s.eT, s.eP]) { e.setAttribute('cx', cx.toFixed(1)); e.setAttribute('cy', cy.toFixed(1)); e.setAttribute('rx', rx.toFixed(1)); e.setAttribute('ry', ry.toFixed(1)); }
+      const d = Math.hypot(cx - SOLE.x, (cy - SOLE.y) * (rx / Math.max(ry, 1)));
+      if (!n.bassa && d < rx + 12) copre = Math.max(copre, clamp((rx + 12 - d) / 18, 0, 1));
+    }
+  }
+  SOLE.copertura += (copre - SOLE.copertura) * Math.min(1, dt * 2.5);
+}
+function creaNuvole() { [-300, -60, 140, 330, 560].forEach((x) => nuovaNuvola(x + rand(-30, 30))); }
+
+/* ---------- Giocatori, recinti e agnellini ---------- */
+/* ---------- Disposizioni: dove stanno i giocatori, per orientamento e numero di giocatori ----------
+   Tutte le misure sono nel riquadro logico della scena (390×844 in verticale).
+   Il gioco in orizzontale sarà un'altra tabella, DISPOSIZIONI.orizzontale, con la stessa forma. */
+const DISPOSIZIONI = {
+  verticale: {
+    io: { x: 2, y: 524, w: 124, targa: [64, 532], fumetto: [70, 520], recinto: [140, 516, 640, 246, 1], area: [150, 528, 372, 632] },
+    // Un solo avversario, più vicino e più grande: pecora a sinistra con lo sterrato davanti, recinto accanto,
+    // il gregge a destra sotto il recinto
+    2: {
+      posti: 18, agnelli: { io: 5, gregge: 25 }, prospettiva: [174, 84 / 124],
+      avversari: [
+        { id: 'bea', nome: 'Bea', pecora: 'ricciolo', x: 28, y: 106, w: 84, targa: [70, 91], fumetto: [70, 86], recinto: [128, 138, 184, 146, 0.68], area: [137, 144, 266, 180],
+          tappetino: [14, 188, 116, 48], ventaglio: [46, 232], guai: [78, 195], agnelli: 6, mano: 5, angolo: ['grandine-a-sorpresa'] },
+      ],
+      gregge: { area: [146, 206, 372, 252], evita: [[218, 200, 300, 226]], cartello: [259, 187] },
+      liberoDaPiante: [[0, 84, 136, 244], [118, 118, 290, 196], [138, 194, 384, 258]],
+    },
+    3: {
+      posti: 15, agnelli: { io: 5, gregge: 27 }, prospettiva: [172, 72 / 124],
+      avversari: [
+        { id: 'bea', nome: 'Bea', pecora: 'ricciolo', x: 4, y: 115, w: 72, targa: [40, 100], fumetto: [40, 94], recinto: [90, 146, 184, 94, 0.62], area: [98, 152, 176, 180],
+          tappetino: [-2, 184, 84, 48], ventaglio: [24, 226], guai: [46, 191], agnelli: 6, mano: 5, angolo: ['grandine-a-sorpresa'] },
+        { id: 'leo', nome: 'Leo', pecora: 'sospirella', specchia: true, x: 314, y: 115, w: 72, targa: [350, 100], fumetto: [350, 94], recinto: [206, 146, 184, 94, 0.62], area: [214, 152, 292, 180],
+          tappetino: [308, 184, 84, 48], ventaglio: [366, 226], guai: [314, 191], agnelli: 7, mano: 4, angolo: ['grandine-a-sorpresa', 'lupo-vegetariano'] },
+      ],
+      gregge: { area: [92, 210, 300, 252], evita: [[154, 204, 238, 229]], cartello: [196, 191] },
+      liberoDaPiante: [[0, 95, 98, 232], [292, 95, 390, 232], [84, 126, 194, 194], [196, 126, 310, 194], [96, 196, 296, 258]],
+    },
+    // Tre avversari in fila sull'orizzonte: ognuno con la sua pecora, il recinto accanto e lo sterrato davanti
+    4: {
+      posti: 12, agnelli: { io: 4, gregge: 26 }, prospettiva: [138, 50 / 124],
+      avversari: [
+        { id: 'bea', nome: 'Bea', pecora: 'ricciolo', x: 2, y: 100, w: 50, targa: [27, 86], fumetto: [27, 82], recinto: [56, 108, 140, 70, 0.5], area: [63, 114, 120, 136],
+          tappetino: [6, 148, 118, 38], ventaglio: [32, 184], guai: [62, 152], agnelli: 5, mano: 5, angolo: ['grandine-a-sorpresa'] },
+        { id: 'ada', nome: 'Ada', pecora: 'brontolana', x: 132, y: 100, w: 50, targa: [157, 86], fumetto: [157, 82], recinto: [186, 108, 140, 70, 0.5], area: [193, 114, 250, 136],
+          tappetino: [136, 148, 118, 38], ventaglio: [162, 184], guai: [192, 152], agnelli: 3, mano: 3, angolo: [] },
+        { id: 'leo', nome: 'Leo', pecora: 'sospirella', specchia: true, x: 338, y: 100, w: 50, targa: [363, 86], fumetto: [363, 82], recinto: [264, 108, 140, 70, 0.5], area: [271, 114, 328, 136],
+          tappetino: [266, 148, 118, 38], ventaglio: [358, 184], guai: [278, 152], agnelli: 6, mano: 4, angolo: ['grandine-a-sorpresa', 'lupo-vegetariano'] },
+      ],
+      gregge: { area: [26, 200, 364, 246], evita: [[156, 196, 234, 222]], cartello: [195, 186] },
+      liberoDaPiante: [[0, 78, 390, 254]],
+    },
+  },
+};
+const GIOCATORI = {};
+let DISP = null, AVVERSARI = [], TUTTI = [], numeroGiocatori = 3;
+const AREE = {};
+function creaArea(nome, x0, y0, x1, y1, posti) { AREE[nome] = { nome, x0, y0, x1, y1, posti, agnelli: [], mostrati: 0, cartello: null }; }
+const dentro = (a, x, y) => (a.evita || []).find(([x0, y0, x1, y1]) => x > x0 && x < x1 && y > y0 && y < y1);
+const strato = mondo;
+const avversarioConPiuAgnelli = () => AVVERSARI.reduce((a, b) => (AREE[b].agnelli.length > AREE[a].agnelli.length ? b : a));
+// Ricostruisce giocatori, recinti, pecore e gregge per n giocatori (gli agnellini li mette preparaPartita)
+function costruisciTavolo(n) {
+  numeroGiocatori = n;
+  const D = DISPOSIZIONI.verticale; DISP = D[n];
+  for (const a of [...AGNELLI]) a.togli();
+  document.querySelectorAll('.pecora, .targa, .recinto, .cartello, .terreno, .ventaglio, .mini').forEach((e) => e.remove());
+  for (const o of [GIOCATORI, AREE, PECORE]) for (const k of Object.keys(o)) delete o[k];
+  GIOCATORI.io = { nome: 'Tu', pecora: 'nerina', posti: DISP.posti, ...D.io };
+  for (const a of DISP.avversari) GIOCATORI[a.id] = { posti: DISP.posti, ...a };
+  AVVERSARI = DISP.avversari.map((a) => a.id); TUTTI = ['io', ...AVVERSARI];
+  for (const chi of TUTTI) { const g = GIOCATORI[chi]; creaArea(chi, ...g.area, DISP.posti); recinto(...g.recinto, chi); }
+  creaArea('gregge', ...DISP.gregge.area, Infinity); AREE.gregge.evita = DISP.gregge.evita;
+  const cg = document.createElement('div'); cg.className = 'cartello piccolo';
+  cg.style.cssText = `left:${DISP.gregge.cartello[0]}px;top:${DISP.gregge.cartello[1]}px;z-index:360`; strato.appendChild(cg); AREE.gregge.cartello = cg;
+  creaPecore();
+  VIETATI = [...DISP.liberoDaPiante, ...VIETATI_IO]; disegnaFlora();
+}
+
+// Il recinto si può ridisegnare con un'altra forma: serve per allargarlo quando l'inquadratura si avvicina
+function recinto(x, yDietro, yDavanti, larg, k, nome) {
+  const A = AREE[nome];
+  const nuovo = (cls) => { const e = document.createElementNS(NS, 'svg'); e.setAttribute('class', cls); e.setAttribute('width', 1); e.setAttribute('height', 1); e.style.overflow = 'visible'; e.dataset.chi = nome; strato.appendChild(e); return e; };
+  const c = document.createElement('div'); c.className = 'cartello' + (k < 0.8 ? ' piccolo' : ''); c.dataset.chi = nome;
+  A.recintoEl = { dietro: nuovo('recinto'), davanti: nuovo('recinto') }; strato.appendChild(c); A.cartello = c;
+  A.recinto0 = { x, yDietro, yDavanti, larg, k }; A.area0 = { x0: A.x0, y0: A.y0, x1: A.x1, y1: A.y1 };
+  disegnaRecinto(nome, A.recinto0);
+}
+function disegnaRecinto(nome, { x, yDietro, yDavanti, larg, k }) {
+  const A = AREE[nome], { dietro, davanti } = A.recintoEl, alto = 22 * k, prof = yDavanti - yDietro;
+  const palo = (px, py, h) => `<rect x="${(px - 3.5 * k).toFixed(1)}" y="${(py - h).toFixed(1)}" width="${(7 * k).toFixed(1)}" height="${(h + 3 * k).toFixed(1)}" rx="${(3 * k).toFixed(1)}" fill="${P.fango}" stroke="${P.notte}" stroke-width="2.2"/>`;
+  const asse = (y0, y1, x0, x1) => `<path d="M${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)}" stroke="${P.notte}" stroke-width="${(7 * k).toFixed(2)}" stroke-linecap="round"/><path d="M${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)}" stroke="${P.fango}" stroke-width="${(7 * k - 4.4).toFixed(2)}" stroke-linecap="round"/>`;
+  dietro.style.cssText += `;left:${x}px;top:${yDietro}px;z-index:${100 + Math.round(yDietro)}`;
+  let d = `<rect x="${-4 * k}" y="${-2 * k}" width="${(larg + 8 * k).toFixed(1)}" height="${(prof + 6 * k).toFixed(1)}" rx="${14 * k}" style="fill:var(--pavimento)" stroke="${P.notte}" stroke-width="2.2"/>`;
+  d += `<path class="ombra-recinto" data-h="${alto * 0.82}" data-l="${larg}"/>`;
+  const nPali = Math.max(3, Math.round(larg / (34 * k)));
+  for (let i = 0; i <= nPali; i++) d += palo((larg * i) / nPali, 0, alto * 0.82);
+  d += asse(-alto * 0.55, -alto * 0.55, 0, larg) + asse(-alto * 0.2, -alto * 0.2, 0, larg);
+  d += asse(-alto * 0.55, prof - alto * 0.62, 0, 0) + asse(-alto * 0.2, prof - alto * 0.25, 0, 0);
+  d += asse(-alto * 0.55, prof - alto * 0.62, larg, larg) + asse(-alto * 0.2, prof - alto * 0.25, larg, larg);
+  dietro.innerHTML = d;
+  davanti.style.cssText += `;left:${x}px;top:${yDavanti}px;z-index:${100 + Math.round(yDavanti) + 2}`;
+  let f = `<path class="ombra-recinto" data-h="${alto}" data-l="${larg}"/>`;
+  for (let i = 0; i <= nPali; i++) f += palo((larg * i) / nPali, 0, alto);
+  f += asse(-alto * 0.62, -alto * 0.62, 0, larg) + asse(-alto * 0.25, -alto * 0.25, 0, larg);
+  davanti.innerHTML = f;
+  A.recinto = { x, yDietro, yDavanti, larg, k, alto };
+  const piccolo = A.cartello.classList.contains('piccolo');
+  A.cartello.style.cssText += `;left:${x + larg / 2}px;top:${yDavanti - alto * (piccolo ? 1.1 : 0.95)}px;z-index:${100 + Math.round(yDavanti) + 3}`;
+  aggiornaOmbreRecinti(dietro); aggiornaOmbreRecinti(davanti);
+}
+function aggiornaOmbreRecinti(radice = document) {
+  radice.querySelectorAll('.ombra-recinto').forEach((p) => {
+    const h = +p.dataset.h, l = +p.dataset.l, v = vettoreOmbra(h);
+    p.setAttribute('d', `M0 0 L${l} 0 L${(l + v.x).toFixed(1)} ${v.y.toFixed(1)} L${v.x.toFixed(1)} ${v.y.toFixed(1)} Z`);
+  });
+}
+function aggiornaCartello(a) {
+  if (!a.cartello) return;
+  a.cartello.textContent = a.nome === 'gregge' ? `Gregge ${a.mostrati}` : `${a.mostrati}/${a.posti}`;
+  a.cartello.classList.toggle('quasi', a.posti !== Infinity && a.mostrati >= a.posti - 2);
+}
+// Prospettiva: gli agnellini lontani hanno la stessa proporzione della pecora del loro giocatore, così con lo zoom
+// tutta la sua postazione torna grande come la tua. DISP.prospettiva = [y della fila degli avversari, scala della loro pecora].
+const profondita = (y) => { const [y0, k0] = DISP ? DISP.prospettiva : [170, 0.5]; return Math.max(k0, Math.min(1.02, k0 + ((y - y0) * (1 - k0)) / (610 - y0))); };
+const agitazione = (a) => (a.posti === Infinity ? 0 : Math.max(0, (a.mostrati / a.posti - 0.7) / 0.3));
+let sera = 0;
+
+function puntoLibero(a, io) {
+  let migliore = null, dist = -1;
+  for (let i = 0; i < 30; i++) {
+    const p = { x: rand(a.x0, a.x1), y: rand(a.y0, a.y1) };
+    if (dentro(a, p.x, p.y) || (a.area && dentro(a.area, p.x, p.y))) continue;
+    let d = 1e9;
+    for (const o of a.agnelli) if (o !== io) d = Math.min(d, Math.hypot((o.tx ?? o.x) - p.x, ((o.ty ?? o.y) - p.y) * 1.6));
+    if (d > dist) { dist = d; migliore = p; }
+  }
+  // Se ogni tentativo cadeva su un ostacolo, va bene il bordo di sotto dell'area
+  return migliore || { x: clamp(io ? io.x : (a.x0 + a.x1) / 2, a.x0, a.x1), y: (a.area || a).y1 };
+}
+function vicinoLibero(ag) {
+  const a = ag.a, r = 50;
+  const sub = { x0: Math.max(a.x0, ag.x - r), x1: Math.min(a.x1, ag.x + r), y0: Math.max(a.y0, ag.y - r * 0.5), y1: Math.min(a.y1, ag.y + r * 0.5), agnelli: a.agnelli, area: a };
+  return puntoLibero(sub, ag);
+}
+
+const AGNELLI = new Set();
+class Agnello {
+  constructor(a) {
+    this.a = a; const p = puntoLibero(a, this); this.x = p.x; this.y = p.y; this.tx = p.x; this.ty = p.y;
+    this.verso = Math.random() < 0.5 ? 1 : -1; this.stato = 'fermo'; this.t = rand(0.3, 3); this.fase = 0;
+    this.hop = 0; this.sx = 1; this.sy = 1; this.incl = 0; this.giro = 0;
+    this.regia = false; this.mossa = null; this.fx = null; this.ox = 0; this.brivido = 0; this.poi = null;
+    this.brina = 0; this.brinaMeta = 0; this.bruciato = 0; this.shockFino = 0; this.extra = null;
+    this.el = document.createElement('div'); this.el.className = 'agn';
+    this.el.innerHTML = '<svg class="ombra" viewBox="0 0 40 40" aria-hidden="true"><use href="#agnello"/></svg><div class="corpo"><svg viewBox="0 0 40 40" aria-hidden="true"><use href="#agnello"/></svg></div>';
+    this.ombra = this.el.firstChild; this.corpo = this.el.lastChild;
+    this.corpo.addEventListener('pointerdown', (e) => { e.stopPropagation(); if (this.stato !== 'corre' && this.stato !== 'vola') { this.salta(2); suona('beee', 1.7); } });
+    strato.appendChild(this.el); a.agnelli.push(this); a.mostrati++; AGNELLI.add(this);
+  }
+  togli() { this.el.remove(); AGNELLI.delete(this); IN_VIAGGIO.delete(this); }
+  // Se finisce sopra un ostacolo (il cartello del gregge) scivola fuori dal lato più vicino: così ci gira intorno
+  respingi() {
+    if (this.stato === 'corre' || this.stato === 'vola') return;
+    // Dentro un recinto che si restringe, la staccionata spinge dentro chi è rimasto fuori
+    const a = this.a;
+    if (a.recinto && !this.regia) { this.x = clamp(this.x, a.x0, a.x1); this.y = clamp(this.y, a.y0, a.y1); }
+    const z = dentro(this.a, this.x, this.y); if (!z) return;
+    const [x0, , x1, y1] = z, sx = this.x - x0, dx = x1 - this.x, giu = y1 - this.y;
+    if (giu <= sx && giu <= dx) this.y = y1 + 0.5;
+    else {
+      // Respinto di lato: scivola lungo il bordo verso il basso, così prima o poi lo aggira invece di restare fermo
+      this.x = sx < dx ? x0 - 0.5 : x1 + 0.5; this.y = Math.min(this.y + 1.4, y1 + 0.5);
+    }
+  }
+  // Strato extra sopra l'agnellino (fuliggine, peli elettrici, occhio sgranato, brina): creato solo quando serve
+  creaExtra() {
+    const N = P.notte, s = document.createElementNS(NS, 'svg');
+    s.setAttribute('viewBox', '0 0 40 40'); s.setAttribute('class', 'extra'); s.setAttribute('aria-hidden', 'true');
+    s.innerHTML = `<g class="x-fuliggine" opacity="0" fill="${N}"><ellipse cx="14" cy="21" rx="3.2" ry="2" opacity=".5"/><ellipse cx="22" cy="15" rx="3.6" ry="2.2" opacity=".5"/><ellipse cx="21" cy="25" rx="3" ry="1.8" opacity=".5"/></g>` +
+      `<g class="x-peli" opacity="0" fill="none" stroke="${N}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7.4 l-1.6 -2 l2.6 -1.4 l-1.4 -2.4"/><path d="M12 13.6 l-2.4 -0.8 l0.6 -2.6 l-2.4 -0.8"/><path d="M27 15 l2.2 -1.4 l-0.6 -2.4 l2.2 -1.2"/><path d="M6 21.5 l-2.4 0.4 l-0.6 -2.4 l-2.2 0.2"/></g>` +
+      `<g class="x-occhio" opacity="0"><circle cx="32.8" cy="13.2" r="2.7" fill="${P.gesso}" stroke="${N}" stroke-width="1"/><circle cx="33.2" cy="13.5" r="0.95" fill="${N}"/></g>` +
+      `<g class="x-brina" opacity="0" stroke="${N}" stroke-linejoin="round"><ellipse cx="20" cy="8.4" rx="6.8" ry="2.6" fill="${P.gesso}" stroke-width="1.2"/><ellipse cx="12.6" cy="14.2" rx="4" ry="1.7" fill="${P.gesso}" stroke-width="1.1"/><ellipse cx="26.6" cy="15.8" rx="3.6" ry="1.6" fill="${P.gesso}" stroke-width="1.1"/><path d="M16.6 31.4 L18.2 36 L19.8 31.4 Z" fill="${P.celeste}" stroke-width="0.9"/></g>`;
+    this.corpo.appendChild(s);
+    this.extra = { fuliggine: s.querySelector('.x-fuliggine'), peli: s.querySelector('.x-peli'), occhio: s.querySelector('.x-occhio'), brinaG: s.querySelector('.x-brina'), base: this.corpo.firstElementChild };
+  }
+  // Colpito dal fulmine: resta stordito, annerito e con i peli ritti, poi si scrolla
+  fulmina(durata, m) {
+    prendi([this]); if (m) m.pulisci(() => rilascia([this]));
+    this.shockFino = T + durata; this.bruciato = 1;
+    const fine = this.shockFino; let prossimo = 0;
+    effetto(this, (dt) => {
+      this.brivido = 0.6; this.sy = 0.95; this.sx = 1.05;
+      prossimo -= dt; if (prossimo <= 0) { prossimo = rand(0.3, 0.55); const k = profondita(this.y); fumata(this.x, this.y - 16 * k, 1, 0.6 * k); }
+      if (Math.random() < dt * 2) particella('scintilla', this.x, this.y - 14 * profondita(this.y), { vx: rand(-40, 40), vy: rand(-70, -20), vita: 0.4, k: 0.45 });
+      return T >= fine || (m && !m.vivo);
+    }).then(() => { this.brivido = 0; this.shockFino = 0; if (this.regia) return effetto(this, saltello(this, 10)); }).then(() => rilascia([this]));
+  }
+  salta(n = 1) { this.stato = 'salta'; this.fase = 0; this.nSalti = n; }
+  guarda(x) { if (this.stato === 'fermo' || this.stato === 'bruca' || this.stato === 'cammina') { this.stato = 'guarda'; this.t = rand(0.9, 1.6); this.gx = x; } }
+  // Un agnellino "in regia" è guidato da un gioco con un altro agnellino o da un evento meteo
+  annullaRegia() {
+    this.regia = false; this.ox = 0; this.poi = null;
+    const fini = [this.mossa && this.mossa.fine, this.fxFine]; this.mossa = null; this.fx = null; this.fxFine = null;
+    fini.forEach((f) => f && f());
+  }
+  passoRegia(dt) {
+    if (this.fx) { if (this.fx(dt)) { const f = this.fxFine; this.fx = null; this.fxFine = null; if (f) f(); } return; }
+    const m = this.mossa; if (!m) return;
+    const v = m.vel * profondita(this.y), dx = m.x - this.x, dy = m.y - this.y, d = Math.hypot(dx, dy);
+    if (Math.abs(dx) > 0.6) this.verso = dx > 0 ? 1 : -1;
+    // Rete di sicurezza: nessuno spostamento guidato dura più di 8 secondi, così niente resta mai ad aspettare
+    if (d <= v * dt || T - m.da > 8) { this.x = m.x; this.y = m.y; this.mossa = null; m.fine(); return; }
+    this.x += (dx / d) * v * dt; this.y += (dy / d) * v * dt;
+    this.fase += dt * 9; this.hop = Math.abs(Math.sin(this.fase)) * m.salto;
+  }
+  vaiIn(a, modo = 'corre') {
+    if (this.regia) this.annullaRegia();
+    const da = this.a; da.agnelli.splice(da.agnelli.indexOf(this), 1); da.mostrati--; aggiornaCartello(da);
+    this.a = a; a.agnelli.push(this);
+    const p = puntoLibero(a, this); this.tx = p.x; this.ty = p.y;
+    if (modo === 'vola') { this.stato = 'vola'; this.x0 = this.x; this.y0 = this.y; this.fase = 0; this.durata = rand(0.8, 1.1); this.giro = 0; this.versoGiro = Math.random() < 0.5 ? 1 : -1; }
+    else { this.stato = 'corre'; this.fase = 0; }
+    IN_VIAGGIO.add(this);
+    if (da !== a) suona('beee', 1.6);
+  }
+  arrivato() {
+    this.stato = 'atterra'; this.t = 0.28; this.a.mostrati++; aggiornaCartello(this.a); suona('pop'); IN_VIAGGIO.delete(this);
+    for (const o of this.a.agnelli) if (o !== this && Math.random() < 0.8) o.guarda(this.x);
+    dopoArrivo(this.a);
+  }
+  scegli() {
+    const ag = agitazione(this.a), r = Math.random(), gregge = this.a.nome === 'gregge';
+    const pDorme = RIDOTTO ? 0.1 : 0.04 + 0.32 * sera * (1 - ag);
+    const pSalta = RIDOTTO ? 0 : 0.05 + 0.45 * ag;
+    const pBruca = gregge ? 0.55 : 0.32;
+    if (r < pDorme && sera > 0.4 && !gregge && Math.random() < 0.75) {
+      // Verso sera si addormentano vicini, tutti nello stesso angolo del recinto
+      const k = profondita(this.y), c = { x: this.a.x0 + (this.a.x1 - this.a.x0) * 0.28, y: (this.a.y0 + this.a.y1) / 2 };
+      this.tx = clamp(c.x + rand(-26, 26) * k, this.a.x0, this.a.x1); this.ty = clamp(c.y + rand(-14, 14) * k, this.a.y0, this.a.y1);
+      this.stato = 'cammina'; this.poi = 'dorme';
+    } else if (r < pDorme) { this.stato = 'dorme'; this.t = rand(4, 9); this.prossimaZeta = rand(0.5, 2); }
+    else if (r < pDorme + pSalta) this.salta(1 + Math.floor(Math.random() * 2));
+    else if (r < pDorme + pSalta + pBruca || RIDOTTO) { this.stato = 'bruca'; this.t = rand(2, 5); }
+    else { const p = vicinoLibero(this); this.tx = p.x; this.ty = p.y; this.stato = 'cammina'; }
+  }
+  passo(dt, ora) {
+    this.t -= dt; this.incl = 0; this.sx = 1; this.sy = 1; this.hop = 0;
+    if (this.regia) { this.passoRegia(dt); this.respingi(); this.disegna(); return; }
+    switch (this.stato) {
+      case 'fermo': if (this.t <= 0) this.scegli(); break;
+      case 'cammina': case 'corre': {
+        const corre = this.stato === 'corre', ag = agitazione(this.a);
+        const v = (corre ? 150 : 16 + ag * 26) * profondita(this.y);
+        const dx = this.tx - this.x, dy = this.ty - this.y, d = Math.hypot(dx, dy);
+        if (Math.abs(dx) > 0.6) this.verso = dx > 0 ? 1 : -1;
+        if (d <= v * dt) {
+          this.x = this.tx; this.y = this.ty;
+          if (corre) this.arrivato();
+          else if (this.poi === 'dorme') { this.poi = null; this.stato = 'dorme'; this.t = rand(6, 12); this.prossimaZeta = rand(0.5, 1.5); }
+          else { this.stato = 'fermo'; this.t = rand(0.6, 2.5); }
+        }
+        else { this.x += (dx / d) * v * dt; this.y += (dy / d) * v * dt; }
+        this.fase += dt * (corre ? 12 : 7.5);
+        this.hop = Math.abs(Math.sin(this.fase)) * (corre ? 10 : 2.6);
+        this.sy = 1 + Math.cos(this.fase * 2) * (corre ? 0.07 : 0.03); this.sx = 1 / this.sy;
+        break;
+      }
+      case 'bruca': this.incl = 9 + Math.sin(ora * 0.009 + this.x) * 4; if (this.t <= 0) { this.stato = 'fermo'; this.t = rand(0.5, 2); } break;
+      case 'dorme':
+        this.sy = 0.86 + Math.sin(ora * 0.002 + this.x) * 0.025; this.sx = 1.08; this.incl = -3;
+        this.prossimaZeta -= dt; if (this.prossimaZeta <= 0) { this.prossimaZeta = rand(1.4, 2.6); zeta(this.x, this.y - 24 * profondita(this.y)); }
+        if (this.t <= 0) { this.stato = 'fermo'; this.t = rand(0.5, 2); }
+        break;
+      case 'salta': {
+        this.fase += dt * 10; const s = Math.sin(this.fase);
+        if (s >= 0) { this.hop = s * 13; this.sy = 1 + s * 0.08; this.sx = 1 / this.sy; } else { this.sy = 1 + s * 0.22; this.sx = 1 / this.sy; }
+        if (this.fase >= Math.PI * 2 * this.nSalti) { this.stato = 'fermo'; this.t = rand(0.4, 1.5); }
+        break;
+      }
+      case 'guarda': this.verso = this.gx > this.x ? 1 : -1; if (this.t <= 0) { this.stato = 'fermo'; this.t = rand(0.3, 1.2); } break;
+      case 'atterra': { const p = 1 - Math.max(0, this.t) / 0.28; this.sy = 1 - 0.28 * Math.sin(p * Math.PI); this.sx = 1 / this.sy; if (this.t <= 0) { this.stato = 'fermo'; this.t = rand(0.6, 2); } break; }
+      case 'vola': {
+        this.fase += dt / this.durata; const p = Math.min(1, this.fase);
+        this.x = this.x0 + (this.tx - this.x0) * p; this.y = this.y0 + (this.ty - this.y0) * p;
+        this.hop = Math.sin(p * Math.PI) * 90; this.incl = p * 360 * this.versoGiro; this.verso = this.tx > this.x0 ? 1 : -1;
+        if (p >= 1) { this.incl = 0; this.arrivato(); }
+        break;
+      }
+    }
+    this.respingi(); this.disegna();
+  }
+  disegna() {
+    const k = profondita(this.y);
+    this.brina += (this.brinaMeta - this.brina) * 0.03;
+    if (!this.shockFino && this.bruciato > 0) this.bruciato = Math.max(0, this.bruciato - 0.012);
+    if (this.brina > 0.01 || this.bruciato > 0.01 || this.shockFino) {
+      if (!this.extra) this.creaExtra();
+      const x = this.extra;
+      x.brinaG.setAttribute('opacity', this.brina.toFixed(2));
+      x.fuliggine.setAttribute('opacity', this.bruciato.toFixed(2));
+      x.peli.setAttribute('opacity', this.shockFino ? (0.7 + Math.random() * 0.3).toFixed(2) : '0');
+      x.occhio.setAttribute('opacity', this.shockFino ? '1' : '0');
+      x.base.style.filter = this.bruciato > 0.01 ? `brightness(${(1 - 0.35 * this.bruciato).toFixed(3)}) sepia(${(0.4 * this.bruciato).toFixed(3)})` : '';
+    } else if (this.extra) { this.extra.base.style.filter = ''; this.extra.brinaG.setAttribute('opacity', '0'); this.extra.fuliggine.setAttribute('opacity', '0'); }
+    const sf = this.a.sfumata ? '0' : ''; if (this.el.style.opacity !== sf) this.el.style.opacity = sf;
+    const brr = this.brivido > 0 ? Math.sin(T * 70 + this.x) * 0.9 * this.brivido : 0;
+    this.el.style.transform = `translate(${(this.x + this.ox + brr).toFixed(1)}px,${this.y.toFixed(1)}px)`;
+    this.el.style.zIndex = 100 + Math.round(this.y) + (this.stato === 'vola' || this.stato === 'corre' ? 600 : 0);
+    const piega = this.stato === 'vola' ? 0 : clamp(-ventoIn(this.x) * 11, -14, 6);
+    this.corpo.style.transform = `translate(-14px,${(-25.8 - this.hop * k).toFixed(1)}px) skewX(${piega.toFixed(1)}deg) scale(${(this.verso * this.sx * k).toFixed(3)},${(this.sy * k).toFixed(3)}) rotate(${this.incl.toFixed(1)}deg)`;
+    // Ombra: la sagoma dell'agnellino proiettata a terra dalla parte opposta al sole; resta giù quando salta, e si stringe
+    const su = Math.max(0.5, 1 - this.hop / 50), a = LUCE.dx * LUCE.lung, b = 0.42 * LUCE.lung;
+    this.ombra.style.transform = `matrix(1,0,${(-a).toFixed(3)},${(-b).toFixed(3)},0,0) scale(${(this.verso * k * su).toFixed(3)},${(k * su).toFixed(3)})`;
+  }
+}
+/* ---------- Giochi tra agnellini: piccole scenette che partono da sole ogni tanto ---------- */
+// Se l'agnellino non è (più) guidato, per esempio perché è appena corso in un altro Ovile, si va avanti subito:
+// nessuna scenetta e nessun meteo resta ad aspettarlo per sempre.
+// Un agnellino intrappolato nel mulinello obbedisce solo alla trappola: gli altri comandi passano oltre.
+const muovi = (g, x, y, vel = 40, salto = 3, trappola = false) => {
+  if (!g.regia || (g.intrappolato && !trappola)) return Promise.resolve();
+  const z = dentro(g.a, x, y); if (z) y = z[3] + 2; // una meta dietro un ostacolo si sposta appena sotto
+  return new Promise((fine) => { g.mossa = { x, y, vel, salto, fine, da: T }; });
+};
+const effetto = (g, fn, trappola = false) => (g.regia && (!g.intrappolato || trappola) ? new Promise((fine) => { g.fx = fn; g.fxFine = fine; }) : Promise.resolve());
+const perDurata = (sec, fn) => { let t = 0; return (dt) => { t += dt; const q = Math.min(1, t / sec); fn(q); return q >= 1; }; };
+const saltello = (g, h = 10) => perDurata(0.5, (q) => { const s = Math.sin(q * Math.PI); g.hop = s * h; g.sy = 1 + 0.06 * s; g.sx = 1 / g.sy; });
+const distanza = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+const libero_ = (g) => !g.regia && ['fermo', 'bruca', 'cammina', 'guarda'].includes(g.stato);
+function prendi(gs) { gs.forEach((g) => { g.regia = true; g.stato = 'regia'; g.mossa = null; g.fx = null; g.ox = 0; g.poi = null; }); }
+function rilascia(gs, trappola = false) { gs.forEach((g) => { if (!g.regia || (g.intrappolato && !trappola)) return; g.annullaRegia(); g.stato = 'fermo'; g.t = rand(0.8, 2.5); g.tx = g.x; g.ty = g.y; }); }
+const ancora = (...gs) => gs.every((g) => g.regia && !g.intrappolato && AGNELLI.has(g));
+function decoro(html, x, y, kf, durata) {
+  const d = document.createElement('div'); d.className = 'decoro'; d.innerHTML = html; d.style.left = x + 'px'; d.style.top = y + 'px'; strato.appendChild(d);
+  d.animate(kf, { duration: durata, easing: 'ease-out' }).onfinish = () => d.remove();
+}
+const stellina = (x, y) => decoro(`<svg viewBox="-10 -10 20 20" width="16" height="16"><path d="M0 -8 L2.4 -2.4 L8 -2 L3.6 1.6 L5 7.6 L0 4.4 L-5 7.6 L-3.6 1.6 L-8 -2 L-2.4 -2.4 Z" fill="${P.limone}" stroke="${P.notte}" stroke-width="1.6" stroke-linejoin="round"/></svg>`,
+  x - 8, y - 8, [{ transform: 'scale(0) rotate(0)', opacity: 1 }, { transform: 'scale(1.3) rotate(90deg)', opacity: 1, offset: 0.4 }, { transform: 'scale(.8) rotate(160deg) translateY(-6px)', opacity: 0 }], 650);
+const cuore = (x, y) => decoro(`<svg viewBox="-8 -9 16 14" width="15" height="13"><path d="M0 4 C-7 -1 -5 -8 0 -4.5 C5 -8 7 -1 0 4 Z" fill="${P.albicocca}" stroke="${P.notte}" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+  x - 7, y - 7, [{ transform: 'translateY(0) scale(.3)', opacity: 0 }, { transform: 'translateY(-6px) scale(1.15)', opacity: 1, offset: 0.25 }, { transform: 'translateY(-26px) scale(1)', opacity: 0 }], 1500);
+function belino(g, testo, piccolo) {
+  const k = profondita(g.y);
+  decoro(`<span class="belino${piccolo ? ' piccolo' : ''}">${testo}</span>`, g.x, g.y - 30 * k,
+    [{ transform: 'translateY(4px) scale(.5)', opacity: 0 }, { transform: 'translateY(0) scale(1)', opacity: 1, offset: 0.2 }, { transform: 'translateY(-10px)', opacity: 0 }], 1300);
+}
+const GIOCHI = {
+  async testate(a, b) {
+    if (a.x > b.x) [a, b] = [b, a];
+    const A = a.a, k = profondita((a.y + b.y) / 2), d = 10 * k;
+    const mx = clamp((a.x + b.x) / 2, A.x0 + d, A.x1 - d), my = (a.y + b.y) / 2;
+    await Promise.all([muovi(a, mx - d, my, 34), muovi(b, mx + d, my, 34)]);
+    for (let i = 0; i < 2; i++) {
+      if (!ancora(a, b)) return;
+      a.verso = 1; b.verso = -1;
+      const cozzo = (g, dir) => perDurata(0.62, (q) => {
+        if (q < 0.45) { const s = q / 0.45; g.ox = dir * 5 * k * s; g.incl = -12 * s; g.hop = 3 * s; }
+        else if (q < 0.6) { const s = (q - 0.45) / 0.15; g.ox = dir * 5 * k * (1 - s) - dir * 2.5 * k * s; g.incl = -12 + 22 * s; g.hop = 3 * (1 - s); }
+        else { const s = (q - 0.6) / 0.4; g.ox = -dir * 2.5 * k * (1 - s); g.incl = 10 * (1 - s); g.sy = 1 - 0.18 * Math.sin(s * Math.PI); g.sx = 1 / g.sy; }
+      });
+      setTimeout(() => { if (ancora(a, b)) { stellina(mx, my - 22 * k); suona('pop'); } }, 330);
+      await Promise.all([effetto(a, cozzo(a, -1)), effetto(b, cozzo(b, 1))]);
+    }
+    if (ancora(a, b)) await Promise.all([effetto(a, saltello(a)), effetto(b, saltello(b))]);
+  },
+  async coccola(a, b) {
+    if (a.x > b.x) [a, b] = [b, a];
+    const A = a.a, k = profondita((a.y + b.y) / 2), d = 7.5 * k;
+    const mx = clamp((a.x + b.x) / 2, A.x0 + d, A.x1 - d), my = (a.y + b.y) / 2;
+    await Promise.all([muovi(a, mx - d, my, 26, 2), muovi(b, mx + d, my, 26, 2)]);
+    if (!ancora(a, b)) return;
+    a.verso = 1; b.verso = -1;
+    setTimeout(() => { if (ancora(a, b)) cuore(mx, my - 24 * k); }, 350);
+    const strofina = (g, ph) => perDurata(1.7, (q) => { g.incl = 7 * Math.sin(q * Math.PI * 4 + ph) * busta(q); g.sy = 1 - 0.05 * busta(q); g.sx = 1 / g.sy; });
+    await Promise.all([effetto(a, strofina(a, 0)), effetto(b, strofina(b, 1.6))]);
+  },
+  async rincorsa(a, b) {
+    const insegui = (g, preda, sec) => { let t = 0, fase = 0; return (dt) => {
+      t += dt; const k = profondita(g.y), v = 52 * k, dx = preda.x - g.x, dy = preda.y - g.y, d = Math.hypot(dx, dy);
+      if (d > 13 * k) { g.x += (dx / d) * v * dt; g.y += (dy / d) * v * dt; }
+      g.verso = dx > 0 ? 1 : -1; fase += dt * 11; g.hop = Math.abs(Math.sin(fase)) * 5; return t > sec || d <= 14 * k; }; };
+    for (const [scappa, segue] of [[b, a], [a, b]]) {
+      if (!ancora(a, b)) return;
+      let meta = null, lontano = -1;
+      for (let i = 0; i < 8; i++) { const p = { x: rand(scappa.a.x0, scappa.a.x1), y: rand(scappa.a.y0, scappa.a.y1) }; const d = distanza(p, segue); if (d > lontano) { lontano = d; meta = p; } }
+      belino(scappa, 'beee!', true);
+      await Promise.all([muovi(scappa, meta.x, meta.y, 50, 6), effetto(segue, insegui(segue, scappa, 3))]);
+    }
+    if (ancora(a, b)) await Promise.all([effetto(a, saltello(a, 12)), effetto(b, saltello(b, 12))]);
+  },
+  async cavallina(a, b) {
+    const A = a.a, k = profondita(b.y), salto = 22 * k;
+    // La cavallina si sposta prima un po' verso il centro, così c'è spazio da entrambi i lati
+    const bx = clamp(b.x, A.x0 + salto + 2, A.x1 - salto - 2);
+    if (Math.abs(bx - b.x) > 1) { await muovi(b, bx, b.y, 30, 2); if (!ancora(a, b)) return; }
+    const lato = a.x < b.x ? -1 : 1;
+    const da = { x: b.x + lato * salto, y: b.y }, a2 = { x: b.x - lato * salto, y: b.y };
+    await muovi(a, da.x, da.y, 40, 3);
+    if (!ancora(a, b)) return;
+    a.verso = -lato;
+    const x0 = a.x, x1 = a2.x;
+    const accucciato = perDurata(0.9, (q) => { b.sy = 1 - 0.2 * busta(q, 0.3); b.sx = 1 / b.sy; });
+    const balzo = perDurata(0.75, (q) => { a.x = x0 + (x1 - x0) * q; a.hop = Math.sin(q * Math.PI) * 24; a.incl = -14 + 26 * q; if (q >= 1) a.incl = 0; });
+    setTimeout(() => suona('pop'), 380);
+    await Promise.all([effetto(b, accucciato), effetto(a, balzo)]);
+    if (ancora(a, b)) await effetto(a, perDurata(0.3, (q) => { a.sy = 1 - 0.25 * Math.sin(q * Math.PI); a.sx = 1 / a.sy; }));
+  },
+  async coro(gs) {
+    const [primo, ...altri] = gs;
+    const bela = (g, alto) => perDurata(0.9, (q) => { g.incl = -16 * busta(q, 0.25); });
+    belino(primo, 'Beee!'); suona('beee', 1.5);
+    const tutti = [effetto(primo, bela(primo))];
+    altri.forEach((g, i) => tutti.push(new Promise((r) => setTimeout(() => {
+      if (!ancora(g)) return r();
+      belino(g, 'beee', true); suona('beee', 1.7 + i * 0.12); effetto(g, bela(g)).then(r);
+    }, 650 + i * 420))));
+    await Promise.all(tutti);
+  },
+};
+let prossimoGioco = 3;
+function pianificaGiochi(dt) {
+  prossimoGioco -= dt;
+  if (prossimoGioco > 0 || st.finito || RIDOTTO) return;
+  prossimoGioco = rand(3, 6.5);
+  const a = scegliUno([AREE.io, AREE.io, AREE.io, AREE.gregge, AREE.gregge, ...AVVERSARI.map((c) => AREE[c])]);
+  const liberi = a.agnelli.filter(libero_);
+  if (liberi.length < 2) return;
+  const tipo = scegliUno(['testate', 'testate', 'coccola', 'rincorsa', 'rincorsa', 'cavallina', 'cavallina', 'coro']);
+  let gruppo;
+  if (tipo === 'coro') gruppo = liberi.sort(() => Math.random() - 0.5).slice(0, Math.min(4, liberi.length));
+  else {
+    const g1 = scegliUno(liberi), g2 = liberi.filter((g) => g !== g1).sort((p, q) => distanza(p, g1) - distanza(q, g1))[0];
+    if (!g2 || distanza(g1, g2) > 120 * profondita(g1.y)) return;
+    gruppo = [g1, g2];
+  }
+  prendi(gruppo);
+  (tipo === 'coro' ? GIOCHI.coro(gruppo) : GIOCHI[tipo](gruppo[0], gruppo[1])).finally(() => rilascia(gruppo));
+}
+
+function zeta(x, y) {
+  if (RIDOTTO) return;
+  const z = document.createElement('span'); z.className = 'zeta'; z.textContent = 'z'; z.style.left = x + 'px'; z.style.top = y + 'px'; strato.appendChild(z);
+  z.animate([{ transform: 'translate(0,0) scale(.6)', opacity: 0 }, { opacity: 1, offset: 0.2 }, { transform: 'translate(10px,-22px) scale(1.1)', opacity: 0 }], { duration: 1800, easing: 'ease-out' }).onfinish = () => z.remove();
+}
+let ultimo = performance.now(), passo30 = 0;
+function ciclo(ora) {
+  // Il tempo non torna mai indietro: al ritorno da un'altra scheda il browser può dare un istante precedente all'ultimo
+  let dtReale = Math.max(0, (ora - ultimo) / 1000); ultimo = Math.max(ultimo, ora);
+  // Riposo: dopo 20 s senza tocchi né eventi lo sfondo si aggiorna al massimo 20 volte al secondo
+  if (eventoInCorso()) RISPARMIO.ultimoTocco = ora;
+  RISPARMIO.riposo = ora - RISPARMIO.ultimoTocco > 20000;
+  misuraFluidita(ora, dtReale);
+  if (RISPARMIO.riposo) {
+    RISPARMIO.accumulo += dtReale;
+    if (RISPARMIO.accumulo < 0.05) { requestAnimationFrame(ciclo); return; }
+    dtReale = RISPARMIO.accumulo;
+  }
+  RISPARMIO.accumulo = 0;
+  impostaVelocita(velocitaScena());
+  avanzaOrologio(dtReale * 1000);
+  // Passi di al massimo 50 ms: quando la scena corre più veloce se ne fanno di più nello stesso fotogramma
+  const dtScena = Math.min(0.05, dtReale) * OROLOGIO.velocita, passi = Math.max(1, Math.ceil(dtScena / 0.05 - 1e-9));
+  for (let i = 0; i < passi; i++) passoScena(dtScena / passi, ora);
+  aggiornaFumetti();
+  // Finiti gli eventi il salto si spegne da solo
+  if (REGIA.salto && !eventoInCorso()) REGIA.salto = false;
+  requestAnimationFrame(ciclo);
+}
+function passoScena(dt, ora) {
+  T += dt;
+  aggiornaVento(dt); aggiornaMeteo(dt); aggiornaSole(dt);
+  passo30 += dt;
+  // Erba e nuvole 30 volte al secondo (15 in modo leggero)
+  if (passo30 >= (RISPARMIO.leggero ? 1 / 15 : 1 / 30)) { aggiornaNuvole(passo30); aggiornaFlora(passo30); passo30 = 0; }
+  // Prima i recinti che cambiano forma, poi gli agnellini: così la staccionata li spinge dentro nello stesso fotogramma
+  aggiornaTween(dt);
+  for (const p of Object.values(PECORE)) p.passo(dt);
+  for (const a of AGNELLI) a.passo(dt, ora);
+  pianificaGiochi(dt);
+  aggiornaParticelle(dt);
+}
+
+/* ---------- Pecore dei giocatori: smontate in zampe, vello e testa per animarle sul posto ---------- */
+const PECORE = {};
+const tra = (q, a, b) => clamp((q - a) / (b - a), 0, 1);
+const busta = (q, att = 0.2) => { const s = Math.min(tra(q, 0, att), tra(1 - q, 0, att)); return s * s * (3 - 2 * s); };
+class Pecora {
+  constructor(chi, g) {
+    this.chi = chi; this.g = g; this.verso = g.specchia ? -1 : 1; this.ph = rand(0, 6);
+    this.azione = null; this.prossima = rand(1, 3); this.batt = rand(1, 3);
+    this.arricciata = 0; this.bagnata = 0; this.brivido = 0; this.spettinata = 0;
+    const el = document.createElement('div'); el.className = 'pecora'; el.dataset.chi = chi;
+    el.style.cssText = `left:${g.x}px;top:${g.y}px;width:${g.w}px;z-index:${100 + Math.round(g.y + g.w * 0.79)}`;
+    el.innerHTML = '<div class="reazione"></div>';
+    const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 200 170'); svg.setAttribute('aria-hidden', 'true');
+    if (this.verso < 0) svg.style.transform = 'scaleX(-1)';
+    el.firstChild.appendChild(svg); this.el = el; this.reazione = el.firstChild; this.svg = svg;
+    // Ombra: la sagoma della pecora (zampe, vello, testa) proiettata sul prato, riempita a tinta unita
+    this.ombra = document.createElementNS(NS, 'g'); this.ombra.setAttribute('style', 'opacity:var(--oop,.15)'); svg.appendChild(this.ombra);
+    this.zampe = []; this.lana = []; this.corpo = document.createElementNS(NS, 'g');
+    const fasi = {};
+    for (const n of document.getElementById('s-' + g.pecora).children) {
+      if (n.tagName === 'ellipse') continue; // l'ombra a terra originale: la sostituisce quella che segue il sole
+      if (n.tagName === 'use') { this.testa = this.costruisciTesta(n); continue; }
+      const copia = n.cloneNode(true);
+      if (n.tagName === 'g' && [...n.children].every((c) => c.tagName === 'rect')) {
+        svg.appendChild(copia);
+        for (const r of copia.children) this.zampe.push({ el: r, x: +r.getAttribute('x') + +r.getAttribute('width') / 2, y: +r.getAttribute('y') });
+        continue;
+      }
+      this.corpo.appendChild(copia);
+      for (const f of copia.querySelectorAll('circle, ellipse')) {
+        const cx = +f.getAttribute('cx'), cy = +f.getAttribute('cy'), chiave = `${cx},${cy}`;
+        fasi[chiave] ??= rand(0, 6.28);
+        this.lana.push({ el: f, cx, cy, r: +(f.getAttribute('r') || 0), rx: +(f.getAttribute('rx') || 0), ry: +(f.getAttribute('ry') || 0), ph: fasi[chiave] });
+      }
+    }
+    svg.appendChild(this.corpo); svg.appendChild(this.testa.posa);
+    let sagoma = '';
+    for (const n of document.getElementById('s-' + g.pecora).children) {
+      if (n.tagName !== 'g') continue;
+      const sw = n.querySelector('rect') && !n.querySelector('circle') ? 0 : parseFloat(/stroke-width:([\d.]+)/.exec(n.getAttribute('style') || '')?.[1] || 0);
+      sagoma += `<g fill="${P.notte}" stroke="${P.notte}" stroke-width="${sw}">${[...n.children].map((c) => { const k = c.cloneNode(true); k.removeAttribute('style'); return k.outerHTML; }).join('')}</g>`;
+      if (sw) break; // basta il primo strato del vello, quello con il contorno
+    }
+    sagoma += `<circle cx="${this.testa.x}" cy="${this.testa.y + 4}" r="21" fill="${P.notte}"/>`;
+    this.ombra.innerHTML = sagoma;
+    this.bruciata = 0; this.shock = 0; this.fulmineFino = 0; this.gelo = 0; this.geloMeta = 0; this.prossimoFumo = 0;
+    this.creaSovrapposizioni();
+    el.addEventListener('pointerdown', () => { reagisci(chi, 'salto'); this.fai('bela', true); });
+    strato.appendChild(el);
+  }
+  // Strati extra disegnati sopra la pecora: fuliggine, peli elettrici, faccia fulminata, brina e ghiaccioli
+  creaSovrapposizioni() {
+    const N = P.notte, palle = [], visti = new Set();
+    for (const l of this.lana) { const k = `${l.cx},${l.cy}`; if (l.r && !visti.has(k)) { visti.add(k); palle.push(l); } }
+    const g = (html, dove = this.corpo) => { const e = document.createElementNS(NS, 'g'); e.setAttribute('opacity', '0'); e.innerHTML = html; dove.appendChild(e); return e; };
+    // Fuliggine: macchie scure sul vello
+    this.fuliggine = g(palle.filter((_, i) => i % 2 === 0).map((l) => `<ellipse cx="${(l.cx + l.r * 0.2).toFixed(1)}" cy="${(l.cy + l.r * 0.1).toFixed(1)}" rx="${(l.r * 0.45).toFixed(1)}" ry="${(l.r * 0.28).toFixed(1)}" fill="${N}" opacity=".5"/>`).join(''));
+    // Peli ritti per l'elettricità: zigzag che escono dal bordo del vello
+    let peli = '';
+    for (const l of palle.filter((p) => p.cy < 118)) {
+      let dx = l.cx - 100, dy = l.cy - 112; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+      for (const a of [-0.35, 0.35]) {
+        const ux = dx * Math.cos(a) - dy * Math.sin(a), uy = dx * Math.sin(a) + dy * Math.cos(a), px = -uy, py = ux;
+        const x0 = l.cx + ux * (l.r + 1), y0 = l.cy + uy * (l.r + 1);
+        const pt = (t, o) => `${(x0 + ux * t + px * o).toFixed(1)} ${(y0 + uy * t + py * o).toFixed(1)}`;
+        peli += `<path d="M${pt(0, 0)} L${pt(4, 2.6)} L${pt(8, -2.6)} L${pt(12, 0.6)}"/>`;
+      }
+    }
+    this.peli = g(`<g fill="none" stroke="${N}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${peli}</g>`, this.svg);
+    this.svg.insertBefore(this.peli, this.corpo);
+    // Brina sul dorso e ghiaccioli sotto la pancia
+    const fondo = (x) => Math.max(...palle.filter((l) => Math.abs(x - l.cx) < l.r).map((l) => l.cy + Math.sqrt(l.r * l.r - (x - l.cx) ** 2)), 120);
+    this.brina = g(palle.filter((l) => l.cy < 104).map((l) => `<ellipse cx="${l.cx}" cy="${(l.cy - l.r * 0.62).toFixed(1)}" rx="${(l.r * 0.62).toFixed(1)}" ry="${(l.r * 0.26).toFixed(1)}" fill="${P.gesso}" stroke="${N}" stroke-width="1.8"/>`).join('') +
+      [78, 96, 114].map((x, i) => { const y = fondo(x) - 2, h = [9, 12, 8][i]; return `<path d="M${x - 3.5} ${y.toFixed(1)} L${x} ${(y + h).toFixed(1)} L${x + 3.5} ${y.toFixed(1)} Z" fill="${P.celeste}" stroke="${N}" stroke-width="1.6" stroke-linejoin="round"/>`; }).join(''));
+    // Faccia fulminata: occhi sgranati e bocca aperta, sopra quelli di sempre
+    const occhi = this.testa.occhi.filter((o) => o.el.tagName === 'circle').map((o) => [+o.el.getAttribute('cx'), +o.el.getAttribute('cy')]);
+    const pos = occhi.length >= 2 ? occhi.slice(0, 2) : [[-6.5, 3], [6.5, 3]];
+    this.facciaShock = g(pos.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.6" fill="${P.gesso}" stroke="${N}" stroke-width="1.8"/><circle cx="${x + 0.6}" cy="${y + 0.4}" r="1.3" fill="${N}"/>`).join('') +
+      `<ellipse cx="0" cy="15" rx="3" ry="4" fill="${N}" stroke="${P.gesso}" stroke-width="1.4"/>`, this.testa.anima);
+  }
+  fulmina(durata) {
+    if (durata > 0) { this.fulmineFino = T + durata; this.shock = 1; this.bruciata = 1; this.arricciata = 1; }
+    else if (this.fulmineFino) { this.fulmineFino = T; }
+  }
+  costruisciTesta(uso) {
+    const h = document.getElementById(uso.getAttribute('href').slice(1));
+    const posa = document.createElementNS(NS, 'g'), anima = document.createElementNS(NS, 'g');
+    anima.setAttribute('style', h.getAttribute('style') || ''); posa.appendChild(anima);
+    for (const c of h.children) anima.appendChild(c.cloneNode(true));
+    const m = /translate\(([-\d.]+)[ ,]+([-\d.]+)\)\s*rotate\(([-\d.]+)\)/.exec(uso.getAttribute('transform'));
+    const t = { posa, anima, x: +m[1], y: +m[2], r: +m[3], orecchie: [], occhi: [] };
+    [...anima.children].slice(0, 2).forEach((o) => {
+      const r = /rotate\(([-\d.]+) ([-\d.]+) ([-\d.]+)\)/.exec(o.getAttribute('transform') || '');
+      if (r) t.orecchie.push({ el: o, a: +r[1], cx: +r[2], cy: +r[3] });
+    });
+    for (const c of anima.querySelectorAll('circle, path')) {
+      const st = c.getAttribute('style') || '';
+      const occhio = (c.tagName === 'circle' && +c.getAttribute('r') <= 3.2 && st.includes('vello') && +c.getAttribute('cy') < 12) || (c.tagName === 'path' && st.includes('stroke:var(--colore-limone'));
+      if (occhio) t.occhi.push({ el: c, cy: c.tagName === 'circle' ? +c.getAttribute('cy') : 0.5 });
+    }
+    return t;
+  }
+  fai(tipo, subito = false) {
+    if (this.azione && !subito) return;
+    const durate = { guarda: 2.4, bruca: 2.8, orecchie: 0.5, scuoti: 0.9, passo: 1.1, bela: 1.2, gira: 1.6 };
+    this.azione = { tipo, q: 0, durata: durate[tipo] };
+    if (tipo === 'bela' && (subito || Math.random() < 0.3)) suona('beee', 0.9 + TUTTI.indexOf(this.chi) * 0.1);
+  }
+  passo(dt) {
+    const t = T + this.ph, b = Math.sin((t * 2 * Math.PI) / 3.4);
+    this.prossima -= dt;
+    if (this.prossima <= 0 && !this.azione && !RIDOTTO) {
+      this.prossima = rand(1.6, 4.2);
+      this.fai(scegliUno(['guarda', 'guarda', 'bruca', 'orecchie', 'orecchie', 'scuoti', 'passo', 'passo', 'bela', 'gira']));
+    }
+    let testaR = 0, testaY = 0, piega = 0, orecchie = 0, sbuffo = 0;
+    const alzate = [0, 0, 0, 0];
+    if (this.azione) {
+      const a = this.azione; a.q += dt / a.durata; const q = Math.min(1, a.q), e = busta(q);
+      if (a.tipo === 'guarda') testaR = 15 * Math.sin(q * Math.PI * 2) * e;
+      else if (a.tipo === 'bruca') { testaR = 30 * e + Math.sin(T * 15) * 2.5 * e; testaY = 9 * e; }
+      else if (a.tipo === 'orecchie') orecchie = 26 * Math.sin(q * Math.PI * 4) * (1 - q);
+      else if (a.tipo === 'scuoti') { piega = 7 * Math.sin(q * Math.PI * 9) * (1 - q); sbuffo = 0.08 * (1 - q); testaR = 6 * Math.sin(q * Math.PI * 9) * (1 - q); }
+      else if (a.tipo === 'passo') { const s = Math.sin(q * Math.PI * 2); if (s > 0) { alzate[0] = alzate[2] = s; } else { alzate[1] = alzate[3] = -s; } }
+      else if (a.tipo === 'bela') { testaR = -24 * e; testaY = -3 * e; }
+      else if (a.tipo === 'gira') testaR = -10 * e + 4 * Math.sin(q * Math.PI * 6) * e;
+      if (a.q >= 1) this.azione = null;
+    }
+    // Battito di ciglia
+    this.batt -= dt; let palpebra = 1;
+    if (this.batt < 0) { const q = -this.batt / 0.16; palpebra = Math.max(0.1, Math.abs(1 - 2 * Math.min(1, q))); if (q >= 1) this.batt = rand(1.8, 5); }
+    // Vento sul vello (la pecora di Leo è specchiata: il vento per lei va al contrario)
+    const g = this.g, w = ventoIn(g.x + g.w / 2) * this.verso;
+    piega += -w * 4;
+    const brr = this.brivido > 0 ? Math.sin(T * 60) * 1.4 * this.brivido : 0;
+    const sx = 1 + 0.01 * b, sy = (1 + 0.024 * b) * (1 - 0.04 * this.bagnata), tg = Math.tan((piega * Math.PI) / 180);
+    this.corpo.setAttribute('transform', `translate(${(100 + brr).toFixed(2)} 150) skewX(${piega.toFixed(2)}) scale(${sx.toFixed(4)} ${sy.toFixed(4)}) translate(-100 -150)`);
+    const gonfio = 1 + this.arricciata * 0.22 + this.spettinata * 0.1 - this.bagnata * 0.07 + sbuffo;
+    for (const l of this.lana) {
+      const f = clamp((150 - l.cy) / 100, 0.2, 1);
+      const frulla = Math.abs(w) * 0.05 * Math.sin(T * 9 + l.ph) + (this.arricciata + this.spettinata) * 0.05 * Math.sin(T * 13 + l.ph * 3);
+      const k = gonfio * (1 + 0.03 * Math.sin(T * 1.8 + l.ph) + frulla);
+      l.el.setAttribute('cx', (l.cx + w * 7 * f + Math.sin(T * 0.9 + l.ph) * 0.6).toFixed(2));
+      if (l.r) l.el.setAttribute('r', (l.r * k).toFixed(2)); else { l.el.setAttribute('rx', (l.rx * k).toFixed(2)); l.el.setAttribute('ry', (l.ry * k).toFixed(2)); }
+    }
+    const h = this.testa, dyCorpo = (h.y - 150) * (sy - 1);
+    h.posa.setAttribute('transform', `translate(${(h.x + (h.y - 150) * tg + brr + w * 5).toFixed(2)} ${(h.y + dyCorpo + testaY).toFixed(2)}) rotate(${(h.r + testaR).toFixed(2)})`);
+    for (const o of h.orecchie) o.el.setAttribute('transform', `rotate(${(o.a + orecchie * (o.cx < 0 ? -1 : 1) + w * 10).toFixed(1)} ${o.cx} ${o.cy})`);
+    for (const o of h.occhi) o.el.setAttribute('transform', `translate(0 ${o.cy}) scale(1 ${palpebra.toFixed(2)}) translate(0 ${-o.cy})`);
+    this.zampe.forEach((z, i) => z.el.setAttribute('transform', `translate(0 ${(-alzate[i] * 5).toFixed(2)}) rotate(${(alzate[i] * 8 * (i < 2 ? -1 : 1)).toFixed(1)} ${z.x} ${z.y})`));
+    // Ombra che segue il sole (in coordinate della pecora, già specchiate per Leo)
+    // Proiezione a terra: un punto alto h sopra le zampe (y = 158) finisce h·(a, b) più in là, verso chi guarda
+    const a = LUCE.dx * LUCE.lung * this.verso, bb = 0.42 * LUCE.lung;
+    this.ombra.setAttribute('transform', `matrix(1 0 ${(-a).toFixed(4)} ${(-bb).toFixed(4)} ${(158 * a).toFixed(2)} ${(158 * (1 + bb)).toFixed(2)})`);
+    // Fulminata: resta sbigottita e bruciacchiata per qualche secondo, poi si scrolla la fuliggine
+    if (this.fulmineFino) {
+      if (T < this.fulmineFino) {
+        this.arricciata = 1;
+        this.prossimoFumo -= dt;
+        if (this.prossimoFumo <= 0) { this.prossimoFumo = rand(0.25, 0.45); const d = { x: g.x + g.w * rand(0.3, 0.7), y: g.y + g.w * rand(0.2, 0.3) }; fumata(d.x, d.y, 1, g.w / 124); }
+        if (Math.random() < dt * 2.5) particella('scintilla', g.x + g.w * rand(0.25, 0.75), g.y + g.w * rand(0.2, 0.45), { vx: rand(-60, 60), vy: rand(-90, -30), vita: 0.5, k: 0.6 });
+      } else {
+        this.fulmineFino = 0; this.shock = 0; this.fai('scuoti', true);
+        for (let i = 0; i < 10; i++) particella('lanetta', g.x + g.w * rand(0.3, 0.7), g.y + g.w * rand(0.3, 0.5), { vx: rand(-70, 70), vy: rand(-80, -20), vita: 1, k: 0.5 * g.w / 124, colore: GRIGIO_FUMO });
+      }
+    }
+    if (!this.fulmineFino && this.bruciata > 0) this.bruciata = Math.max(0, this.bruciata - dt * 0.6);
+    this.fuliggine.setAttribute('opacity', this.bruciata.toFixed(2));
+    this.svg.style.filter = this.bruciata > 0.01 ? `brightness(${(1 - 0.32 * this.bruciata).toFixed(3)}) sepia(${(0.35 * this.bruciata).toFixed(3)})` : '';
+    if (this.shock || this.peli.getAttribute('opacity') !== '0') {
+      this.peli.setAttribute('opacity', this.shock ? (0.75 + Math.random() * 0.25).toFixed(2) : '0');
+      this.peli.setAttribute('transform', this.shock ? `translate(${rand(-0.7, 0.7).toFixed(2)} ${rand(-0.7, 0.7).toFixed(2)})` : '');
+    }
+    this.facciaShock.setAttribute('opacity', this.shock ? '1' : '0');
+    for (const o of h.occhi) o.el.style.opacity = this.shock ? '0' : '';
+    // Brina della gelata
+    this.gelo += (this.geloMeta - this.gelo) * Math.min(1, dt * 1.2);
+    this.brina.setAttribute('opacity', this.gelo.toFixed(2));
+    for (const k of ['arricciata', 'bagnata', 'spettinata']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt * (k === 'bagnata' ? 0.12 : 0.15));
+    if (this.brivido > 0) this.brivido = Math.max(0, this.brivido - dt * (this.geloMeta ? 0.02 : 0.2));
+  }
+}
+function creaPecore() {
+  for (const [chi, g] of Object.entries(GIOCATORI)) {
+    PECORE[chi] = new Pecora(chi, g);
+    const t = document.createElement('div'); t.className = 'targa' + (chi === 'io' ? ' turno' : ''); t.dataset.chi = chi;
+    t.textContent = chi === 'io' ? 'Tu · tocca a te' : g.nome;
+    t.style.cssText = `left:${g.targa[0]}px;top:${g.targa[1]}px;z-index:1400`;
+    strato.appendChild(t);
+  }
+}
+function reagisci(chi, tipo) {
+  const r = PECORE[chi].reazione;
+  const k = {
+    salto: [{ transform: 'none' }, { transform: 'translateY(-14px) scale(.96,1.06)', offset: 0.35 }, { transform: 'translateY(0) scale(1.08,.9)', offset: 0.7 }, { transform: 'none' }],
+    paura: [{ transform: 'none' }, { transform: 'translate(-6px,-10px) rotate(-6deg)', offset: 0.2 }, { transform: 'translate(6px,-4px) rotate(5deg)', offset: 0.4 }, { transform: 'translate(-4px,0) rotate(-3deg)', offset: 0.6 }, { transform: 'none' }],
+    scossa: [{ transform: 'none' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(-3px)' }, { transform: 'none' }],
+    svenuta: [{ transform: 'none' }, { transform: 'rotate(-80deg) translateY(10px)', offset: 0.3 }, { transform: 'rotate(-80deg) translateY(10px)', offset: 0.75 }, { transform: 'none' }],
+    festa: [{ transform: 'none' }, { transform: 'translateY(-22px) rotate(-8deg)', offset: 0.25 }, { transform: 'none', offset: 0.5 }, { transform: 'translateY(-22px) rotate(8deg)', offset: 0.75 }, { transform: 'none' }],
+  }[tipo];
+  const dur = { salto: 520, paura: 700, scossa: 420, svenuta: 1900, festa: 1100 }[tipo];
+  r.animate(k, { duration: RIDOTTO ? 1 : dur, easing: 'ease-out', iterations: tipo === 'festa' ? 3 : 1 });
+}
+// I fumetti stanno sul prato accanto alla pecora, ma durante lo zoom restano della loro grandezza normale
+const FUMETTI = new Set();
+function fumetto(chi, testo, durata = 1700) {
+  const g = GIOCATORI[chi]; if (!g) return;
+  // Un solo fumetto per pecora: il nuovo prende il posto del precedente
+  for (const vecchio of FUMETTI) if (vecchio.dataset.di === chi) { FUMETTI.delete(vecchio); vecchio.remove(); }
+  const f = document.createElement('div'); f.className = 'fumetto'; f.dataset.di = chi; f.textContent = testo; strato.appendChild(f);
+  // Il fumetto cresce di k attorno alla coda: la coda si sposta lungo il fumetto perché resti dentro lo schermo
+  const w = f.offsetWidth, h = f.offsetHeight, k = KD / zoomCamera(), cx = g.fumetto[0];
+  const coda = Math.max(16, Math.min(w - 16, w / 2, (cx - 6) / k), w - (W - 6 - cx) / k);
+  const x = cx - Math.max(16, Math.min(w - 16, coda));
+  f.style.left = x + 'px'; f.style.top = g.fumetto[1] - h - 8 + 'px'; f.style.setProperty('--coda', `${cx - x}px`);
+  f.style.transformOrigin = `${cx - x}px calc(100% + 9px)`; f.style.scale = k.toFixed(3);
+  FUMETTI.add(f);
+  f.animate([{ transform: 'scale(0)', opacity: 0 }, { transform: 'scale(1.1)', opacity: 1, offset: 0.12 }, { transform: 'scale(1)', offset: 0.2 }, { transform: 'scale(1)', opacity: 1, offset: 0.85 }, { transform: 'scale(.9)', opacity: 0 }],
+    { duration: durata, easing: 'ease-out' }).onfinish = () => { FUMETTI.delete(f); f.remove(); };
+}
+function aggiornaFumetti() {
+  if (!FUMETTI.size) return;
+  const s = (KD / zoomCamera()).toFixed(3);
+  for (const f of FUMETTI) f.style.scale = s;
+}
+
+/* ---------- Stato della bozza ---------- */
+const CODA_PESCATE = ['campanaccio-stonato', 'belato-di-gruppo', 'sasso-comodo', 'finta-svenuta', 'ombrello-bucato', 'beee-no', 'calzino-gemello'];
+const CODA_GUAI = ['grandine-a-sorpresa', 'lupo-vegetariano'];
+const MANO_INIZIALE = ['sasso-comodo', 'calzino-gemello', 'beee-no', 'ombrello-bucato', 'finta-svenuta'];
+const st = { mazzo: 46, guai: 21, pescate: 0, guaiPescati: 0, mano: [], scarti: [], angolo: { io: [], bea: [], leo: [] }, maniAvv: { bea: 5, leo: 4 },
+  attiva: null, dadoOccupato: false, finito: false, salto: { x: 0, y: 0 }, rot: { x: 0, y: 0, z: 18 } };
+
+/* ---------- Pile sulla coperta ---------- */
+function disegnaPila(el, n, guai) {
+  if (n <= 0) { el.innerHTML = '<div class="vuoto"></div>'; return; }
+  const strati = Math.min(16, Math.max(1, Math.ceil(n / 3)));
+  let s = '';
+  for (let i = 0; i < strati; i++) s += `<div class="strato" style="transform:translateZ(${(i * 1.25).toFixed(2)}px)"></div>`;
+  s += `<div class="strato cima" style="transform:translateZ(${(strati * 1.25).toFixed(2)}px)">${retroSVG(guai)}</div>`;
+  el.innerHTML = s;
+}
+function disegnaPile() {
+  disegnaPila($('#mazzo'), st.mazzo, false); disegnaPila($('#mazzo-guai'), st.guai, true);
+  $('#dic-mazzo').textContent = `Mazzo ${st.mazzo}`; $('#dic-guai').textContent = `Guai ${st.guai}`;
+  disegnaScarti();
+}
+function disegnaScarti() {
+  const el = $('#scarti');
+  if (!st.scarti.length) { el.innerHTML = '<div class="vuoto"></div>'; return; }
+  el.innerHTML = st.scarti.slice(-6).map((s, i) => `<div class="scarto" style="transform:translate(${s.dx}px,${s.dy}px) translateZ(${(i * 1.4 + 0.5).toFixed(1)}px) rotate(${s.r}deg)">${cartaSVG(s.id)}</div>`).join('');
+}
+function aggiungiScarto(id) { st.scarti.push({ id, dx: rand(-7, 7).toFixed(1), dy: rand(-6, 6).toFixed(1), r: rand(-14, 14).toFixed(1) }); disegnaScarti(); }
+
+/* ---------- Angolo dei Guai e mani degli avversari ---------- */
+function disegnaAngolo(chi) {
+  document.querySelectorAll(`.mini[data-chi="${chi}"]`).forEach((e) => e.remove());
+  const l = st.angolo[chi];
+  l.forEach((id, i) => {
+    const m = document.createElement('div'); m.className = 'mini'; m.dataset.chi = chi;
+    if (chi === 'io') {
+      m.style.cssText = `left:${10 + i * 25}px;top:${626 + (i % 2) * 3}px;width:38px;height:53px;transform:rotate(${(i - (l.length - 1) / 2) * 7}deg);z-index:${780 + i};cursor:pointer`;
+      m.addEventListener('pointerdown', (e) => { e.stopPropagation(); apriLettura(id, false); });
+    } else {
+      const [x0, y0] = GIOCATORI[chi].guai;
+      m.style.cssText = `left:${x0 + i * 13}px;top:${y0 + (i % 2) * 2}px;width:24px;height:34px;transform:rotate(${(i - (l.length - 1) / 2) * 9}deg);z-index:${300 + i};cursor:pointer`;
+      m.addEventListener('pointerdown', (e) => { e.stopPropagation(); apriLettura(id, false); });
+    }
+    m.innerHTML = cartaSVG(id); strato.appendChild(m);
+  });
+}
+function disegnaVentaglio(chi) {
+  let v = document.querySelector(`.ventaglio[data-chi="${chi}"]`);
+  if (!v) {
+    // Un pezzetto di terra battuta davanti all'avversario, dove posa le sue carte
+    const g = GIOCATORI[chi], [tx, ty, tw, th] = g.tappetino, caso = rng(5 + TUTTI.indexOf(chi) * 4);
+    const cx = tw / 2, cy = th / 2, punti = [];
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2, r = 1 + (caso() - 0.5) * 0.14; punti.push([cx + Math.cos(a) * (tw / 2 + 4) * r, cy + Math.sin(a) * (th / 2 + 3) * r]); }
+    const mezzo = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    let d = `M${mezzo(punti[13], punti[0]).map((v) => v.toFixed(1)).join(' ')}`;
+    punti.forEach((p, i) => { const m = mezzo(p, punti[(i + 1) % 14]); d += ` Q${p[0].toFixed(1)} ${p[1].toFixed(1)} ${m[0].toFixed(1)} ${m[1].toFixed(1)}`; });
+    const t = document.createElementNS(NS, 'svg'); t.setAttribute('class', 'terreno'); t.dataset.chi = chi; t.setAttribute('width', tw); t.setAttribute('height', th); t.setAttribute('aria-hidden', 'true');
+    t.style.left = tx + 'px'; t.style.top = ty + 'px';
+    t.innerHTML = `<path d="${d}" style="fill:var(--sabbia)" stroke="${P.notte}" stroke-width="2" stroke-linejoin="round"/>`;
+    strato.appendChild(t);
+    v = document.createElement('div'); v.className = 'ventaglio'; v.dataset.chi = chi; v.style.cssText = `left:${g.ventaglio[0]}px;top:${g.ventaglio[1]}px;z-index:296`; strato.appendChild(v);
+  }
+  const n = st.maniAvv[chi];
+  v.innerHTML = Array.from({ length: n }, (_, i) => `<i style="transform:rotate(${(i - (n - 1) / 2) * 11}deg)">${retroSVG(false)}</i>`).join('');
+}
+
+/* ---------- Mano ---------- */
+const ELEMENTI_MANO = new Map();
+const trasf = (p) => `perspective(1100px) translate(${(p.x - 125).toFixed(1)}px,${(p.y - 175).toFixed(1)}px) rotate(${(p.r || 0).toFixed(2)}deg) scale(${p.k.toFixed(3)},${(p.k * (p.sy || 1)).toFixed(3)}) rotateY(${(p.f || 0).toFixed(1)}deg)`;
+function posizioneMano(i, n) {
+  const mezzo = (n - 1) / 2, dx = Math.min(56, 286 / Math.max(1, n - 1)), d = i - mezzo;
+  return { x: 195 + d * dx, y: 786 + d * d * 3.4, r: d * 6.5, k: 0.37 };
+}
+function disponiMano() {
+  const n = st.mano.length;
+  st.mano.forEach((voce, i) => {
+    const el = ELEMENTI_MANO.get(voce); if (!el || el.classList.contains('trascinata')) return;
+    let p = posizioneMano(i, n);
+    if (st.attiva === voce) p = { x: 195, y: 470, r: 0, k: 0.66 };
+    else if (el.dataset.su === '1' && !st.attiva) p = { ...p, y: p.y - 26, k: 0.4 };
+    el.style.transform = trasf(p); el.style.zIndex = st.attiva === voce ? 2500 : 2000 + i;
+    el.classList.toggle('attiva', st.attiva === voce); el.classList.toggle('spenta', !!st.attiva && st.attiva !== voce);
+    const animata = st.attiva === voce;
+    if ((el.dataset.anim === '1') !== animata) { el.innerHTML = cartaSVG(voce.id, animata); el.dataset.anim = animata ? '1' : ''; }
+  });
+  $('#azioni-carta').hidden = !st.attiva;
+}
+let progressivo = 0;
+function creaCartaMano(id) {
+  const voce = { id, n: progressivo++ };
+  const el = document.createElement('div'); el.className = 'cm'; el.innerHTML = cartaSVG(id);
+  el.setAttribute('role', 'button'); el.setAttribute('aria-label', CARTE[id].nome);
+  collegaCarta(el, voce); $('#mano').appendChild(el); ELEMENTI_MANO.set(voce, el);
+  return voce;
+}
+function collegaCarta(el, voce) {
+  let giu = null, timer = null, trascina = false, lettura = false;
+  el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') { el.dataset.su = '1'; disponiMano(); } });
+  el.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') { el.dataset.su = ''; disponiMano(); } });
+  el.addEventListener('pointerdown', (e) => {
+    if (st.finito) return; e.stopPropagation(); e.preventDefault(); el.setPointerCapture(e.pointerId);
+    giu = { x: e.clientX, y: e.clientY }; trascina = false; lettura = false;
+    timer = setTimeout(() => { lettura = true; apriLettura(voce.id, true); }, 430);
+  });
+  el.addEventListener('pointermove', (e) => {
+    if (!giu) return;
+    const dx = e.clientX - giu.x, dy = e.clientY - giu.y;
+    if (!trascina && !lettura && Math.hypot(dx, dy) > 9) { trascina = true; clearTimeout(timer); el.classList.add('trascinata'); el.style.zIndex = 2700; st.attiva = null; disponiMano(); suona('fruscio'); }
+    // La carta sta nella mano ingrandita: il punto del dito va riportato nelle sue misure
+    if (trascina) { const p = scenaInMano(puntatore(e)); el.style.transform = trasf({ x: p.x, y: p.y - 40, r: Math.max(-14, Math.min(14, dx / S / 12)), k: 0.44 }); }
+  });
+  const fine = (e, annulla) => {
+    clearTimeout(timer); if (!giu) return; giu = null;
+    if (lettura) { chiudiLettura(); return; }
+    if (trascina) { el.classList.remove('trascinata'); const p = puntatore(e); if (!annulla && p.y < 640) gioca(voce); else disponiMano(); return; }
+    if (!annulla) { st.attiva = st.attiva === voce ? null : voce; disponiMano(); suona('fruscio'); }
+  };
+  el.addEventListener('pointerup', (e) => fine(e, false));
+  el.addEventListener('pointercancel', (e) => fine(e, true));
+}
+
+/* ---------- Carte che volano ---------- */
+function volante(id, guai) {
+  const v = document.createElement('div'); v.className = 'volante';
+  v.innerHTML = `<div class="faccia">${id ? cartaSVG(id, true) : ''}</div><div class="faccia retro">${retroSVG(guai)}</div>`;
+  ui.appendChild(v); return v;
+}
+function vola(v, tappe, durata, easing = 'cubic-bezier(.35,.75,.3,1)') {
+  const anim = v.animate(tappe.map((p) => ({ transform: trasf(p), offset: p.o })), { duration: RIDOTTO ? 120 : durata, easing, fill: 'forwards' });
+  return anim.finished;
+}
+function cimaDi(el) { const c = el.lastElementChild || el; const r = inScena(c); return { x: r.cx, y: r.cy, k: r.w / 250, sy: r.h / r.w / 1.4 }; }
+
+let pescaInCorso = false;
+async function pesca() {
+  if (st.finito || pescaInCorso) return;
+  if (st.mazzo <= 0) { fumetto('io', 'Il mazzo è finito'); return; }
+  if (st.mano.length >= 7) { fumetto('io', 'Hai già 7 carte'); return; }
+  pescaInCorso = true;
+  const id = CODA_PESCATE[st.pescate++ % CODA_PESCATE.length];
+  const da = cimaDi($('#mazzo'));
+  st.mazzo--; disegnaPile(); suona('fruscio');
+  const voce = creaCartaMano(id); const el = ELEMENTI_MANO.get(voce); el.style.visibility = 'hidden';
+  st.mano.push(voce); st.attiva = null; disponiMano();
+  const arrivo = manoInScena(posizioneMano(st.mano.length - 1, st.mano.length)); // la carta in volo sta fuori dalla mano ingrandita
+  const v = volante(id, false);
+  await vola(v, [{ ...da, f: 180, r: 0 }, { x: (da.x + arrivo.x) / 2 + 30, y: Math.min(da.y, arrivo.y) - 40, k: 0.55, f: 90, r: -8, o: 0.45 }, { ...arrivo, f: 0 }], st.distribuendo ? 430 : 620);
+  el.style.visibility = ''; v.remove(); pescaInCorso = false; nascondiConsiglio(1);
+}
+
+async function gioca(voce) {
+  if (st.finito) return;
+  const el = ELEMENTI_MANO.get(voce), i = st.mano.indexOf(voce); if (i < 0) return;
+  st.mano.splice(i, 1); ELEMENTI_MANO.delete(voce); st.attiva = null; disponiMano();
+  const p = el.style.transform; el.remove();
+  const da = manoInScena(centroDa(p)), v = volante(voce.id, false); v.style.transform = trasf(da); suona('fruscio');
+  const centro = { x: 195, y: 360, k: 0.5, r: rand(-4, 4) };
+  await vola(v, [da, centro], 380);
+  effettoCarta(voce.id);
+  await attesa(voce.id === 'beee-no' ? 900 : 650);
+  const dest = cimaScarti();
+  await vola(v, [centro, { ...dest, r: rand(-12, 12) }], 420, 'cubic-bezier(.5,0,.5,1)');
+  v.remove(); aggiungiScarto(voce.id); suona('pop'); nascondiConsiglio(3);
+}
+function centroDa(t) {
+  const m = /translate\(([-\d.]+)px,([-\d.]+)px\) rotate\(([-\d.]+)deg\) scale\(([-\d.]+)/.exec(t || '');
+  return m ? { x: +m[1] + 125, y: +m[2] + 175, r: +m[3], k: +m[4] } : { x: 195, y: 780, r: 0, k: 0.37 };
+}
+function cimaScarti() { const r = inScena($('#scarti')); return { x: r.cx, y: r.cy, k: r.w / 250, sy: r.h / r.w / 1.4 }; }
+function effettoCarta(id) {
+  const c = CARTE[id];
+  if (id === 'beee-no') { beeeNo(); fumetto('io', 'Beee-NO!'); }
+  else if (id === 'finta-svenuta') { reagisci('io', 'svenuta'); fumetto('io', 'Oh! Svengo…', 1900); }
+  else if (id === 'belato-di-gruppo') { fumetto('io', '+2 al punteggio'); suona('beee', 0.9); dopo(() => suona('beee', 1.1), 160); dopo(() => suona('beee', 1.3), 320); }
+  else if (id === 'campanaccio-stonato') {
+    fumetto('io', 'Din, don… stonato!'); suona('campanaccio', 1.2);
+    const bersaglio = avversarioConPiuAgnelli();
+    dopo(() => { sposta(1, AREE[bersaglio], AREE.gregge, 'vola'); reagisci(bersaglio, 'scossa'); }, 500);
+  } else if (c.fam === 'trovata') fumetto('io', `${c.nome}: ${c.valore}`);
+}
+
+/* ---------- Spostamenti di agnellini ---------- */
+function sposta(n, da, a, modo = 'corre') {
+  const liberi = a.posti === Infinity ? Infinity : a.posti - a.agnelli.length;
+  const quanti = Math.min(n, liberi, da.agnelli.length); if (quanti <= 0) return 0;
+  const cx = (a.x0 + a.x1) / 2, cy = (a.y0 + a.y1) / 2;
+  const scelti = da.agnelli.filter((g) => g.stato !== 'corre' && g.stato !== 'vola' && !g.intrappolato).sort((p, q) => Math.hypot(p.x - cx, p.y - cy) - Math.hypot(q.x - cx, q.y - cy)).slice(0, quanti);
+  scelti.forEach((g, i) => dopo(() => { if (g.a === da) g.vaiIn(a, modo); }, i * 230));
+  return scelti.length;
+}
+function dopoArrivo(a) {
+  aggiornaOra();
+  if (st.finito || a.nome === 'gregge') return;
+  if (a.mostrati >= a.posti) vittoria(a.nome);
+}
+function aggiornaOra() {
+  const p = Math.max(...TUTTI.map((n) => AREE[n].mostrati / AREE[n].posti));
+  const ora = p >= 0.86 ? 'sera' : p >= 0.7 ? 'tramonto' : p >= 0.5 ? 'pomeriggio' : 'giorno';
+  ['giorno', 'pomeriggio', 'tramonto', 'sera'].forEach((o) => schermo.classList.toggle('ora-' + o, o === ora));
+  sera = { giorno: 0, pomeriggio: 0.15, tramonto: 0.5, sera: 1 }[ora]; SOLE.meta = ALTEZZA_SOLE[ora];
+}
+
+/* ---------- Dado ---------- */
+const FACCE = [
+  { id: 'd-p3', tipo: 'pascolo', q: 3, nome: 'Pascolo 3', rx: 0, ry: 0, t: 'translateZ(24px)', fondo: P.menta },
+  { id: 'd-p5', tipo: 'pascolo', q: 5, nome: 'Pascolo 5', rx: 0, ry: 180, t: 'rotateY(180deg) translateZ(24px)', fondo: P.menta },
+  { id: 'd-f2', tipo: 'furto', q: 2, nome: 'Furto 2', rx: 0, ry: -90, t: 'rotateY(90deg) translateZ(24px)', fondo: P.albicocca },
+  { id: 'd-f4', tipo: 'furto', q: 4, nome: 'Furto 4', rx: 0, ry: 90, t: 'rotateY(-90deg) translateZ(24px)', fondo: P.albicocca },
+  { id: 'd-testata', tipo: 'testata', q: 3, nome: 'Testata', rx: -90, ry: 0, t: 'rotateX(90deg) translateZ(24px)', fondo: P.limone },
+  { id: 'd-testata', tipo: 'testata', q: 3, nome: 'Testata', rx: 90, ry: 0, t: 'rotateX(-90deg) translateZ(24px)', fondo: P.limone },
+];
+function creaDado() {
+  $('#dado').innerHTML = FACCE.map((f) => `<div class="fd" style="transform:${f.t}"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#${f.id}"/></svg></div>`).join('');
+  applicaRotazione();
+}
+const applicaRotazione = () => { $('#dado').style.transform = `translateZ(24px) rotateZ(${st.rot.z}deg) rotateX(${st.rot.x}deg) rotateY(${st.rot.y}deg)`; };
+async function tiraDado(forza) {
+  if (st.dadoOccupato || st.finito) return;
+  st.dadoOccupato = true; nascondiConsiglio(1);
+  const i = forza ?? Math.floor(Math.random() * 6), f = FACCE[i];
+  const giri = (v) => Math.ceil(v / 360) * 360 + 720;
+  st.rot.x = giri(st.rot.x) + f.rx; st.rot.y = giri(st.rot.y) + f.ry; st.rot.z = rand(-25, 25);
+  const da = st.salto, a = { x: rand(-34, 34), y: rand(-2, 18) }; st.salto = a;
+  suona('dado');
+  $('#dado-salto').animate([
+    { transform: `translate3d(${da.x}px,${da.y}px,0)` },
+    { transform: `translate3d(${(da.x + a.x) / 2 - 20}px,${(da.y + a.y) / 2 - 30}px,130px)`, offset: 0.35 },
+    { transform: `translate3d(${a.x}px,${a.y}px,0)`, offset: 0.68 },
+    { transform: `translate3d(${a.x}px,${a.y}px,26px)`, offset: 0.82 },
+    { transform: `translate3d(${a.x}px,${a.y}px,0)` },
+  ], { duration: RIDOTTO ? 1 : 1150, easing: 'ease-out', fill: 'forwards' });
+  // L'ombra resta sulla tovaglia e segue il dado: più piccola e chiara quando il dado è in alto
+  $('#dado-ombra').animate([
+    { transform: `translate(${da.x}px,${da.y}px)`, opacity: 1 },
+    { transform: `translate(${(da.x + a.x) / 2 - 20}px,${(da.y + a.y) / 2 - 30}px) scale(.55)`, opacity: 0.45, offset: 0.35 },
+    { transform: `translate(${a.x}px,${a.y}px)`, opacity: 1, offset: 0.68 },
+    { transform: `translate(${a.x}px,${a.y}px) scale(.88)`, opacity: 0.8, offset: 0.82 },
+    { transform: `translate(${a.x}px,${a.y}px)`, opacity: 1 },
+  ], { duration: RIDOTTO ? 1 : 1150, easing: 'ease-out', fill: 'forwards', composite: 'replace' });
+  applicaRotazione();
+  await attesa(RIDOTTO ? 50 : 1250);
+  fumetto('io', f.nome + '!');
+  if (f.tipo === 'pascolo') { suona('beee', 1); sposta(f.q, AREE.gregge, AREE.io); }
+  else if (f.tipo === 'furto') furto(f.q);
+  else await testata();
+  await attesa(500); st.dadoOccupato = false;
+}
+function furto(q, ladro = 'io') {
+  const vittime = TUTTI.filter((c) => c !== ladro);
+  let resto = Math.min(q, AREE[ladro].posti - AREE[ladro].agnelli.length);
+  const conti = Object.fromEntries(vittime.map((c) => [c, AREE[c].agnelli.filter((g) => !g.intrappolato).length])), prese = Object.fromEntries(vittime.map((c) => [c, 0]));
+  while (resto > 0 && vittime.some((c) => conti[c] > 0)) { const chi = vittime.reduce((a, b) => (conti[b] > conti[a] ? b : a)); conti[chi]--; prese[chi]++; resto--; }
+  vittime.forEach((chi, k) => { if (prese[chi]) dopo(() => { sposta(prese[chi], AREE[chi], AREE[ladro]); reagisci(chi, 'scossa'); }, k * 300); });
+  if (resto > 0) dopo(() => sposta(resto, AREE.gregge, AREE[ladro]), 600);
+}
+async function testata() {
+  const chi = avversarioConPiuAgnelli();
+  const a = AREE[chi], yPista = a.y1 + 2, xImpatto = a.x0 + 10;
+  const m = document.createElement('div'); m.className = 'abs';
+  m.style.cssText = `left:0;top:0;width:150px;z-index:${100 + yPista + 8};pointer-events:none;transform-origin:75px 102px`;
+  m.innerHTML = `<svg viewBox="0 0 220 160" style="display:block;width:100%;overflow:visible" aria-hidden="true"><use href="#montone"/></svg>`;
+  strato.appendChild(m);
+  const kk = profondita(yPista) * 1.1, pos = (x) => `translate(${x - 75}px,${yPista - 102}px) scale(${kk})`;
+  suona('beee', 0.6);
+  await m.animate([{ transform: pos(-160) }, { transform: pos(xImpatto - 40) }], { duration: RIDOTTO ? 1 : 750, easing: 'cubic-bezier(.5,0,.9,.6)', fill: 'forwards' }).finished;
+  suona('tonfo'); reagisci(chi, 'paura'); mondo.animate([{ transform: 'none' }, { transform: 'translate(-5px,2px)' }, { transform: 'translate(4px,-2px)' }, { transform: 'none' }], { duration: RIDOTTO ? 1 : 260 });
+  sposta(3, a, AREE.gregge, 'vola');
+  await m.animate([{ transform: pos(xImpatto - 40) }, { transform: pos(xImpatto - 70) + ' rotate(-6deg)', offset: 0.25 }, { transform: pos(560) }], { duration: RIDOTTO ? 1 : 1100, easing: 'ease-in', fill: 'forwards' }).finished;
+  m.remove();
+}
+
+/* ---------- Eventi degli altri ---------- */
+function beeeNo() {
+  suona('tonfo'); suona('beee', 0.8); vibra('beeeNo');
+  if (!RIDOTTO) mondo.animate([{ transform: 'none' }, { transform: 'translate(-9px,3px)' }, { transform: 'translate(8px,-4px)' }, { transform: 'translate(-5px,2px)' }, { transform: 'translate(3px,0)' }, { transform: 'none' }], { duration: 420 });
+  $('#scoppio').animate([
+    { transform: 'scale(0) rotate(-18deg)', opacity: 1 }, { transform: 'scale(1.15) rotate(4deg)', opacity: 1, offset: 0.3 }, { transform: 'scale(1) rotate(-3deg)', opacity: 1, offset: 0.45 },
+    { transform: 'scale(1) rotate(-3deg)', opacity: 1, offset: 0.85 }, { transform: 'scale(0) rotate(12deg)', opacity: 1 }], { duration: RIDOTTO ? 600 : 1400, easing: 'ease-out' });
+}
+async function beeeNoDi(chi) {
+  if (chi !== 'io' && st.maniAvv[chi] <= 0) return;
+  if (chi !== 'io') { st.maniAvv[chi]--; disegnaVentaglio(chi); }
+  fumetto(chi, 'Beee-NO!'); reagisci(chi, 'salto');
+  const g = GIOCATORI[chi], v = volante('beee-no', false);
+  const da = chi === 'io' ? manoInScena({ x: 195, y: 800, k: 0.37, f: 0 }) : { ...inScenaDaMondo(g.ventaglio[0], g.ventaglio[1] - 14), k: 0.08, f: 180 }, centro = { x: 195, y: 360, k: 0.5, r: 5, f: 0 };
+  await vola(v, [da, centro], 520);
+  beeeNo(); await attesa(900);
+  await vola(v, [centro, { ...cimaScarti(), r: rand(-12, 12) }], 420, 'cubic-bezier(.5,0,.5,1)');
+  v.remove(); aggiungiScarto('beee-no');
+}
+async function guaio(forzato, chi = 'io') {
+  if (st.guai <= 0 || st.finito || !GIOCATORI[chi]) return;
+  const id = forzato || CODA_GUAI[st.guaiPescati++ % CODA_GUAI.length], da = cimaDi($('#mazzo-guai'));
+  st.guai--; disegnaPile(); suona('fruscio');
+  const v = volante(id, true), centro = { x: 195, y: 360, k: 0.5, r: -3, f: 0 };
+  await vola(v, [{ ...da, f: 180 }, centro], 560);
+  suona('tonfo'); fumetto(chi, CARTE[id].nome + '!'); reagisci(chi, 'paura'); if (chi === 'io') vibra('guaio');
+  if (EFFETTI_GUAIO[id]) avviaMeteo(id, chi);
+  await attesa(1100);
+  const n = st.angolo[chi].length;
+  let arrivo;
+  if (chi === 'io') arrivo = { x: 29 + n * 25, y: 652, k: 38 / 250, r: (n - n / 2) * 7 };
+  else { const [gx, gy] = GIOCATORI[chi].guai; arrivo = { ...inScenaDaMondo(gx + n * 13 + 12, gy + 17), k: (24 / 250) * zoomCamera(), r: 0 }; }
+  await vola(v, [centro, arrivo], 480, 'cubic-bezier(.5,0,.5,1)');
+  v.remove(); st.angolo[chi].push(id); disegnaAngolo(chi);
+  await attesa(250); fumetto(chi, 'Un agnellino di consolazione', 1600); sposta(1, AREE.gregge, AREE[chi]);
+}
+/* ---------- Meteo: i Guai del tipo Meteo cambiano il prato per qualche secondo ----------
+   Un solo meteo alla volta: quello nuovo ferma il precedente e ne pulisce le tracce (vale anche per il gioco vero). */
+let tempestaMeta = 0, meteoAttivo = null, geloErba = 0, geloErbaMeta = 0;
+const METEO = { pioggia: 0, grandine: 0, ventoMeta: 0, bagna: false };
+const FERMATO = Symbol('meteo fermato');
+function avviaMeteo(id, chi = 'io') {
+  fermaMeteo();
+  const m = {
+    id, vivo: true, pulizie: [],
+    pulisci(f) { this.pulizie.push(f); return f; },
+    ok() { if (!this.vivo) throw FERMATO; },
+    async attesa(ms) { await attesa(ms); this.ok(); },
+  };
+  meteoAttivo = m;
+  // Per un avversario prima ci si avvicina (e il suo recinto si allarga), poi parte l'evento sulla scena già grande
+  if (chi !== 'io') { inquadra(chi); m.pulisci(sgancia); }
+  (chi !== 'io' ? m.attesa(1250).then(() => EFFETTI_GUAIO[id](m, chi)) : EFFETTI_GUAIO[id](m, chi)).catch((e) => { if (e !== FERMATO) console.error(e); }).finally(() => { if (meteoAttivo === m) fermaMeteo(); });
+}
+function fermaMeteo() {
+  const m = meteoAttivo; if (!m) return;
+  meteoAttivo = null; m.vivo = false;
+  m.pulizie.splice(0).reverse().forEach((f) => { try { f(); } catch (e) { console.error(e); } });
+}
+// Inquadratura: il prato si avvicina a un avversario lontano, l'interfaccia resta ferma
+let inquadrato = null;
+const zoomCamera = () => { const t = getComputedStyle(camera).transform; return t === 'none' ? 1 : new DOMMatrixReadOnly(t).a; };
+function inScenaDaMondo(x, y) {
+  const t = getComputedStyle(camera).transform, mtx = t === 'none' ? new DOMMatrixReadOnly() : new DOMMatrixReadOnly(t);
+  const p = mtx.transformPoint({ x, y }); return { x: p.x, y: p.y };
+}
+// Una zoomata vera: il punto inquadrato scivola al centro dello schermo mentre l'ingrandimento cresce in modo
+// esponenziale (come un obiettivo che stringe), con un piccolo assestamento finale.
+// Lo stato dice: "il punto (cx, cy) del prato appare in (px, py) sullo schermo, ingrandito k volte".
+let statoCamera = null;
+const morbido = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const conRitorno = (t) => { const c = 1.3; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+function animaCamera(da, a, durata, assesta) {
+  const passi = 30, fotogrammi = [];
+  for (let i = 0; i <= passi; i++) {
+    const t = i / passi, e = morbido(t), ek = assesta ? conRitorno(t) : e;
+    const k = da.k * Math.pow(a.k / da.k, ek);
+    const cx = da.cx + (a.cx - da.cx) * e, cy = da.cy + (a.cy - da.cy) * e, px = da.px + (a.px - da.px) * e, py = da.py + (a.py - da.py) * e;
+    fotogrammi.push({ transform: `translate(${(px - cx * k).toFixed(2)}px,${(py - cy * k).toFixed(2)}px) scale(${k.toFixed(4)})` });
+  }
+  camera.getAnimations().forEach((x) => x.cancel());
+  return camera.animate(fotogrammi, { duration: RIDOTTO ? 1 : durata, easing: 'linear', fill: 'forwards' });
+}
+// Linee di zoom, come nei fumetti: convergono al centro per un istante quando si stringe sull'avversario
+function lineeZoom(px, py) {
+  if (RIDOTTO) return;
+  let s = '';
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * Math.PI * 2 + rand(-0.08, 0.08), r0 = rand(150, 190), r1 = r0 + rand(60, 130);
+    s += `<path d="M${(Math.cos(a) * r0).toFixed(1)} ${(Math.sin(a) * r0).toFixed(1)} L${(Math.cos(a) * r1).toFixed(1)} ${(Math.sin(a) * r1).toFixed(1)}" stroke="${P.notte}" stroke-width="${rand(2, 4).toFixed(1)}" stroke-linecap="round"/>`;
+  }
+  const el = document.createElementNS(NS, 'svg'); el.setAttribute('class', 'linee-zoom'); el.setAttribute('width', '1'); el.setAttribute('height', '1');
+  el.style.cssText = `left:${px}px;top:${py}px`; el.innerHTML = `<g>${s}</g>`; ui.appendChild(el);
+  el.firstChild.animate([{ transform: 'scale(1.35)', opacity: 0 }, { transform: 'scale(1.05)', opacity: 0.55, offset: 0.35 }, { transform: 'scale(.82)', opacity: 0 }],
+    { duration: 650, easing: 'ease-out' }).onfinish = () => el.remove();
+}
+// Avvicinandosi, il recinto dell'avversario si allarga fino alle proporzioni del tuo (verso il retro del prato e
+// verso il lato libero, mai sopra la sua pecora); allontanandosi torna com'era e gli agnellini vengono spinti dentro.
+const TWEEN = [];
+const tween = (durata, fn) => new Promise((fine) => TWEEN.push({ t: 0, durata: RIDOTTO ? 0.01 : durata, fn, fine }));
+function aggiornaTween(dt) {
+  for (let i = TWEEN.length - 1; i >= 0; i--) {
+    const tw = TWEEN[i]; tw.t += dt; const q = Math.min(1, tw.t / tw.durata);
+    tw.fn(q); if (q >= 1) { TWEEN.splice(i, 1); tw.fine(); }
+  }
+}
+function recintoVicino(chi) {
+  const g = GIOCATORI[chi], R = AREE[chi].recinto0, s = g.w / GIOCATORI.io.w, r = AREE.io.recinto0;
+  const larg = r.larg * s, prof = (r.yDavanti - r.yDietro) * s, pecoraASinistra = g.x < R.x;
+  return { x: pecoraASinistra ? R.x : R.x + R.larg - larg, yDietro: R.yDavanti - prof, yDavanti: R.yDavanti, larg, k: s };
+}
+const areaDiRecinto = (r) => { const p = r.yDavanti - r.yDietro; return { x0: r.x + r.larg * 0.05, x1: r.x + r.larg * 0.95, y0: r.yDietro + p * 0.12, y1: r.yDavanti - p * 0.07 }; };
+const mescola = (a, b, q) => Object.fromEntries(Object.keys(a).map((k) => [k, a[k] + (b[k] - a[k]) * q]));
+function cambiaRecinto(chi, verso, durata) {
+  const A = AREE[chi], daR = { ...A.recinto }, daA = { x0: A.x0, y0: A.y0, x1: A.x1, y1: A.y1 };
+  const aR = verso === 'vicino' ? recintoVicino(chi) : A.recinto0, aA = verso === 'vicino' ? areaDiRecinto(aR) : A.area0;
+  return tween(durata, (q) => {
+    const e = morbido(q), r = mescola({ x: daR.x, yDietro: daR.yDietro, yDavanti: daR.yDavanti, larg: daR.larg, k: daR.k }, aR, e);
+    disegnaRecinto(chi, r); Object.assign(A, mescola(daA, aA, e));
+  }).then(() => {
+    // Gli agnellini usano lo spazio nuovo, o rientrano in quello vecchio
+    for (const g of A.agnelli) if (!g.regia && g.stato !== 'corre' && g.stato !== 'vola') { const p = puntoLibero(A, g); g.tx = p.x; g.ty = p.y; g.stato = 'cammina'; g.poi = null; }
+  });
+}
+// Messa a fuoco: le postazioni degli altri avversari spariscono (con una breve dissolvenza) mentre sei vicino
+// a uno di loro, così niente si sovrappone al recinto allargato; tornano quando l'inquadratura si allontana.
+function sfuma(chi, attivo) {
+  for (const c of AVVERSARI) {
+    const via = attivo && c !== chi;
+    document.querySelectorAll(`.pecora[data-chi="${c}"], .targa[data-chi="${c}"], .recinto[data-chi="${c}"], .cartello[data-chi="${c}"], .terreno[data-chi="${c}"], .ventaglio[data-chi="${c}"], .mini[data-chi="${c}"]`)
+      .forEach((e) => { e.style.opacity = via ? '0' : ''; e.style.pointerEvents = via ? 'none' : ''; });
+    AREE[c].sfumata = via;
+  }
+}
+function inquadra(chi) {
+  const A = AREE[chi], g = GIOCATORI[chi], K = GIOCATORI.io.w / g.w; // la sua pecora diventa grande come la tua
+  const v = recintoVicino(chi), cx = (Math.min(g.x, v.x) + Math.max(g.x + g.w, v.x + v.larg)) / 2, cy = (Math.min(g.y, v.yDietro) + v.yDavanti) / 2 + 14;
+  const da = { cx, cy, k: 1, px: cx, py: cy }, a = { cx, cy, k: K, px: 195, py: 330 };
+  animaCamera(da, a, 1150, true);
+  cambiaRecinto(chi, 'vicino', 1.15); sfuma(chi, true);
+  lineeZoom(195, 330); suona('folata', 0.6, 0.9);
+  statoCamera = a; inquadrato = chi;
+}
+function sgancia() {
+  if (!inquadrato || !statoCamera) return;
+  const da = statoCamera, chi = inquadrato; inquadrato = null; statoCamera = null;
+  animaCamera(da, { cx: da.cx, cy: da.cy, k: 1, px: da.cx, py: da.cy }, 950, false);
+  if (AREE[chi]) cambiaRecinto(chi, 'lontano', 0.95);
+  sfuma(chi, false);
+}
+function cieloTempesta(acceso) { schermo.classList.toggle('tempesta', acceso); tempestaMeta = acceso ? 1 : 0; }
+function nuvoleTempesta(m, n = 3) {
+  const nuove = [];
+  for (let i = 0; i < n; i++) nuove.push(nuovaNuvola(-260 - i * 140, { tipo: 'cumulo', temporanea: true, meta: 150 + i * 70 + rand(-20, 20), y: rand(36, 76) }));
+  const via = () => nuove.forEach((nv) => { nv.meta = null; nv.vel = rand(50, 80); });
+  m.pulisci(via); return via;
+}
+function tempestaPer(m, n) { cieloTempesta(true); m.pulisci(() => cieloTempesta(false)); return nuvoleTempesta(m, n); }
+const terraACaso = () => ({ x: rand(VISTA.x, VISTA.x + VISTA.w), y: rand(200, 840) });
+const GRIGIO_FUMO = '#AAAFBF';
+function aggiornaMeteo(dt) {
+  tempesta += (tempestaMeta - tempesta) * Math.min(1, dt * 1.2);
+  VENTO.extra += (METEO.ventoMeta - VENTO.extra) * Math.min(1, dt * 1.6);
+  geloErba += (geloErbaMeta - geloErba) * Math.min(1, dt * 1.5);
+  $('#flora').classList.toggle('ghiacciato', geloErba > 0.5);
+  if (METEO.pioggia > 0) for (let n = Math.floor(dt * 150 * METEO.pioggia + Math.random()); n > 0; n--) {
+    const t = terraACaso(), alto = rand(420, 760);
+    particella('goccia', t.x - alto * 0.26, t.y - alto, { vx: 165, vy: 640, terra: t.y, vita: 3 });
+  }
+  if (METEO.grandine > 0) for (let n = Math.floor(dt * 55 * METEO.grandine + Math.random()); n > 0; n--) {
+    const t = terraACaso();
+    particella('chicco', t.x - 30, t.y - rand(420, 700), { vx: 40, vy: 380, terra: t.y, vita: rand(3.6, 5) });
+  }
+  if (METEO.bagna) for (const p of Object.values(PECORE)) p.bagnata = Math.min(1, p.bagnata + dt * 0.6);
+  if (VENTO.extra > 0.4) {
+    // Il vento forte spinge gli agnellini liberi e fa volare via ciuffi di lana
+    for (const g of AGNELLI) if (!g.regia && (g.stato === 'fermo' || g.stato === 'bruca' || g.stato === 'cammina')) g.x = Math.min(g.a.x1, g.x + VENTO.extra * dt * 7 * profondita(g.y));
+    if (Math.random() < dt * 3 * VENTO.extra) { const p = scegliUno(Object.values(PECORE)), g = p.g; particella('lanetta', g.x + g.w * 0.5, g.y + g.w * 0.35, { vx: 120, vy: -40, vita: 3, k: g.w / 124, colore: p.g.pecora === 'sospirella' ? P.lilla : p.g.pecora === 'nerina' ? P.notte : P.gesso }); }
+    if (Math.random() < dt * 4 * VENTO.extra) particella('foglia', VISTA.x - 10, rand(200, 800), { k: rand(0.7, 1.1), vx: 200 });
+  }
+}
+// Gli agnellini di un'area si stringono vicini (sotto la pioggia, per il freddo, per paura).
+// centri: uno o più punti di raccolta [x, y]; ognuno va al più vicino. Chi è lontano corre, così il riparo
+// è fatto entro ARRIVO_RIPARO secondi anche in un gregge molto largo e la durata del meteo non dipende dal caso.
+const ARRIVO_RIPARO = 1.8;
+async function rannicchia(m, a, centri, sec, opz = {}) {
+  const gs = a.agnelli.filter((g) => !g.regia && g.stato !== 'corre' && g.stato !== 'vola');
+  if (!gs.length) return;
+  prendi(gs); m.pulisci(() => rilascia(gs));
+  const gruppi = centri.map(() => []);
+  for (const g of gs) { let j = 0; centri.forEach(([x, y], i) => { if (Math.hypot(g.x - x, g.y - y) < Math.hypot(g.x - centri[j][0], g.y - centri[j][1])) j = i; }); gruppi[j].push(g); }
+  const mosse = gruppi.flatMap((gr, j) => {
+    const [cx, cy] = centri[j], passo = 12 * profondita(cy);
+    return gr.map((g, i) => {
+      const ang = i * 2.4, r = passo * Math.sqrt(i) * 0.95;
+      const x = clamp(cx + Math.cos(ang) * r, a.x0, a.x1), y = clamp(cy + Math.sin(ang) * r * 0.55, a.y0, a.y1);
+      const vel = Math.max(opz.vel || 70, Math.hypot(x - g.x, y - g.y) / (ARRIVO_RIPARO * profondita((g.y + y) / 2)));
+      return muovi(g, x, y, vel, vel > 110 ? 8 : 5);
+    });
+  });
+  // Chi resta indietro (spinto da un ostacolo) si rannicchia dove si trova
+  await Promise.race([Promise.all(mosse), attesa((ARRIVO_RIPARO + 0.7) * 1000)]);
+  for (const g of gs) if (g.mossa) { const f = g.mossa.fine; g.mossa = null; f(); }
+  const fine = OROLOGIO.ms + sec * 1000;
+  await Promise.all(gs.map((g) => effetto(g, (dt) => {
+    if (opz.brivido) g.brivido = 1;
+    if (opz.guarda != null) g.verso = opz.guarda > g.x ? 1 : -1;
+    if (opz.saltelli && Math.random() < dt * 0.6) g.hop = 5;
+    g.sy = 0.94; g.sx = 1.04;
+    return OROLOGIO.ms > fine || !m.vivo;
+  })));
+  gs.forEach((g) => { g.brivido = 0; }); rilascia(gs);
+}
+function rannicchiaTutti(m, sec, opz = {}) {
+  const punto = (a, fx, fy) => [a.x0 + (a.x1 - a.x0) * fx, a.y0 + (a.y1 - a.y0) * fy];
+  // Il gregge si divide in due mucchietti, uno per lato del cartello
+  return Promise.all([...TUTTI.map((c) => rannicchia(m, AREE[c], [punto(AREE[c], c === 'io' ? 0.2 : 0.5, 0.3)], sec, opz)),
+    rannicchia(m, AREE.gregge, [punto(AREE.gregge, 0.18, 0.75), punto(AREE.gregge, 0.82, 0.75)], sec, opz)]);
+}
+function svgLibero(x, y, z, html, cls = 'pozza') {
+  const s = document.createElementNS(NS, 'svg'); s.setAttribute('class', cls); s.setAttribute('width', '1'); s.setAttribute('height', '1');
+  s.style.cssText = `left:${x}px;top:${y}px;z-index:${z}`; s.innerHTML = html; strato.appendChild(s); return s;
+}
+function pozza(x, y, rx, z, extra = '', durataComparsa = 2500) {
+  const s = svgLibero(x, y, z, `<ellipse rx="${rx}" ry="${rx * 0.32}" fill="${P.celeste}" stroke="${P.notte}" stroke-width="2"/><path d="M${-rx * 0.45} ${-rx * 0.08} q${rx * 0.25} -${rx * 0.08} ${rx * 0.45} 0" fill="none" stroke="${P.gesso}" stroke-width="2" stroke-linecap="round"/>${extra}`);
+  s.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: durataComparsa, easing: 'ease-out', fill: 'forwards' });
+  return { el: s, sparisci: (ms = 5000) => s.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.2)', opacity: 0 }], { duration: ms, easing: 'ease-in', fill: 'forwards' }).finished.then(() => s.remove()) };
+}
+const testaPecora = (chi) => { const p = PECORE[chi], g = p.g, h = p.testa; const x = p.verso > 0 ? h.x : 200 - h.x; return { x: g.x + (x / 200) * g.w, y: g.y + (h.y / 170) * g.w * 0.85 }; };
+const dorsoPecora = (chi) => { const g = PECORE[chi].g; return { x: g.x + g.w * 0.5, y: g.y + g.w * 0.3 }; };
+function scrollaAcqua(chi) {
+  const p = PECORE[chi], g = p.g; p.fai('scuoti', true);
+  for (let i = 0; i < 14; i++) particella('gocciolina', g.x + g.w * rand(0.25, 0.75), g.y + g.w * rand(0.3, 0.55), { vx: rand(-90, 90), vy: rand(-160, -60), vita: 0.9, k: g.w / 124 });
+}
+function fumata(x, y, n = 10, k = 1) {
+  for (let i = 0; i < n; i++) particella('fumo', x + rand(-8, 8) * k, y + rand(-4, 4) * k, { vita: rand(1.6, 2.6), k: k * rand(0.8, 1.3), vx: rand(-6, 10), vy: rand(-26, -14) });
+}
+function saetta(da, a) {
+  const punti = [da];
+  for (let i = 1; i < 7; i++) { const q = i / 7; punti.push([da[0] + (a[0] - da[0]) * q + rand(-22, 22), da[1] + (a[1] - da[1]) * q]); }
+  punti.push(a);
+  const d = 'M' + punti.map((p) => p.map((v) => v.toFixed(1)).join(' ')).join(' L');
+  const s = svgLibero(0, 0, 3200, `<path d="${d}" fill="none" stroke="${P.notte}" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${P.limone}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`, 'saetta');
+  s.animate([{ opacity: 1 }, { opacity: 0.2, offset: 0.3 }, { opacity: 1, offset: 0.45 }, { opacity: 0 }], { duration: 700 }).onfinish = () => s.remove();
+  const lampo = document.createElement('div'); lampo.className = 'lampo'; strato.appendChild(lampo);
+  lampo.animate([{ opacity: 0 }, { opacity: 0.85, offset: 0.1 }, { opacity: 0, offset: 0.3 }, { opacity: 0.6, offset: 0.45 }, { opacity: 0 }], { duration: 650 }).onfinish = () => lampo.remove();
+  for (let i = 0; i < 16; i++) particella('scintilla', a[0], a[1], { vx: rand(-140, 140), vy: rand(-220, -40), vita: 0.9, k: 1 });
+  dopo(() => suona('tuono'), 250);
+}
+// Ghiaccioli appesi alla traversa più alta del recinto davanti
+function stalattiti(nome, quanti) {
+  const r = AREE[nome].recinto, y = r.yDavanti - r.alto * 0.62 + 3.5 * r.k;
+  let s = '';
+  for (let i = 0; i < quanti; i++) {
+    const x = r.larg * (0.08 + (0.84 * (i + rand(-0.2, 0.2))) / Math.max(1, quanti - 1)), h = rand(7, 12) * r.k, w = rand(2.4, 3.4) * r.k;
+    s += `<path d="M${(x - w).toFixed(1)} 0 L${x.toFixed(1)} ${h.toFixed(1)} L${(x + w).toFixed(1)} 0 Z" fill="${P.celeste}" stroke="${P.notte}" stroke-width="1.5" stroke-linejoin="round"/>`;
+  }
+  const el = svgLibero(r.x, y, 100 + Math.round(r.yDavanti) + 3, `<g class="ghiaccioli">${s}</g>`);
+  el.firstChild.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 1600, easing: 'ease-out', fill: 'forwards' });
+  return el;
+}
+const EFFETTI_GUAIO = {
+  async 'grandine-a-sorpresa'(m, chi) {
+    const via = tempestaPer(m, 3); await m.attesa(900);
+    METEO.grandine = 1; m.pulisci(() => { METEO.grandine = 0; });
+    TUTTI.forEach((c, i) => dopo(() => reagisci(c, 'paura'), i * 250));
+    fumetto(chi, 'Ahia, grandine!', 1500);
+    await rannicchiaTutti(m, 4.2, { saltelli: true }); m.ok();
+    METEO.grandine = 0; await m.attesa(900); via(); cieloTempesta(false);
+  },
+  async 'pioggia-di-traverso'(m, chi) {
+    const via = tempestaPer(m, 3); await m.attesa(700);
+    METEO.pioggia = 1; METEO.bagna = true; suona('pioggiaInizia');
+    m.pulisci(() => { METEO.pioggia = 0; METEO.bagna = false; suona('pioggiaFine'); });
+    const pozze = [];
+    m.pulisci(() => pozze.forEach((p) => p.sparisci(2500)));
+    for (let i = 0; i < 5; i++) dopo(() => { if (!m.vivo) return; const t = terraACaso(); if (t.y > 260 && t.y < 690) pozze.push(pozza(t.x, t.y, rand(12, 22) * profondita(t.y), 101)); }, 600 + i * 700);
+    dopo(() => { if (!m.vivo) return; const A = AREE[chi], k = A.recinto.k; pozze.push(pozza(A.x0 + (A.x1 - A.x0) * 0.32, (A.y0 + A.y1) / 2 + 6 * k, 20 * k, 100 + Math.round(A.y0) - 2)); }, 1500);
+    await rannicchiaTutti(m, 5.5); m.ok();
+    METEO.pioggia = 0; METEO.bagna = false; suona('pioggiaFine');
+    await m.attesa(700); TUTTI.forEach((c, i) => dopo(() => scrollaAcqua(c), i * 300));
+    via(); cieloTempesta(false);
+    await m.attesa(4000);
+  },
+  async 'vento-dispettoso'(m, chi) {
+    METEO.ventoMeta = 1.5; suona('folata', 1.8, 5.5); $('#mano').classList.add('ventoso');
+    m.pulisci(() => { METEO.ventoMeta = 0; $('#mano').classList.remove('ventoso'); });
+    fumetto(chi, 'Mi spettina!', 1600); PECORE[chi].fai('scuoti', true);
+    await m.attesa(4200);
+    METEO.ventoMeta = 0; $('#mano').classList.remove('ventoso'); PECORE[chi].spettinata = 1;
+    await m.attesa(1200);
+  },
+  async 'nebbia-fitta'(m, chi) {
+    // Un grande banco di nebbia basso attraversa il prato da sinistra a destra, cambiando forma mentre passa
+    // Tre banchi a quote diverse, sfalsati: coprono di più senza nascondere tutto insieme
+    const banchi = [[452, 0, 80], [250, -220, 74], [640, -480, 100]].map(([y, ritardo, vel]) =>
+      nuovaNuvola(VISTA.x - 300 + ritardo, { tipo: 'nebbia', temporanea: true, vel, y, contenitore: $('#nebbia-svg'), bassa: true }));
+    m.pulisci(() => banchi.forEach((b) => { b.vel = 320; }));
+    const sulPrato = () => banchi.filter((b) => NUVOLE.includes(b) && b.x - b.W / 2 < VISTA.x + VISTA.w + 40);
+    fumetto(chi, "Dov'è finito il gregge?", 1800);
+    for (let i = 0; i < 5; i++) dopo(() => { if (m.vivo && PECORE[chi]) PECORE[chi].fai('guarda', true); }, 1800 + i * 1800);
+    // Finché la nube è sul prato gli agnellini che ci finiscono sotto restano fermi, un po' spaesati
+    for (let presenti = sulPrato(); presenti.length; presenti = sulPrato()) {
+      for (const b of presenti) for (const g of AGNELLI) if (!g.regia && Math.abs(g.x - b.x) < b.W / 2 && Math.abs(g.y - b.y) < 90 && g.stato === 'cammina') g.guarda(b.x);
+      await m.attesa(400);
+    }
+  },
+  async 'fulmine-curioso'(m, chi) {
+    const via = tempestaPer(m, 2); await m.attesa(900);
+    // Colpisce a caso: la tua pecora, un'altra pecora, un agnellino o l'erba
+    const durata = rand(5, 10), tiro = Math.random();
+    const agnelli = AREE[chi].agnelli.filter(libero_);
+    let colpita = null, agnello = null;
+    if (tiro < 0.5) colpita = chi; else if (tiro < 0.88 && agnelli.length) agnello = scegliUno(agnelli);
+    let punto;
+    if (colpita) { const d = dorsoPecora(colpita); punto = [d.x, d.y]; }
+    else if (agnello) { const k = profondita(agnello.y); punto = [agnello.x, agnello.y - 16 * k]; }
+    else { const A = AREE[chi]; punto = [A.x1 + 14 * A.recinto.k, A.y1 + 10 * A.recinto.k]; }
+    saetta([punto[0] + rand(40, 90), -120], punto);
+    fumata(punto[0], punto[1], 12, colpita ? 1.2 * GIOCATORI[colpita].w / 124 + 0.3 : 0.8);
+    for (const g of AGNELLI) if (g !== agnello && !g.regia && g.stato !== 'corre' && g.stato !== 'vola') dopo(() => g.salta(1), rand(0, 300));
+    if (colpita) {
+      const p = PECORE[colpita]; p.fulmina(durata); m.pulisci(() => p.fulmina(0));
+      reagisci(colpita, 'paura'); fumetto(colpita, 'Che ricci!', 1800);
+    } else if (agnello) {
+      agnello.fulmina(durata, m); belino(agnello, 'bzz!', true);
+    } else {
+      const segno = svgLibero(punto[0], punto[1], 101, `<ellipse rx="16" ry="5" fill="${P.notte}" opacity=".35"/>`);
+      m.pulisci(() => segno.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 1500, fill: 'forwards' }).finished.then(() => segno.remove()));
+      const fumoTerra = ogni(() => fumata(punto[0], punto[1], 2, 0.8), 450); m.pulisci(() => annulla(fumoTerra));
+    }
+    await m.attesa(1800); via(); cieloTempesta(false);
+    await m.attesa(durata * 1000 - 1800);
+  },
+  async 'gelata-di-agosto'(m, chi) {
+    const gelo = document.createElement('div'); gelo.className = 'gelo'; strato.appendChild(gelo);
+    gelo.animate([{ opacity: 0 }, { opacity: 0.24 }], { duration: 1500, fill: 'forwards' });
+    for (let i = 0; i < 110; i++) { const t = terraACaso(); particella('cristallo', t.x, t.y, { vita: rand(6.5, 8), vx: 0, vy: 0, rot: rand(0, 1) }); }
+    // Brina e ghiaccioli su pecore e agnellini, stalattiti sui recinti, erba gelata
+    Object.values(PECORE).forEach((p) => { p.brivido = 1; p.geloMeta = 1; });
+    for (const g of AGNELLI) g.brinaMeta = 1;
+    geloErbaMeta = 1;
+    const ghiacci = TUTTI.map((c) => stalattiti(c, c === 'io' ? 7 : 3));
+    const disgela = () => {
+      Object.values(PECORE).forEach((p) => { p.geloMeta = 0; }); for (const g of AGNELLI) g.brinaMeta = 0; geloErbaMeta = 0;
+      for (const p of PARTICELLE) if (p.tipo === 'cristallo') p.vita = Math.min(p.vita, rand(0.4, 1.2));
+      ghiacci.forEach((el) => {
+        el.querySelectorAll('path').forEach((p) => { const b = p.getBBox(); particella('gocciolina', +el.style.left.slice(0, -2) + b.x + b.width / 2, +el.style.top.slice(0, -2) + b.y + b.height, { vx: 0, vy: 20, vita: 0.8 }); });
+        el.firstChild.animate([{ transform: 'scaleY(1)', opacity: 1 }, { transform: 'scaleY(0)', opacity: 0 }], { duration: 1800, easing: 'ease-in', fill: 'forwards' }).finished.then(() => el.remove());
+      });
+      gelo.animate([{ opacity: 0.24 }, { opacity: 0 }], { duration: 2000, fill: 'forwards' }).finished.then(() => gelo.remove());
+    };
+    m.pulisci(disgela);
+    fumetto(chi, 'Brrr… ad agosto?', 1800);
+    const fiato = ogni(() => TUTTI.forEach((c) => { const t = testaPecora(c); particella('vapore', t.x + PECORE[c].verso * 8, t.y + 4, { vita: 1.3, k: PECORE[c].g.w / 124 }); }), 900);
+    m.pulisci(() => annulla(fiato));
+    await rannicchiaTutti(m, 6.5, { brivido: true }); m.ok();
+    await m.attesa(400);
+  },
+  async 'pozzanghera-senza-fondo'(m, chi) {
+    // Una nuvoletta arriva sopra il recinto, piove un po' e lascia una pozza con un mulinello
+    const A = AREE[chi], s = A.recinto.k, X = (A.x0 + A.x1) / 2, Y = (A.y0 + A.y1) / 2 + 4 * s, zPozza = 100 + Math.round(A.y0) - 2;
+    const f = '<circle cx="-16" cy="2" r="11"/><circle cx="0" cy="-5" r="14"/><circle cx="16" cy="3" r="10"/><rect x="-26" y="1" width="52" height="13" rx="6.5"/>';
+    const nuvola = svgLibero(X, Y - 62 * s, 1700, `<g transform="scale(${s})"><g class="nuvoletta"><g fill="${P.notte}" stroke="${P.notte}" stroke-width="5">${f}</g><g fill="${P.nebbia}">${f}</g></g></g>`, 'pozza');
+    const nuvoletta = nuvola.querySelector('.nuvoletta');
+    nuvoletta.animate([{ transform: 'scale(0)' }, { transform: 'scale(1.1)', offset: 0.7 }, { transform: 'scale(1)' }], { duration: 700, easing: 'ease-out', fill: 'forwards' });
+    m.pulisci(() => nuvoletta.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(.3)', opacity: 0 }], { duration: 700, fill: 'forwards' }).finished.then(() => nuvola.remove()));
+    await m.attesa(600);
+    const pioggerella = ogni(() => { for (let i = 0; i < 3; i++) particella('goccia', X + rand(-22, 22) * s, Y - 48 * s, { vx: 0, vy: 380, terra: Y + rand(-6, 6) * s, vita: 1 }); }, 60);
+    m.pulisci(() => annulla(pioggerella));
+    // Il mulinello è una spirale vera (più un secondo braccio più leggero) vista in prospettiva, che gira verso il centro
+    const spirale = (giri, r0, r1, fase) => {
+      const n = Math.round(giri * 28); let d = '';
+      for (let i = 0; i <= n; i++) { const t = i / n, a = fase + t * giri * Math.PI * 2, r = r0 + (r1 - r0) * t; d += `${i ? ' L' : 'M'}${(Math.cos(a) * r).toFixed(1)} ${(Math.sin(a) * r).toFixed(1)}`; }
+      return d;
+    };
+    const mulinello = `<g transform="scale(${s} ${0.32 * s})"><g class="mulinello"><path d="${spirale(3.2, 4, 30, 0)}" fill="none" stroke="${P.notte}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<path d="${spirale(2.4, 6, 25, Math.PI)}" fill="none" stroke="${P.notte}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/><circle r="5" fill="${P.notte}"/></g></g>`;
+    const p = pozza(X, Y, 32 * s, zPozza, mulinello, 2600);
+    m.pulisci(() => p.sparisci(3000));
+    // Qualunque agnellino ci passi sopra (anche di corsa o mentre gioca) resta intrappolato e gira con il mulinello
+    // finché la pozza non si chiude. Ognuno su un giro diverso, così non si sovrappongono.
+    const intrappolati = new Set(); let liberi = false;
+    const intrappola = (g) => {
+      const corsa = g.stato === 'corre' ? { tx: g.tx, ty: g.ty } : null;
+      if (g.regia) g.annullaRegia();
+      g.intrappolato = true; intrappolati.add(g); prendi([g]); belino(g, 'beee?!', true); suona('beee', 1.8);
+      const giro = (7 + (intrappolati.size - 1) % 4 * 6) * s, vel = 4.2 - (giro / s) * 0.06;
+      let ang = Math.atan2((g.y - Y) / 0.32, g.x - X), r = Math.max(8 * s, Math.hypot(g.x - X, (g.y - Y) / 0.32));
+      effetto(g, (dt) => {
+        ang -= dt * vel; r += (giro - r) * Math.min(1, dt * 1.4);
+        g.x = X + Math.cos(ang) * r; g.y = Y + Math.sin(ang) * r * 0.32;
+        g.verso = Math.sin(ang) > 0 ? 1 : -1; g.incl = Math.sin(T * 9 + giro) * 9; g.hop = -2.5; g.sy = 0.9; g.sx = 1.08;
+        return liberi || !m.vivo;
+      }, true)
+        .then(() => (g.regia ? muovi(g, X + Math.cos(ang) * 50 * s, Y + Math.sin(ang) * 17 * s, 70, 9, true) : null))
+        .then(() => {
+          g.intrappolato = false; intrappolati.delete(g); rilascia([g], true);
+          if (corsa && AGNELLI.has(g)) { g.stato = 'corre'; g.tx = corsa.tx; g.ty = corsa.ty; g.fase = 0; } // riprende la corsa interrotta
+        });
+    };
+    const trappola = ogni(() => {
+      for (const g of AGNELLI) {
+        if (g.intrappolato || g.stato === 'vola') continue;
+        const dx = (g.x - X) / (30 * s), dy = (g.y - Y) / (10 * s);
+        if (dx * dx + dy * dy < 1) intrappola(g);
+      }
+    }, 80);
+    m.pulisci(() => { annulla(trappola); liberi = true; });
+    await m.attesa(2600);
+    annulla(pioggerella);
+    nuvoletta.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'translateY(-14px) scale(.3)', opacity: 0 }], { duration: 900, easing: 'ease-in', fill: 'forwards' });
+    // Tre agnellini distratti attraversano la pozza, uno dopo l'altro
+    const distratti = A.agnelli.filter(libero_).sort((a, b) => Math.abs(a.y - Y) - Math.abs(b.y - Y)).slice(0, 3);
+    prendi(distratti); m.pulisci(() => rilascia(distratti));
+    distratti.forEach(async (g, i) => {
+      const lato = i % 2 ? 1 : -1;
+      await muovi(g, X + lato * 66 * s, Y + (i - 1) * 3 * s, 45, 3);
+      await attesa(i * 1400);
+      if (!m.vivo || g.intrappolato) return;
+      await muovi(g, X - lato * 66 * s, Y + (i - 1) * 2 * s, 22, 2.6); // la traversata: a metà strada il mulinello lo prende
+      if (!g.intrappolato) rilascia([g]);
+    });
+    const curiosi = A.agnelli.filter((g) => libero_(g) && !distratti.includes(g)).slice(0, 2);
+    prendi(curiosi); m.pulisci(() => rilascia(curiosi));
+    await Promise.all(curiosi.map((g, i) => muovi(g, X + [-48, 48][i] * s, Y + [-14, -12][i] * s, 40, 3))); m.ok();
+    curiosi.forEach((g) => { g.verso = g.x < X ? 1 : -1; });
+    fumetto(chi, 'Quanto sarà profonda?', 1800); PECORE[chi].fai('bruca', true);
+    if (curiosi[0]) {
+      await effetto(curiosi[0], perDurata(1.2, (q) => { curiosi[0].incl = 18 * busta(q); curiosi[0].ox = 6 * busta(q); })); m.ok();
+      belino(curiosi[0], 'plop?', true); suona('pop');
+      for (let i = 0; i < 6; i++) particella('gocciolina', X - 32 * s, Y - 6 * s, { vx: rand(-40, 40), vy: rand(-120, -60), vita: 0.7 });
+      await effetto(curiosi[0], saltello(curiosi[0], 14)); m.ok();
+    }
+    await m.attesa(1500); rilascia(curiosi);
+    await m.attesa(5000);
+    annulla(trappola); liberi = true; await m.attesa(900);
+  },
+  async 'lupo-vegetariano'(m, chi) {
+    const f = '<circle cx="-14" cy="-10" r="14"/><circle cx="4" cy="-18" r="18"/><circle cx="20" cy="-8" r="13"/><rect x="-26" y="-12" width="56" height="12" rx="6"/>';
+    const A = AREE[chi], R = A.recinto, sx = (A.x0 + A.x1) / 2 < 195 ? -1 : 1;
+    const bx = chi === 'io' ? 10 : sx < 0 ? R.x - 18 * R.k : R.x + R.larg + 18 * R.k, by = chi === 'io' ? 478 : R.yDavanti;
+    const c = svgLibero(bx, by, 100 + Math.round(by) + 5, `<g transform="scale(${chi === 'io' ? 1 : R.k * 1.3})"><g fill="${P.notte}" stroke="${P.notte}" stroke-width="6">${f}</g><g fill="${P.menta}">${f}</g><g class="occhi-lupo"><ellipse cx="-2" cy="-14" rx="4" ry="2.4" fill="${P.limone}"/><ellipse cx="10" cy="-14" rx="4" ry="2.4" fill="${P.limone}"/><rect x="-2.6" y="-16" width="1.6" height="4" rx=".8" fill="${P.notte}"/><rect x="9.4" y="-16" width="1.6" height="4" rx=".8" fill="${P.notte}"/></g></g>`);
+    c.animate([{ transform: 'translateX(-60px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 900, easing: 'ease-out', fill: 'forwards' });
+    m.pulisci(() => c.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateX(-60px)', opacity: 0 }], { duration: 900, fill: 'forwards' }).finished.then(() => c.remove()));
+    await m.attesa(700);
+    reagisci(chi, 'paura');
+    const lontano = chi === 'io' || sx < 0 ? A.x1 - 20 * R.k : A.x0 + 20 * R.k;
+    await rannicchia(m, A, [[lontano, (A.y0 + A.y1) / 2]], 3.5, { brivido: true, guarda: chi === 'io' ? 0 : bx, vel: 80 }); m.ok();
+  },
+};
+function rubaA(vittima, q) {
+  if (st.finito) return;
+  const ladro = vittima === 'io' ? scegliUno(AVVERSARI) : scegliUno(TUTTI.filter((c) => c !== vittima));
+  fumetto(ladro, `Furto ${q}!`); reagisci(ladro, 'salto');
+  dopo(() => { if (sposta(q, AREE[vittima], AREE[ladro])) reagisci(vittima, 'scossa'); }, 400);
+}
+
+/* ---------- Lettura di una carta, fine partita ---------- */
+let letturaEl = null;
+function apriLettura(id, tenuta) {
+  chiudiLettura();
+  letturaEl = document.createElement('div'); letturaEl.id = 'lettura';
+  letturaEl.innerHTML = `<div class="grande">${cartaSVG(id, true)}</div><span>${tenuta ? 'Lascia per chiudere' : 'Tocca per chiudere'}</span>`;
+  letturaEl.addEventListener('pointerdown', (e) => { e.stopPropagation(); chiudiLettura(); });
+  ui.appendChild(letturaEl);
+  letturaEl.firstChild.animate([{ transform: 'scale(.6) translateY(80px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: RIDOTTO ? 1 : 220, easing: 'cubic-bezier(.3,1.3,.5,1)' });
+  nascondiConsiglio(2);
+}
+function chiudiLettura() { if (letturaEl) { letturaEl.remove(); letturaEl = null; } }
+function vittoria(chi) {
+  st.finito = true; st.attiva = null; disponiMano();
+  const nome = chi === 'io' ? 'Nerina (tu)' : GIOCATORI[chi].nome;
+  reagisci(chi, 'festa'); suona('fanfara'); if (chi === 'io') vibra('vittoria');
+  for (const g of AREE[chi].agnelli) dopo(() => g.salta(3), rand(0, 500));
+  const colori = [P.menta, P.lilla, P.albicocca, P.limone, P.gesso];
+  if (!RIDOTTO) for (let i = 0; i < 70; i++) {
+    const c = document.createElement('i'); c.className = 'coriandolo'; c.style.background = scegliUno(colori); c.style.left = rand(-20, 400) + 'px'; c.style.top = '-30px'; ui.appendChild(c);
+    c.animate([{ transform: `translate(0,0) rotate(0)` }, { transform: `translate(${rand(-60, 60)}px,${rand(700, 900)}px) rotate(${rand(-720, 720)}deg)` }], { duration: rand(2200, 3600), delay: rand(0, 900), easing: 'cubic-bezier(.3,.1,.6,1)', fill: 'forwards' }).onfinish = () => c.remove();
+  }
+  dopo(() => {
+    const f = document.createElement('div'); f.id = 'finale';
+    f.innerHTML = `<div class="pannello"><h2>Ovile pieno!</h2><p>Vince ${esc(nome)}: ${AREE[chi].posti} agnellini al sicuro prima del buio.</p><button class="btn primario" type="button" id="ancora">Gioca ancora</button></div>`;
+    ui.appendChild(f); f.querySelector('#ancora').addEventListener('click', ricomincia);
+  }, 1500);
+}
+
+/* ---------- Suggerimenti ---------- */
+const CONSIGLI = ['Tocca il mazzo per pescare e il dado per tirare', 'Tieni premuta una carta per leggerla', 'Trascina una carta sulla coperta per giocarla', 'Tocca gli agnellini e le pecore'];
+let passoConsiglio = 0;
+function nascondiConsiglio(fatto) {
+  if (st.distribuendo || fatto <= passoConsiglio) return;
+  passoConsiglio = fatto;
+  const c = $('#consiglio');
+  c.style.opacity = 0;
+  // Visti tutti: nelle partite dopo, su questo telefono, non compaiono più (finché non si chiede di rivederli)
+  if (passoConsiglio >= CONSIGLI.length) { try { localStorage.setItem(CHIAVE_CONSIGLI, '1'); } catch (e) { /* non si salva */ } return; }
+  setTimeout(() => { c.textContent = CONSIGLI[passoConsiglio]; c.style.opacity = 1; }, 400);
+  if (passoConsiglio === CONSIGLI.length - 1) setTimeout(() => nascondiConsiglio(CONSIGLI.length), 7000);
+}
+function consigliGiaVisti() { try { return localStorage.getItem(CHIAVE_CONSIGLI) === '1'; } catch (e) { return false; } }
+function rivediSuggerimenti() {
+  try { localStorage.removeItem(CHIAVE_CONSIGLI); } catch (e) { /* non si salva */ }
+  passoConsiglio = 0;
+  const c = $('#consiglio'); c.textContent = CONSIGLI[0]; c.style.opacity = 1;
+}
+
+/* ---------- Menu Opzioni ---------- */
+function disegnaOpzioni() {
+  const riga = (chiave, testo) =>
+    `<button class="btn" type="button" role="switch" aria-checked="${OPZIONI[chiave]}" data-opzione="${chiave}">${testo}: ${OPZIONI[chiave] ? 'sì' : 'no'}</button>`;
+  $('#opzioni').innerHTML = riga('suoni', 'Suoni') + (PUO_VIBRARE ? riga('vibrazione', 'Vibrazione') : '') + riga('veloci', 'Animazioni veloci') +
+    '<button class="btn" type="button" data-azione="suggerimenti">Rivedi i suggerimenti</button>';
+}
+function cambiaOpzione(chiave) {
+  OPZIONI[chiave] = !OPZIONI[chiave]; salvaOpzioni();
+  if (chiave === 'suoni') { if (OPZIONI.suoni) { Suono.accendi(); suona('beee', 1); } else Suono.spegni(); }
+  disegnaOpzioni();
+}
+
+/* ---------- Avvio e ricomincia ---------- */
+function preparaPartita() {
+  for (const a of [...AGNELLI]) a.togli();
+  for (const a of Object.values(AREE)) { a.agnelli = []; a.mostrati = 0; }
+  document.querySelectorAll('#finale, .fumetto, .volante, .pozza, .gelo, .saetta, .lampo, .decoro').forEach((e) => e.remove());
+  fermaMeteo(); Object.assign(METEO, { pioggia: 0, grandine: 0, ventoMeta: 0, bagna: false }); cieloTempesta(false); geloErbaMeta = 0; PARTICELLE.length = 0; suona('pioggiaFine');
+  for (const el of ELEMENTI_MANO.values()) el.remove(); ELEMENTI_MANO.clear();
+  Object.assign(st, { mazzo: 46, guai: 21, pescate: 0, guaiPescati: 0, mano: [], scarti: [], angolo: Object.fromEntries([['io', ['lupo-vegetariano']], ...DISP.avversari.map((a) => [a.id, [...a.angolo]])]),
+    maniAvv: Object.fromEntries(DISP.avversari.map((a) => [a.id, a.mano])), attiva: null, finito: false, dadoOccupato: false });
+  aggiungiScarto('belato-di-gruppo'); aggiungiScarto('campanaccio-stonato');
+  const conti = { io: DISP.agnelli.io, gregge: DISP.agnelli.gregge, ...Object.fromEntries(DISP.avversari.map((a) => [a.id, a.agnelli])) };
+  for (const [n, q] of Object.entries(conti)) for (let i = 0; i < q; i++) new Agnello(AREE[n]);
+  Object.values(AREE).forEach(aggiornaCartello); aggiornaOra();
+  disegnaPile(); TUTTI.forEach(disegnaAngolo); AVVERSARI.forEach(disegnaVentaglio); disponiMano();
+}
+async function distribuisci() {
+  const prima = CODA_PESCATE.slice(); CODA_PESCATE.splice(0, CODA_PESCATE.length, ...MANO_INIZIALE, ...prima);
+  st.distribuendo = true;
+  for (let i = 0; i < MANO_INIZIALE.length; i++) { await pesca(); await attesa(40); }
+  st.distribuendo = false;
+  CODA_PESCATE.splice(0, CODA_PESCATE.length, ...prima); st.pescate = 0;
+}
+async function ricomincia() { preparaPartita(); await attesa(300); distribuisci(); }
+function cambiaGiocatori(n) {
+  fermaMeteo(); camera.getAnimations().forEach((a) => a.cancel()); inquadrato = null; statoCamera = null;
+  costruisciTavolo(n); if (!GIOCATORI[st.bersaglio]) st.bersaglio = 'io';
+  ricomincia();
+}
+// Pannello di prova: si sceglie a chi capita l'evento, poi l'evento
+const METEO_PROVA = [['grandine-a-sorpresa', 'Grandine'], ['pioggia-di-traverso', 'Pioggia'], ['vento-dispettoso', 'Vento'], ['nebbia-fitta', 'Nebbia'],
+  ['fulmine-curioso', 'Fulmine'], ['gelata-di-agosto', 'Gelata'], ['pozzanghera-senza-fondo', 'Pozzanghera']];
+function disegnaPannello() {
+  const chi = GIOCATORI[st.bersaglio] ? st.bersaglio : 'io';
+  const chip = (attr, val, testo, attivo) => `<button class="btn chip${attivo ? ' attivo' : ''}" type="button" data-${attr}="${val}" aria-pressed="${attivo}">${esc(testo)}</button>`;
+  const bottone = (ev, testo) => `<button class="btn" type="button" data-evento="${ev}">${esc(testo)}</button>`;
+  $('#eventi').innerHTML =
+    `<p>A chi?</p><div class="chips">${TUTTI.map((c) => chip('chi', c, GIOCATORI[c].nome, c === chi)).join('')}</div>` +
+    `<p>Cosa gli succede</p>${bottone('furto', 'Gli rubano 2 agnellini')}${bottone('guaio:lupo-vegetariano', 'Prende il Lupo')}` +
+    `<p>Guai meteo</p><div class="griglia-eventi">${METEO_PROVA.map(([id, nome]) => bottone('guaio:' + id, nome)).join('')}</div>` +
+    `${bottone('beeeno', 'Gioca Beee-NO!')}${bottone('pascolo', 'Pascolo da 5')}` +
+    `<p>Partita</p><div class="chips">${[2, 3, 4].map((n) => chip('giocatori', n, `${n} giocatori`, n === numeroGiocatori)).join('')}</div>${bottone('ricomincia', 'Ricomincia')}`;
+}
+
+function avvia() {
+  disegnaPaesaggio(); creaSole(); creaNuvole(); creaTela(); costruisciTavolo(3);
+  creaDado(); preparaPartita(); requestAnimationFrame(ciclo);
+  setTimeout(distribuisci, 500);
+
+  $('#mazzo').addEventListener('pointerdown', (e) => { e.stopPropagation(); pesca(); });
+  $('#dado-pos').addEventListener('pointerdown', (e) => { e.stopPropagation(); tiraDado(); });
+  $('#mazzo-guai').addEventListener('pointerdown', (e) => { e.stopPropagation(); fumetto('io', 'I Guai arrivano da soli…'); });
+  const pannello = $('#eventi'), apri = $('#apri-eventi');
+  const chiudiEventi = () => { pannello.hidden = true; apri.setAttribute('aria-expanded', 'false'); };
+  $('#gioca').addEventListener('click', () => { if (st.attiva) gioca(st.attiva); });
+  $('#rimetti').addEventListener('click', () => { st.attiva = null; disponiMano(); });
+  $('#azioni-carta').addEventListener('pointerdown', (e) => e.stopPropagation());
+  scena.addEventListener('pointerdown', () => { if (st.attiva) { st.attiva = null; disponiMano(); } if (!pannello.hidden) chiudiEventi(); });
+  // Qualsiasi tocco sveglia la scena dal riposo
+  addEventListener('pointerdown', () => { RISPARMIO.ultimoTocco = performance.now(); RISPARMIO.riposo = false; }, true);
+  // Un tocco sul prato durante un evento lo salta; mano, pulsanti e tovaglia fanno quello che fanno sempre
+  scena.addEventListener('pointerdown', (e) => {
+    if (eventoInCorso() && !inInterfaccia(e.target) && !e.target.closest('#mazzo, #mazzo-guai, #dado-pos, #scarti')) saltaEvento();
+  }, true);
+  // Menu Opzioni
+  const menu = $('#opzioni'), apriOpz = $('#apri-opzioni');
+  const chiudiOpzioni = () => { menu.hidden = true; apriOpz.setAttribute('aria-expanded', 'false'); };
+  apriOpz.addEventListener('pointerdown', (e) => e.stopPropagation());
+  apriOpz.addEventListener('click', () => { if (menu.hidden) disegnaOpzioni(); menu.hidden = !menu.hidden; apriOpz.setAttribute('aria-expanded', String(!menu.hidden)); });
+  menu.addEventListener('pointerdown', (e) => e.stopPropagation());
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-opzione]'); if (b) { cambiaOpzione(b.dataset.opzione); return; }
+    if (e.target.closest('[data-azione="suggerimenti"]')) { chiudiOpzioni(); rivediSuggerimenti(); }
+  });
+  scena.addEventListener('pointerdown', () => { if (!menu.hidden) chiudiOpzioni(); });
+  // I suoni salvati come accesi partono al primo tocco: i browser non li fanno partire da soli
+  if (OPZIONI.suoni) addEventListener('pointerdown', () => { if (OPZIONI.suoni) Suono.accendi(); }, { once: true, capture: true });
+  // Suggerimenti sui gesti: solo la prima volta su questo telefono
+  if (consigliGiaVisti()) { passoConsiglio = CONSIGLI.length; $('#consiglio').style.opacity = 0; }
+  apri.addEventListener('pointerdown', (e) => e.stopPropagation());
+  apri.addEventListener('click', () => { if (pannello.hidden) disegnaPannello(); pannello.hidden = !pannello.hidden; apri.setAttribute('aria-expanded', String(!pannello.hidden)); });
+  pannello.addEventListener('pointerdown', (e) => e.stopPropagation());
+  pannello.addEventListener('click', (e) => {
+    const scelta = e.target.closest('[data-chi]');
+    if (scelta) { st.bersaglio = scelta.dataset.chi; disegnaPannello(); return; }
+    const quanti = e.target.closest('[data-giocatori]');
+    if (quanti) { chiudiEventi(); cambiaGiocatori(+quanti.dataset.giocatori); return; }
+    const b = e.target.closest('[data-evento]'); if (!b) return; chiudiEventi();
+    const ev = b.dataset.evento, chi = GIOCATORI[st.bersaglio] ? st.bersaglio : 'io';
+    if (ev === 'furto') rubaA(chi, 2);
+    else if (ev.startsWith('guaio:')) guaio(ev.slice(6), chi);
+    else if (ev === 'beeeno') beeeNoDi(chi);
+    else if (ev === 'pascolo') { if (!st.finito) { fumetto(chi, 'Pascolo 5!'); sposta(5, AREE.gregge, AREE[chi]); } }
+    else if (ev === 'ricomincia') ricomincia();
+  });
+  document.addEventListener('visibilitychange', () => { ultimo = performance.now(); });
+}
+Promise.race([document.fonts ? document.fonts.ready : Promise.resolve(), attesaVera(1800)]).then(avvia);
+</script>
