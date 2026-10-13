@@ -924,15 +924,74 @@ button.carta {
 .tratti {
   font-size: var(--testo-s);
 }
-.regole section {
+.regole section,
+.riassunto {
   background: var(--colore-carta);
   border: var(--tratto-ui) solid var(--colore-inchiostro);
   border-radius: var(--raggio-pannello);
   padding: var(--spazio-3) var(--spazio-4);
 }
-.regole ul {
+.regole ul,
+.riassunto ul {
   margin: var(--spazio-2) 0 0;
   padding-left: 20px;
+}
+/* Riassunto in fondo alla scelta dei giocatori: staccato dai pulsanti */
+.riassunto {
+  margin-top: var(--spazio-4);
+  width: 100%;
+  box-sizing: border-box;
+}
+.riassunto h2 {
+  margin: 0;
+}
+.riassunto li + li {
+  margin-top: var(--spazio-1);
+}
+.riassunto .link {
+  margin-top: var(--spazio-3);
+}
+/* Home: pulsante con il "?" accanto e la spiegazione che compare sotto */
+.con-aiuto {
+  position: relative;
+}
+/* Bollino piccolo a cavallo del bordo destro: il pulsante resta largo come gli altri */
+.aiuto-tondo.pulsante {
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: var(--testo-s);
+  line-height: 1;
+}
+.aiuto-tondo.pulsante:active:not(:disabled) {
+  transform: translateY(calc(-50% + 2px));
+}
+/* Zona da toccare più grande del disegno, comoda per il dito */
+.aiuto-tondo::before {
+  content: '';
+  position: absolute;
+  inset: -8px -4px -8px -8px;
+}
+.spiega-qui {
+  margin: 0;
+  background: var(--colore-carta);
+  border: var(--tratto-ui) solid var(--colore-inchiostro);
+  border-radius: var(--raggio-pannello);
+  padding: var(--spazio-3) var(--spazio-4);
+  font-size: var(--testo-s);
+  text-align: left;
+}
+/* Avviso in cima alla preparazione: porta giù fino al riassunto */
+.vai-regole {
+  justify-self: start;
+  margin-top: calc(-1 * var(--spazio-2));
+  padding: 0;
 }
 .legenda {
   display: flex;

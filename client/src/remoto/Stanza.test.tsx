@@ -117,6 +117,19 @@ describe('Schermate sempre con un\'uscita', () => {
     expect(pulsanteIn(velo, 'Esci')).toBeDefined();
     expect(pulsanteIn(velo, 'Regole')).toBeDefined();
   });
+
+  it("la sala d'attesa mostra il riassunto e il collegamento alle Regole", async () => {
+    const rete = new ArchivioMemoria();
+    const host = await SessioneHost.crea(rete.dispositivo('u1'), archivioInMemoria(), { nome: 'Ada', pecora: 'ricciolo', gettone: 'a' });
+    await aspetta();
+    let regole = 0;
+    const isc: Iscrizione = { codice: host.codice, ruolo: 'host', idGiocatore: host.idGiocatore, nome: 'Ada', pecora: 'ricciolo', gettone: 'a' };
+    render(<Stanza sessione={host} iscrizione={isc} onEsci={() => {}} onRegole={() => regole++} />);
+    await aspetta();
+    expect(document.querySelector('.sala .riassunto h2')?.textContent).toBe('Come si gioca, in breve');
+    await clic(pulsanteIn(document.body, 'Leggi tutte le regole'));
+    expect(regole).toBe(1);
+  });
 });
 
 describe('Tre dispositivi', () => {

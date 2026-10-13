@@ -28,6 +28,7 @@ import {
 import { FinePartita, Menu, useAggiornamenti } from '../partita/Partita';
 import { Intestazione, Tavolo } from '../partita/Tavolo';
 import { Testata } from '../partita/Testata';
+import { Riassunto } from '../schermate';
 import { T } from '../testi';
 import { archivioHost, connetti, leggiIscrizione, linkStanza, linkTavolo, salvaIscrizione, segnaInStanza } from './connessione';
 import { scenaRemota } from './regiaRemota';
@@ -229,7 +230,17 @@ export function ModuloStanza(p: {
 
 // ─── Sala d'attesa ──────────────────────────────────────────────────────────
 
-function SalaAttesa({ sessione, iscrizione, onEsci }: { sessione: SessioneStanza; iscrizione: Iscrizione; onEsci: () => void }) {
+function SalaAttesa({
+  sessione,
+  iscrizione,
+  onEsci,
+  onRegole,
+}: {
+  sessione: SessioneStanza;
+  iscrizione: Iscrizione;
+  onEsci: () => void;
+  onRegole: () => void;
+}) {
   const pub = sessione.pubblico()!;
   const host = sessione instanceof SessioneHost ? sessione : null;
   const io = host ? host.idGiocatore : (sessione as SessioneOspite).io;
@@ -327,6 +338,7 @@ function SalaAttesa({ sessione, iscrizione, onEsci }: { sessione: SessioneStanza
       <Pulsante largo secondario onClick={onEsci}>
         {T.stanza.esci}
       </Pulsante>
+      <Riassunto onRegole={onRegole} />
     </main>
   );
 }
@@ -527,10 +539,10 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
         pannello = <PannelloRichiesta {...props} />;
         break;
       case 'reazione':
-        pannello = <PannelloReazione {...props} />;
+        pannello = <PannelloReazione {...props} manoIntera />;
         break;
       case 'punteggio':
-        pannello = <PannelloPunteggio {...props} />;
+        pannello = <PannelloPunteggio {...props} manoIntera />;
         break;
       case 'belato_finale':
         pannello = <PannelloBelatoFinale {...props} />;
@@ -663,7 +675,7 @@ export function Stanza(p: { sessione: SessioneStanza; iscrizione: Iscrizione; on
   if (pub.fase === 'partita' && !io) {
     return messaggio(sessione instanceof SessioneOspite ? (sessione.rifiuto()?.messaggio ?? T.stanza.giaIniziata) : T.stanza.giaIniziata);
   }
-  if (pub.fase === 'attesa' || !io) return <SalaAttesa sessione={sessione} iscrizione={iscrizione} onEsci={p.onEsci} />;
+  if (pub.fase === 'attesa' || !io) return <SalaAttesa sessione={sessione} iscrizione={iscrizione} onEsci={p.onEsci} onRegole={p.onRegole} />;
   if (sessione instanceof SessioneOspite && !sessione.pronta()) return messaggio(T.stanza.collegamento);
   return <PartitaRemota sessione={sessione} io={io} onEsci={p.onEsci} onRegole={p.onRegole} />;
 }

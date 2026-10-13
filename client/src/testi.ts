@@ -8,6 +8,9 @@ export const T = {
 
   home: {
     giocaQui: 'Gioca su questo dispositivo',
+    aiutoQui: 'Come funziona il gioco su un solo dispositivo',
+    spiegaQui:
+      'Si gioca tutti insieme su questo dispositivo, che si passa a chi tocca a ogni turno. Ognuno vede le proprie carte solo nel suo turno.',
     riprendi: 'Riprendi la partita',
     creaStanza: 'Crea stanza',
     entraStanza: 'Entra in una stanza',
@@ -29,6 +32,22 @@ export const T = {
     nomiDoppi: 'Ogni giocatore deve avere un nome diverso.',
     nomeVuoto: 'Scrivi un nome per ogni giocatore.',
     pecoreDoppie: 'Ogni giocatore deve avere una pecora diversa.',
+  },
+
+  /** Riassunto in fondo alla scelta dei giocatori: la parte "forte" va in grassetto. */
+  riassunto: {
+    titolo: 'Come si gioca, in breve',
+    righe: [
+      { forte: 'Lo scopo:', resto: ' riempi per primo il tuo Ovile di agnellini.' },
+      { forte: 'Ogni round', resto: ' si scopre un Guaio, e tutti scelgono in segreto una Trovata dalla mano.' },
+      { forte: 'Le Trovate si scoprono insieme.', resto: ' Al valore si aggiunge il tratto della tua pecora: +1 o −1 se il Guaio è del suo tipo.' },
+      { forte: 'Chi ha il punteggio più alto', resto: ' lancia il Dado del Pastore: pascoli, furti e testate fanno guadagnare agnellini o li tolgono agli altri.' },
+      { forte: 'Chi ha il punteggio più basso', resto: ' prende il Guaio, ma riceve un agnellino di consolazione. Con troppi Guai la tua pecora è fuori.' },
+      { forte: 'I Belati', resto: ' si giocano fuori turno. Beee-NO! annulla un effetto, un Belato o il dado, in qualsiasi momento.' },
+      { forte: 'Se il mazzo finisce,', resto: ' si gioca un ultimo round e vince chi ha più agnellini.' },
+    ],
+    tutte: 'Leggi tutte le regole ›',
+    vaiGiu: 'Puoi leggere le regole in fondo ↓',
   },
 
   passaggio: {

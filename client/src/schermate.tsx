@@ -22,6 +22,7 @@ export function Home(p: {
   onDimentica: () => void;
   onRegole: () => void;
 }) {
+  const [spiega, setSpiega] = useState(false);
   return (
     <main className="home">
       <h1 className="logo">
@@ -39,9 +40,27 @@ export function Home(p: {
             {T.home.riprendi}
           </Pulsante>
         )}
-        <Pulsante largo secondario={p.salvata} onClick={p.onNuova}>
-          {T.home.giocaQui}
-        </Pulsante>
+        {/* Il "?" accanto spiega che su un dispositivo solo si gioca passandolo a ogni turno. */}
+        <div className="con-aiuto">
+          <Pulsante largo secondario={p.salvata} onClick={p.onNuova}>
+            {T.home.giocaQui}
+          </Pulsante>
+          <button
+            type="button"
+            className="pulsante pulsante-secondario aiuto-tondo"
+            aria-label={T.home.aiutoQui}
+            aria-expanded={spiega}
+            aria-controls="spiega-qui"
+            onClick={() => setSpiega(!spiega)}
+          >
+            ?
+          </button>
+        </div>
+        {spiega && (
+          <p className="spiega-qui" id="spiega-qui">
+            {T.home.spiegaQui}
+          </p>
+        )}
         {p.multigiocatore && p.iscrizione && (
           <div className="rientro">
             <Pulsante largo onClick={p.onRientra}>
@@ -70,10 +89,48 @@ export function Home(p: {
 
 const PECORE = SETUP.pecore.map((pc) => pc.id);
 
-export function Preparazione(p: { salvata: boolean; onInizia: (g: GiocatoreLocale[]) => void; onIndietro: () => void }) {
-  const [quanti, setQuanti] = useState(3);
-  const [nomi, setNomi] = useState<string[]>(['', '', '', '']);
-  const [pecore, setPecore] = useState<IdPecora[]>([...PECORE]);
+/** Riassunto del gioco in fondo alle schermate di scelta dei giocatori, con il collegamento alle Regole. */
+export function Riassunto({ onRegole }: { onRegole: () => void }) {
+  return (
+    <section className="riassunto" id="riassunto">
+      <h2>{T.riassunto.titolo}</h2>
+      <ul>
+        {T.riassunto.righe.map((r) => (
+          <li key={r.forte}>
+            <strong>{r.forte}</strong>
+            {r.resto}
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="link" onClick={onRegole}>
+        {T.riassunto.tutte}
+      </button>
+    </section>
+  );
+}
+
+/** L'avviso in cima alla preparazione porta giù fino al riassunto (senza animazione se il telefono la riduce). */
+function scendiAlRiassunto() {
+  const ridotto = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  document.getElementById('riassunto')?.scrollIntoView?.({ behavior: ridotto ? 'auto' : 'smooth', block: 'start' });
+}
+
+/** Scelte della preparazione: le tiene App, così sopravvivono a un giro nelle Regole. */
+export type SceltePreparazione = { quanti: number; nomi: string[]; pecore: IdPecora[] };
+export const scelteIniziali = (): SceltePreparazione => ({ quanti: 3, nomi: ['', '', '', ''], pecore: [...PECORE] });
+
+export function Preparazione(p: {
+  salvata: boolean;
+  scelte: SceltePreparazione;
+  onScelte: (s: SceltePreparazione) => void;
+  onInizia: (g: GiocatoreLocale[]) => void;
+  onIndietro: () => void;
+  onRegole: () => void;
+}) {
+  const { quanti, nomi, pecore } = p.scelte;
+  const setQuanti = (n: number) => p.onScelte({ ...p.scelte, quanti: n });
+  const setNomi = (n: string[]) => p.onScelte({ ...p.scelte, nomi: n });
+  const setPecore = (pc: IdPecora[]) => p.onScelte({ ...p.scelte, pecore: pc });
   const giocatori = Array.from({ length: quanti }, (_, i) => ({
     id: `g${i + 1}`,
     nome: (nomi[i] ?? '').trim() || T.preparazione.nomeSegnaposto(i + 1),
@@ -95,6 +152,9 @@ export function Preparazione(p: { salvata: boolean; onInizia: (g: GiocatoreLocal
   return (
     <main className="preparazione">
       <h1>{T.preparazione.titolo}</h1>
+      <button type="button" className="link vai-regole" onClick={scendiAlRiassunto}>
+        {T.riassunto.vaiGiu}
+      </button>
       {p.salvata && <p className="aiuto">{T.home.nuovaConfermata}</p>}
       <div className="etichetta">{T.preparazione.quantiGiocatori}</div>
       <div className="scelte-nomi">
@@ -144,6 +204,7 @@ export function Preparazione(p: { salvata: boolean; onInizia: (g: GiocatoreLocal
       <Pulsante largo secondario onClick={p.onIndietro}>
         {T.preparazione.indietro}
       </Pulsante>
+      <Riassunto onRegole={p.onRegole} />
     </main>
   );
 }

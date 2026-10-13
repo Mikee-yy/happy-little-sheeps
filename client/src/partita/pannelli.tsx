@@ -177,7 +177,8 @@ export function PannelloDomanda(p: {
   );
 }
 
-export function PannelloReazione({ v, giocatore, azioni, invia, onIndietro }: PropsPannello & { onIndietro?: () => void }) {
+/** `manoIntera`: con un dispositivo a testa la mano è di chi lo tiene e resta visibile; su un dispositivo condiviso no. */
+export function PannelloReazione({ v, giocatore, azioni, invia, onIndietro, manoIntera }: PropsPannello & { onIndietro?: () => void; manoIntera?: boolean }) {
   const cima = v.pila[v.pila.length - 1];
   const beeeNo = filtra(azioni, 'giocaBelato')[0];
   const passa = filtra(azioni, 'passa')[0];
@@ -196,12 +197,13 @@ export function PannelloReazione({ v, giocatore, azioni, invia, onIndietro }: Pr
           {T.azioni.annulla}
         </Pulsante>
       )}
-      <Mano carte={mano(v, giocatore)} />
+      {/* Su un dispositivo condiviso, fuori dal proprio turno, la mano resta coperta: solo il Beee-NO! giocabile. */}
+      {manoIntera ? <Mano carte={mano(v, giocatore)} /> : beeeNo && <Mano carte={[beeeNo.carta]} />}
     </div>
   );
 }
 
-export function PannelloPunteggio({ v, giocatore, azioni, invia, onIndietro }: PropsPannello & { onIndietro?: () => void }) {
+export function PannelloPunteggio({ v, giocatore, azioni, invia, onIndietro, manoIntera }: PropsPannello & { onIndietro?: () => void; manoIntera?: boolean }) {
   const belati = filtra(azioni, 'giocaBelato');
   const passa = filtra(azioni, 'passa')[0];
   const [carta, setCarta] = useState<IdCarta | null>(null);
@@ -211,7 +213,12 @@ export function PannelloPunteggio({ v, giocatore, azioni, invia, onIndietro }: P
     <div className="pannello">
       <Riepilogo v={v} />
       <Titolo aiuto={carte.length === 0 ? T.punteggio.nonHai : undefined}>{T.punteggio.privato(nome(v, giocatore))}</Titolo>
-      <Mano carte={mano(v, giocatore)} toccabili={carte} selezionate={carta ? [carta] : []} onTocca={setCarta} />
+      {/* Su un dispositivo condiviso, fuori dal proprio turno, la mano resta coperta: solo i Belati giocabili. */}
+      {manoIntera ? (
+        <Mano carte={mano(v, giocatore)} toccabili={carte} selezionate={carta ? [carta] : []} onTocca={setCarta} />
+      ) : (
+        carte.length > 0 && <Mano carte={carte} selezionate={carta ? [carta] : []} onTocca={setCarta} />
+      )}
       {carta && perCarta.length === 1 && perCarta[0]!.bersaglio === undefined && (
         <Pulsante largo onClick={() => invia(perCarta[0]!)}>
           {nomeCarta(carta)}

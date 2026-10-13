@@ -114,3 +114,40 @@ describe('Partita su un solo dispositivo', () => {
     expect(document.querySelector('.passaggio h1')?.textContent).toMatch(/^Passa il dispositivo a /);
   });
 });
+
+describe('Riassunto e regole', () => {
+  it('nella Home il "?" accanto a "Gioca su questo dispositivo" spiega il passaggio del dispositivo', async () => {
+    render(<App />);
+    const aiuto = document.querySelector('button[aria-label="Come funziona il gioco su un solo dispositivo"]');
+    expect(aiuto?.textContent).toBe('?');
+    expect(aiuto?.getAttribute('aria-expanded')).toBe('false');
+    expect(document.querySelector('.spiega-qui')).toBeNull();
+    await clic(aiuto);
+    expect(aiuto?.getAttribute('aria-expanded')).toBe('true');
+    expect(document.querySelector('.spiega-qui')?.textContent).toMatch(/tutti insieme/);
+    expect(document.querySelector('.spiega-qui')?.textContent).toMatch(/passa/);
+    await clic(aiuto);
+    expect(document.querySelector('.spiega-qui')).toBeNull();
+  });
+
+  it('la preparazione mostra il riassunto; dalle Regole si torna con le scelte intatte', async () => {
+    render(<App />);
+    await clic(pulsante('Gioca su questo dispositivo'));
+    expect(document.querySelector('.riassunto h2')?.textContent).toBe('Come si gioca, in breve');
+    expect(document.querySelectorAll('.riassunto li')).toHaveLength(7);
+    // In alto, subito sotto il titolo, l'avviso che le regole sono in fondo.
+    const avviso = document.querySelector('.preparazione h1 + .vai-regole');
+    expect(avviso?.textContent).toBe('Puoi leggere le regole in fondo ↓');
+    await clic(avviso);
+    await clic(pulsante('4'));
+    fireEvent.change(document.querySelector('input[aria-label="Nome 1"]')!, { target: { value: 'Ada' } });
+    const radio = document.querySelectorAll('.giocatore-prep')[0]!.querySelectorAll('[role=radio]')[2]!;
+    await clic(radio);
+    await clic(pulsante('Leggi tutte le regole'));
+    expect(document.querySelector('.regole h1')?.textContent).toBe('Regole');
+    await clic(pulsante('Indietro'));
+    expect(document.querySelectorAll('.giocatore-prep')).toHaveLength(4);
+    expect((document.querySelector('input[aria-label="Nome 1"]') as HTMLInputElement).value).toBe('Ada');
+    expect(document.querySelectorAll('.giocatore-prep')[0]!.querySelectorAll('[role=radio]')[2]!.getAttribute('aria-checked')).toBe('true');
+  });
+});

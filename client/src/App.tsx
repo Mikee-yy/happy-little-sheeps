@@ -19,7 +19,8 @@ import {
   segnaInStanza,
 } from './remoto/connessione';
 import { ModuloStanza, Stanza, VistaTavolo } from './remoto/Stanza';
-import { Home, Preparazione, Regole } from './schermate';
+import { Home, Preparazione, Regole, scelteIniziali } from './schermate';
+import type { SceltePreparazione } from './schermate';
 import { T } from './testi';
 
 type Schermata = 'home' | 'preparazione' | 'partita' | 'regole' | 'crea' | 'entra' | 'stanza' | 'tavolo' | 'collegamento';
@@ -63,6 +64,7 @@ export function App() {
           : 'home',
   );
   const [dopoRegole, setDopoRegole] = useState<Schermata>('home');
+  const [scelte, setScelte] = useState<SceltePreparazione>(scelteIniziali);
   const [stanza, setStanza] = useState<{ sessione: SessioneHost | SessioneOspite; iscrizione: Iscrizione } | null>(null);
   const [tavolo, setTavolo] = useState<SessioneTavolo | null>(null);
   const [avviso, setAvviso] = useState<string | null>(null);
@@ -142,9 +144,28 @@ export function App() {
       />
     );
   } else if (schermata === 'preparazione') {
-    contenuto = <Preparazione salvata={salvata} onInizia={inizia} onIndietro={() => setSchermata('home')} />;
+    contenuto = (
+      <Preparazione
+        salvata={salvata}
+        scelte={scelte}
+        onScelte={setScelte}
+        onInizia={inizia}
+        onIndietro={() => {
+          setScelte(scelteIniziali());
+          setSchermata('home');
+        }}
+        onRegole={() => regole('preparazione')}
+      />
+    );
   } else if (schermata === 'regole') {
-    const ritorno = dopoRegole === 'partita' && sessione ? 'partita' : dopoRegole === 'stanza' && stanza ? 'stanza' : 'home';
+    const ritorno =
+      dopoRegole === 'partita' && sessione
+        ? 'partita'
+        : dopoRegole === 'stanza' && stanza
+          ? 'stanza'
+          : dopoRegole === 'preparazione'
+            ? 'preparazione'
+            : 'home';
     contenuto = <Regole onIndietro={() => setSchermata(ritorno)} />;
   } else if (schermata === 'crea' || schermata === 'entra') {
     contenuto = (
