@@ -1,6 +1,7 @@
 // Catalogo delle carte e numeri della preparazione, letti da cards.json e setup.json.
 import carteJson from '../data/cards.json';
 import setupJson from '../data/setup.json';
+import provaJson from '../data/prova.json';
 import type {
   ConfigPartita,
   DefBelato,
@@ -13,9 +14,11 @@ import type {
   FacciaDado,
   GruppoEffetto,
   IdCarta,
+  IdGiocatore,
   IdPecora,
   IdTipoCarta,
   MomentoBelato,
+  Preparazione,
   RegolaEliminazione,
   TipoGuaioCarta,
 } from './tipi';
@@ -44,6 +47,11 @@ function congela<T>(x: T): T {
 }
 
 export const SETUP: DatiSetup = congela(structuredClone(setupJson) as unknown as DatiSetup);
+
+/** Partita di prova: giocatori e preparazione dei primi round (engine/data/prova.json). */
+export const PROVA: { giocatori: Array<{ id: IdGiocatore; nome: string; pecora: IdPecora }>; preparazione: Preparazione } = congela(
+  structuredClone(provaJson) as unknown as { giocatori: Array<{ id: IdGiocatore; nome: string; pecora: IdPecora }>; preparazione: Preparazione },
+);
 
 interface DatiCarte {
   effettiTrovata: Record<string, { gruppo: GruppoEffetto }>;

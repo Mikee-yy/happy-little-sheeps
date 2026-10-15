@@ -185,7 +185,7 @@ body { font-family: var(--f-testo); color: var(--notte); -webkit-tap-highlight-c
 #dado-ombra { position: absolute; inset: 3px; background: var(--notte); border-radius: 10px; }
 #dado-ombra-sole { position: absolute; inset: 0; opacity: var(--oop, .16); transform: translate(var(--ox, 6px), var(--oy, 7px)) scale(1.05); }
 #dado-salto { position: absolute; inset: 0; transform-style: preserve-3d; }
-#dado { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 1.15s cubic-bezier(.2,.75,.3,1); }
+#dado { position: absolute; inset: 0; transform-style: preserve-3d; }
 /* Facce piene: gli angoli fuori dal disegno della faccia sono color inchiostro, come uno spigolo, mai trasparenti */
 .fd { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 4px; background: var(--notte); }
 .fd svg { display: block; width: 100%; height: 100%; }
@@ -368,9 +368,10 @@ function ogni(fn, ms) { const id = OROLOGIO.prossimo++, passo = Math.max(4, ms);
 function annulla(id) { OROLOGIO.timer.delete(id); }
 const attesa = (ms) => new Promise((r) => dopo(r, ms));
 const attesaVera = (ms) => new Promise((r) => setTimeout(r, ms));
-// Al ritorno da un'altra scheda il buco può essere lungo: al massimo 1 s alla volta, così i timer non partono a raffica
+// Al più 0,25 s per fotogramma, come il movimento: al ritorno da un'altra scheda niente raffiche di timer,
+// e su un telefono lento timer e movimenti restano insieme
 function avanzaOrologio(msReali) {
-  const fine = OROLOGIO.ms + Math.min(Math.max(msReali, 0), 1000) * OROLOGIO.velocita;
+  const fine = OROLOGIO.ms + Math.min(Math.max(msReali, 0), 250) * OROLOGIO.velocita;
   for (;;) {
     let prossimo = null, pid = 0;
     for (const [id, t] of OROLOGIO.timer) if (t.quando <= fine && (!prossimo || t.quando < prossimo.quando)) { prossimo = t; pid = id; }
@@ -441,7 +442,8 @@ const limiteParticelle = () => (RISPARMIO.leggero ? 60 : 140);
 function misuraFluidita(ora, dtReale) {
   const f = RISPARMIO.finestra;
   // A riposo, con la pagina nascosta o al ritorno da un'altra scheda (fotogramma lunghissimo) non si misura
-  if (RISPARMIO.leggero || RISPARMIO.riposo || document.hidden || dtReale > 0.25) { f.inizio = ora; f.fotogrammi = 0; return; }
+  // Il primo fotogramma apre la finestra invece di contare come un secondo intero
+  if (!f.inizio || RISPARMIO.leggero || RISPARMIO.riposo || document.hidden || dtReale > 0.25) { f.inizio = ora; f.fotogrammi = 0; return; }
   f.fotogrammi++;
   if (ora - f.inizio < 1000) return;
   RISPARMIO.secondiLenti = f.fotogrammi < 30 ? RISPARMIO.secondiLenti + 1 : 0;
@@ -549,11 +551,14 @@ const Suono = {
 // Mentre si salta un evento i suoni tacciono, così non si accavallano
 // Vibrazione per i momenti forti, dove il telefono lo permette (in pratica Android) e se non è spenta nelle Opzioni
 const RITMI = { guaio: [60, 50, 60], beeeNo: [140], vittoria: [80, 60, 80, 60, 220] };
+// Parte all'inizio dell'evento: saltarlo non la ripete e non la toglie
 function vibra(nome) {
-  if (!PUO_VIBRARE || !OPZIONI.vibrazione || REGIA.salto) return;
+  if (!PUO_VIBRARE || !OPZIONI.vibrazione) return;
   try { navigator.vibrate(RITMI[nome]); } catch (e) { /* vibrazione non disponibile */ }
 }
-function suona(nome, ...a) { if (REGIA.salto) return; if (Suono.attivo && Suono.ctx) { try { Suono[nome](...a); } catch (e) { /* audio non disponibile */ } } }
+// Mentre si salta i suoni tacciono, tranne quelli che ne fermano un altro (se no lo scroscio della pioggia resterebbe acceso)
+const SUONI_CHE_FERMANO = new Set(['pioggiaFine']);
+function suona(nome, ...a) { if (REGIA.salto && !SUONI_CHE_FERMANO.has(nome)) return; if (Suono.attivo && Suono.ctx) { try { Suono[nome](...a); } catch (e) { /* audio non disponibile */ } } }
 
 /* ---------- Carte (testi dal file dati del gioco) ---------- */
 const CARTE = {
@@ -1518,8 +1523,9 @@ function ciclo(ora) {
   RISPARMIO.accumulo = 0;
   impostaVelocita(velocitaScena());
   avanzaOrologio(dtReale * 1000);
-  // Passi di al massimo 50 ms: quando la scena corre più veloce se ne fanno di più nello stesso fotogramma
-  const dtScena = Math.min(0.05, dtReale) * OROLOGIO.velocita, passi = Math.max(1, Math.ceil(dtScena / 0.05 - 1e-9));
+  // Fino a 0,25 s per fotogramma (come l'orologio), in passi di al massimo 50 ms: più passi se la scena corre o il telefono è lento
+  // A riposo un passo solo: è proprio quello che fa risparmiare
+  const dtScena = Math.min(0.25, dtReale) * OROLOGIO.velocita, passi = RISPARMIO.riposo ? 1 : Math.max(1, Math.ceil(dtScena / 0.05 - 1e-9));
   for (let i = 0; i < passi; i++) passoScena(dtScena / passi, ora);
   aggiornaFumetti();
   // Finiti gli eventi il salto si spegne da solo
@@ -1770,6 +1776,8 @@ function aggiornaFumetti() {
 const CODA_PESCATE = ['campanaccio-stonato', 'belato-di-gruppo', 'sasso-comodo', 'finta-svenuta', 'ombrello-bucato', 'beee-no', 'calzino-gemello'];
 const CODA_GUAI = ['grandine-a-sorpresa', 'lupo-vegetariano'];
 const MANO_INIZIALE = ['sasso-comodo', 'calzino-gemello', 'beee-no', 'ombrello-bucato', 'finta-svenuta'];
+// Contatore delle partite: le funzioni che aspettano si fermano se nel frattempo la partita è ricominciata
+const PARTITA = { n: 0 };
 const st = { mazzo: 46, guai: 21, pescate: 0, guaiPescati: 0, mano: [], scarti: [], angolo: { io: [], bea: [], leo: [] }, maniAvv: { bea: 5, leo: 4 },
   attiva: null, dadoOccupato: false, finito: false, salto: { x: 0, y: 0 }, rot: { x: 0, y: 0, z: 18 } };
 
@@ -1901,6 +1909,7 @@ function cimaDi(el) { const c = el.lastElementChild || el; const r = inScena(c);
 let pescaInCorso = false;
 async function pesca() {
   if (st.finito || pescaInCorso) return;
+  const n = PARTITA.n;
   if (st.mazzo <= 0) { fumetto('io', 'Il mazzo è finito'); return; }
   if (st.mano.length >= 7) { fumetto('io', 'Hai già 7 carte'); return; }
   pescaInCorso = true;
@@ -1912,21 +1921,26 @@ async function pesca() {
   const arrivo = manoInScena(posizioneMano(st.mano.length - 1, st.mano.length)); // la carta in volo sta fuori dalla mano ingrandita
   const v = volante(id, false);
   await vola(v, [{ ...da, f: 180, r: 0 }, { x: (da.x + arrivo.x) / 2 + 30, y: Math.min(da.y, arrivo.y) - 40, k: 0.55, f: 90, r: -8, o: 0.45 }, { ...arrivo, f: 0 }], st.distribuendo ? 430 : 620);
+  if (n !== PARTITA.n) { v.remove(); return; } // partita ricominciata nel frattempo
   el.style.visibility = ''; v.remove(); pescaInCorso = false; nascondiConsiglio(1);
 }
 
 async function gioca(voce) {
   if (st.finito) return;
+  REGIA.salto = false; const n = PARTITA.n; // una mossa propria spegne il salto
   const el = ELEMENTI_MANO.get(voce), i = st.mano.indexOf(voce); if (i < 0) return;
   st.mano.splice(i, 1); ELEMENTI_MANO.delete(voce); st.attiva = null; disponiMano();
   const p = el.style.transform; el.remove();
   const da = manoInScena(centroDa(p)), v = volante(voce.id, false); v.style.transform = trasf(da); suona('fruscio');
   const centro = { x: 195, y: 360, k: 0.5, r: rand(-4, 4) };
   await vola(v, [da, centro], 380);
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   effettoCarta(voce.id);
   await attesa(voce.id === 'beee-no' ? 900 : 650);
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   const dest = cimaScarti();
   await vola(v, [centro, { ...dest, r: rand(-12, 12) }], 420, 'cubic-bezier(.5,0,.5,1)');
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   v.remove(); aggiungiScarto(voce.id); suona('pop'); nascondiConsiglio(3);
 }
 function centroDa(t) {
@@ -1952,7 +1966,7 @@ function sposta(n, da, a, modo = 'corre') {
   const quanti = Math.min(n, liberi, da.agnelli.length); if (quanti <= 0) return 0;
   const cx = (a.x0 + a.x1) / 2, cy = (a.y0 + a.y1) / 2;
   const scelti = da.agnelli.filter((g) => g.stato !== 'corre' && g.stato !== 'vola' && !g.intrappolato).sort((p, q) => Math.hypot(p.x - cx, p.y - cy) - Math.hypot(q.x - cx, q.y - cy)).slice(0, quanti);
-  scelti.forEach((g, i) => dopo(() => { if (g.a === da) g.vaiIn(a, modo); }, i * 230));
+  scelti.forEach((g, i) => dopo(() => { if (g.a === da && AGNELLI.has(g)) g.vaiIn(a, modo); }, i * 230));
   return scelti.length;
 }
 function dopoArrivo(a) {
@@ -1983,6 +1997,7 @@ function creaDado() {
 const applicaRotazione = () => { $('#dado').style.transform = `translateZ(24px) rotateZ(${st.rot.z}deg) rotateX(${st.rot.x}deg) rotateY(${st.rot.y}deg)`; };
 async function tiraDado(forza) {
   if (st.dadoOccupato || st.finito) return;
+  REGIA.salto = false; const n = PARTITA.n; // una mossa propria spegne il salto
   st.dadoOccupato = true; nascondiConsiglio(1);
   const i = forza ?? Math.floor(Math.random() * 6), f = FACCE[i];
   const giri = (v) => Math.ceil(v / 360) * 360 + 720;
@@ -2004,12 +2019,16 @@ async function tiraDado(forza) {
     { transform: `translate(${a.x}px,${a.y}px) scale(.88)`, opacity: 0.8, offset: 0.82 },
     { transform: `translate(${a.x}px,${a.y}px)`, opacity: 1 },
   ], { duration: RIDOTTO ? 1 : 1150, easing: 'ease-out', fill: 'forwards', composite: 'replace' });
-  applicaRotazione();
+  // La rotazione passa dall'orologio della scena (animate), così accelera con le animazioni veloci e col salto
+  const prima = $('#dado').style.transform; applicaRotazione();
+  $('#dado').animate([{ transform: prima }, { transform: $('#dado').style.transform }], { duration: RIDOTTO ? 1 : 1150, easing: 'cubic-bezier(.2,.75,.3,1)' });
   await attesa(RIDOTTO ? 50 : 1250);
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   fumetto('io', f.nome + '!');
   if (f.tipo === 'pascolo') { suona('beee', 1); sposta(f.q, AREE.gregge, AREE.io); }
   else if (f.tipo === 'furto') furto(f.q);
   else await testata();
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   await attesa(500); st.dadoOccupato = false;
 }
 function furto(q, ladro = 'io') {
@@ -2021,6 +2040,7 @@ function furto(q, ladro = 'io') {
   if (resto > 0) dopo(() => sposta(resto, AREE.gregge, AREE[ladro]), 600);
 }
 async function testata() {
+  const n = PARTITA.n;
   const chi = avversarioConPiuAgnelli();
   const a = AREE[chi], yPista = a.y1 + 2, xImpatto = a.x0 + 10;
   const m = document.createElement('div'); m.className = 'abs';
@@ -2030,6 +2050,7 @@ async function testata() {
   const kk = profondita(yPista) * 1.1, pos = (x) => `translate(${x - 75}px,${yPista - 102}px) scale(${kk})`;
   suona('beee', 0.6);
   await m.animate([{ transform: pos(-160) }, { transform: pos(xImpatto - 40) }], { duration: RIDOTTO ? 1 : 750, easing: 'cubic-bezier(.5,0,.9,.6)', fill: 'forwards' }).finished;
+  if (n !== PARTITA.n) { m.remove(); return; }
   suona('tonfo'); reagisci(chi, 'paura'); mondo.animate([{ transform: 'none' }, { transform: 'translate(-5px,2px)' }, { transform: 'translate(4px,-2px)' }, { transform: 'none' }], { duration: RIDOTTO ? 1 : 260 });
   sposta(3, a, AREE.gregge, 'vola');
   await m.animate([{ transform: pos(xImpatto - 40) }, { transform: pos(xImpatto - 70) + ' rotate(-6deg)', offset: 0.25 }, { transform: pos(560) }], { duration: RIDOTTO ? 1 : 1100, easing: 'ease-in', fill: 'forwards' }).finished;
@@ -2046,31 +2067,41 @@ function beeeNo() {
 }
 async function beeeNoDi(chi) {
   if (chi !== 'io' && st.maniAvv[chi] <= 0) return;
+  const n = PARTITA.n;
   if (chi !== 'io') { st.maniAvv[chi]--; disegnaVentaglio(chi); }
   fumetto(chi, 'Beee-NO!'); reagisci(chi, 'salto');
   const g = GIOCATORI[chi], v = volante('beee-no', false);
   const da = chi === 'io' ? manoInScena({ x: 195, y: 800, k: 0.37, f: 0 }) : { ...inScenaDaMondo(g.ventaglio[0], g.ventaglio[1] - 14), k: 0.08, f: 180 }, centro = { x: 195, y: 360, k: 0.5, r: 5, f: 0 };
   await vola(v, [da, centro], 520);
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   beeeNo(); await attesa(900);
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   await vola(v, [centro, { ...cimaScarti(), r: rand(-12, 12) }], 420, 'cubic-bezier(.5,0,.5,1)');
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   v.remove(); aggiungiScarto('beee-no');
 }
 async function guaio(forzato, chi = 'io') {
   if (st.guai <= 0 || st.finito || !GIOCATORI[chi]) return;
+  const n = PARTITA.n;
   const id = forzato || CODA_GUAI[st.guaiPescati++ % CODA_GUAI.length], da = cimaDi($('#mazzo-guai'));
-  st.guai--; disegnaPile(); suona('fruscio');
+  st.guai--; disegnaPile(); suona('fruscio'); if (chi === 'io') vibra('guaio');
   const v = volante(id, true), centro = { x: 195, y: 360, k: 0.5, r: -3, f: 0 };
   await vola(v, [{ ...da, f: 180 }, centro], 560);
-  suona('tonfo'); fumetto(chi, CARTE[id].nome + '!'); reagisci(chi, 'paura'); if (chi === 'io') vibra('guaio');
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
+  suona('tonfo'); fumetto(chi, CARTE[id].nome + '!'); reagisci(chi, 'paura');
   if (EFFETTI_GUAIO[id]) avviaMeteo(id, chi);
   await attesa(1100);
-  const n = st.angolo[chi].length;
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
+  const quanti = st.angolo[chi].length;
   let arrivo;
-  if (chi === 'io') arrivo = { x: 29 + n * 25, y: 652, k: 38 / 250, r: (n - n / 2) * 7 };
-  else { const [gx, gy] = GIOCATORI[chi].guai; arrivo = { ...inScenaDaMondo(gx + n * 13 + 12, gy + 17), k: (24 / 250) * zoomCamera(), r: 0 }; }
+  if (chi === 'io') arrivo = { x: 29 + quanti * 25, y: 652, k: 38 / 250, r: (quanti - quanti / 2) * 7 };
+  else { const [gx, gy] = GIOCATORI[chi].guai; arrivo = { ...inScenaDaMondo(gx + quanti * 13 + 12, gy + 17), k: (24 / 250) * zoomCamera(), r: 0 }; }
   await vola(v, [centro, arrivo], 480, 'cubic-bezier(.5,0,.5,1)');
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   v.remove(); st.angolo[chi].push(id); disegnaAngolo(chi);
-  await attesa(250); fumetto(chi, 'Un agnellino di consolazione', 1600); sposta(1, AREE.gregge, AREE[chi]);
+  await attesa(250);
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
+  fumetto(chi, 'Un agnellino di consolazione', 1600); sposta(1, AREE.gregge, AREE[chi]);
 }
 /* ---------- Meteo: i Guai del tipo Meteo cambiano il prato per qualche secondo ----------
    Un solo meteo alla volta: quello nuovo ferma il precedente e ne pulisce le tracce (vale anche per il gioco vero). */
@@ -2135,7 +2166,11 @@ function lineeZoom(px, py) {
 // Avvicinandosi, il recinto dell'avversario si allarga fino alle proporzioni del tuo (verso il retro del prato e
 // verso il lato libero, mai sopra la sua pecora); allontanandosi torna com'era e gli agnellini vengono spinti dentro.
 const TWEEN = [];
-const tween = (durata, fn) => new Promise((fine) => TWEEN.push({ t: 0, durata: RIDOTTO ? 0.01 : durata, fn, fine }));
+// Un tween con una chiave sostituisce quello in corso con la stessa chiave (per esempio lo zoom annullato subito)
+const tween = (durata, fn, chiave) => new Promise((fine) => {
+  if (chiave) for (let i = TWEEN.length - 1; i >= 0; i--) if (TWEEN[i].chiave === chiave) TWEEN.splice(i, 1)[0].fine();
+  TWEEN.push({ t: 0, durata: RIDOTTO ? 0.01 : durata, fn, fine, chiave });
+});
 function aggiornaTween(dt) {
   for (let i = TWEEN.length - 1; i >= 0; i--) {
     const tw = TWEEN[i]; tw.t += dt; const q = Math.min(1, tw.t / tw.durata);
@@ -2152,10 +2187,11 @@ const mescola = (a, b, q) => Object.fromEntries(Object.keys(a).map((k) => [k, a[
 function cambiaRecinto(chi, verso, durata) {
   const A = AREE[chi], daR = { ...A.recinto }, daA = { x0: A.x0, y0: A.y0, x1: A.x1, y1: A.y1 };
   const aR = verso === 'vicino' ? recintoVicino(chi) : A.recinto0, aA = verso === 'vicino' ? areaDiRecinto(aR) : A.area0;
+  // Con la chiave, uno zoom annullato subito non lascia il recinto a metà
   return tween(durata, (q) => {
     const e = morbido(q), r = mescola({ x: daR.x, yDietro: daR.yDietro, yDavanti: daR.yDavanti, larg: daR.larg, k: daR.k }, aR, e);
     disegnaRecinto(chi, r); Object.assign(A, mescola(daA, aA, e));
-  }).then(() => {
+  }, 'recinto:' + chi).then(() => {
     // Gli agnellini usano lo spazio nuovo, o rientrano in quello vecchio
     for (const g of A.agnelli) if (!g.regia && g.stato !== 'corre' && g.stato !== 'vola') { const p = puntoLibero(A, g); g.tx = p.x; g.ty = p.y; g.stato = 'cammina'; g.poi = null; }
   });
@@ -2434,7 +2470,7 @@ const EFFETTI_GUAIO = {
         .then(() => (g.regia ? muovi(g, X + Math.cos(ang) * 50 * s, Y + Math.sin(ang) * 17 * s, 70, 9, true) : null))
         .then(() => {
           g.intrappolato = false; intrappolati.delete(g); rilascia([g], true);
-          if (corsa && AGNELLI.has(g)) { g.stato = 'corre'; g.tx = corsa.tx; g.ty = corsa.ty; g.fase = 0; } // riprende la corsa interrotta
+          if (corsa && AGNELLI.has(g)) { g.stato = 'corre'; g.tx = corsa.tx; g.ty = corsa.ty; g.fase = 0; IN_VIAGGIO.add(g); } // riprende la corsa interrotta
         });
     };
     const trappola = ogni(() => {
@@ -2550,14 +2586,30 @@ function disegnaOpzioni() {
   $('#opzioni').innerHTML = riga('suoni', 'Suoni') + (PUO_VIBRARE ? riga('vibrazione', 'Vibrazione') : '') + riga('veloci', 'Animazioni veloci') +
     '<button class="btn" type="button" data-azione="suggerimenti">Rivedi i suggerimenti</button>';
 }
+// I suoni salvati come accesi partono al primo gesto: i browser non li fanno partire da soli, e col dito
+// conta come gesto il rilascio (pointerup, touchend, click), non la pressione. Si riprova finché l'audio non va.
+function preparaSbloccoAudio() {
+  const tipi = ['pointerup', 'touchend', 'click'];
+  const prova = () => {
+    if (!OPZIONI.suoni) return;
+    Suono.accendi();
+    if (Suono.ctx && Suono.ctx.state === 'running') tipi.forEach((t) => removeEventListener(t, prova, true));
+  };
+  tipi.forEach((t) => addEventListener(t, prova, true));
+}
 function cambiaOpzione(chiave) {
   OPZIONI[chiave] = !OPZIONI[chiave]; salvaOpzioni();
   if (chiave === 'suoni') { if (OPZIONI.suoni) { Suono.accendi(); suona('beee', 1); } else Suono.spegni(); }
-  disegnaOpzioni();
+  // Si aggiorna solo l'interruttore toccato, così chi usa la tastiera non perde il punto
+  const b = $(`#opzioni [data-opzione="${chiave}"]`);
+  if (b) { b.setAttribute('aria-checked', String(OPZIONI[chiave])); b.textContent = b.textContent.replace(/: (sì|no)$/, `: ${OPZIONI[chiave] ? 'sì' : 'no'}`); }
 }
 
 /* ---------- Avvio e ricomincia ---------- */
 function preparaPartita() {
+  // Partita nuova: le funzioni della vecchia si fermano e i voli in corso finiscono subito
+  PARTITA.n++; REGIA.salto = false; pescaInCorso = false;
+  for (const a of [...ANIMAZIONI_SCENA]) { try { a.finish(); } catch (e) { a.cancel(); } }
   for (const a of [...AGNELLI]) a.togli();
   for (const a of Object.values(AREE)) { a.agnelli = []; a.mostrati = 0; }
   document.querySelectorAll('#finale, .fumetto, .volante, .pozza, .gelo, .saetta, .lampo, .decoro').forEach((e) => e.remove());
@@ -2574,7 +2626,9 @@ function preparaPartita() {
 async function distribuisci() {
   const prima = CODA_PESCATE.slice(); CODA_PESCATE.splice(0, CODA_PESCATE.length, ...MANO_INIZIALE, ...prima);
   st.distribuendo = true;
-  for (let i = 0; i < MANO_INIZIALE.length; i++) { await pesca(); await attesa(40); }
+  const n = PARTITA.n;
+  for (let i = 0; i < MANO_INIZIALE.length; i++) { if (n !== PARTITA.n) return; await pesca(); await attesa(40); }
+  if (n !== PARTITA.n) return; // partita ricominciata nel frattempo
   st.distribuendo = false;
   CODA_PESCATE.splice(0, CODA_PESCATE.length, ...prima); st.pescate = 0;
 }
@@ -2616,22 +2670,24 @@ function avvia() {
   // Qualsiasi tocco sveglia la scena dal riposo
   addEventListener('pointerdown', () => { RISPARMIO.ultimoTocco = performance.now(); RISPARMIO.riposo = false; }, true);
   // Un tocco sul prato durante un evento lo salta; mano, pulsanti e tovaglia fanno quello che fanno sempre
-  scena.addEventListener('pointerdown', (e) => {
-    if (eventoInCorso() && !inInterfaccia(e.target) && !e.target.closest('#mazzo, #mazzo-guai, #dado-pos, #scarti')) saltaEvento();
-  }, true);
   // Menu Opzioni
   const menu = $('#opzioni'), apriOpz = $('#apri-opzioni');
+  // Non salta il tocco che serve ad altro: tovaglia e sue pile, abbassare una carta sollevata, chiudere il menu
+  scena.addEventListener('pointerdown', (e) => {
+    if (!eventoInCorso() || inInterfaccia(e.target) || st.attiva || !menu.hidden) return;
+    if (!e.target.closest('#coperta, #mazzo, #mazzo-guai, #dado-pos, #scarti')) saltaEvento();
+  }, true);
   const chiudiOpzioni = () => { menu.hidden = true; apriOpz.setAttribute('aria-expanded', 'false'); };
   apriOpz.addEventListener('pointerdown', (e) => e.stopPropagation());
   apriOpz.addEventListener('click', () => { if (menu.hidden) disegnaOpzioni(); menu.hidden = !menu.hidden; apriOpz.setAttribute('aria-expanded', String(!menu.hidden)); });
   menu.addEventListener('pointerdown', (e) => e.stopPropagation());
+  menu.addEventListener('keydown', (e) => { if (e.key === 'Escape') { chiudiOpzioni(); apriOpz.focus(); } });
   menu.addEventListener('click', (e) => {
     const b = e.target.closest('[data-opzione]'); if (b) { cambiaOpzione(b.dataset.opzione); return; }
     if (e.target.closest('[data-azione="suggerimenti"]')) { chiudiOpzioni(); rivediSuggerimenti(); }
   });
   scena.addEventListener('pointerdown', () => { if (!menu.hidden) chiudiOpzioni(); });
-  // I suoni salvati come accesi partono al primo tocco: i browser non li fanno partire da soli
-  if (OPZIONI.suoni) addEventListener('pointerdown', () => { if (OPZIONI.suoni) Suono.accendi(); }, { once: true, capture: true });
+  if (OPZIONI.suoni) preparaSbloccoAudio();
   // Suggerimenti sui gesti: solo la prima volta su questo telefono
   if (consigliGiaVisti()) { passoConsiglio = CONSIGLI.length; $('#consiglio').style.opacity = 0; }
   apri.addEventListener('pointerdown', (e) => e.stopPropagation());

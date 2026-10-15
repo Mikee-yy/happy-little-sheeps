@@ -33,6 +33,22 @@ interface Punto {
   y: number;
 }
 
+/**
+ * Dal punto toccato alle coordinate dell'arena. Il disegno scala in modo uniforme e sta al centro del riquadro
+ * (preserveAspectRatio predefinito): se il riquadro è più largo o più alto del disegno, si tolgono le bande vuote.
+ * Senza misure (jsdom) si mira al centro.
+ */
+export function puntoArena(r: { left: number; top: number; width: number; height: number }, clientX: number, clientY: number): Punto {
+  if (r.width === 0) return { x: L / 2, y: H / 2 };
+  const scala = r.height > 0 ? Math.max(L / r.width, H / r.height) : L / r.width;
+  const bandaX = (r.width - L / scala) / 2;
+  const bandaY = r.height > 0 ? (r.height - H / scala) / 2 : 0;
+  return {
+    x: Math.max(0, Math.min(L, (clientX - r.left - bandaX) * scala)),
+    y: Math.max(0, Math.min(H, (clientY - r.top - bandaY) * scala)),
+  };
+}
+
 export function Testata({ v, giocatore, azioni, invia }: { v: Vista; giocatore: IdGiocatore; azioni: Azione[]; invia: (a: Azione) => void }) {
   const f = v.fase.nome === 'risoluzione_dado' ? v.fase : null;
   const bersaglio = f?.dichiarazione?.effetto === 'testata' ? f.dichiarazione.bersaglio : null;
@@ -86,15 +102,9 @@ export function Testata({ v, giocatore, azioni, invia }: { v: Vista; giocatore: 
     const dentro = p.x >= OVILE.x && p.x <= OVILE.x + OVILE.w && p.y >= OVILE.y && p.y <= OVILE.y + OVILE.h;
     return dentro ? 'vuota' : 'fuori';
   };
-  /** Dal punto toccato alle coordinate dell'arena: l'SVG è largo quanto il pannello e scala in modo uniforme. */
   const inSvg = (e: React.PointerEvent): Punto => {
     const r = svg.current?.getBoundingClientRect();
-    if (!r || r.width === 0) return { x: L / 2, y: H / 2 };
-    const scala = L / r.width;
-    return {
-      x: Math.max(0, Math.min(L, (e.clientX - r.left) * scala)),
-      y: Math.max(0, Math.min(H, (e.clientY - r.top) * scala)),
-    };
+    return r ? puntoArena(r, e.clientX, e.clientY) : { x: L / 2, y: H / 2 };
   };
 
   const giu = (e: React.PointerEvent) => {
@@ -183,13 +193,10 @@ export function Testata({ v, giocatore, azioni, invia }: { v: Vista; giocatore: 
         ))}
       </div>
       <p className="etichetta">{colpo ? T.testata.risultato(colpo.esito) : inizio ? T.testata.potenza(potenza, previsione) : T.testata.aiuto}</p>
-      {colpo && (
-        <div className="caduti">
-          {Array.from({ length: colpo.esito }, (_, i) => (
-            <Agnellino key={i} size={30} className="agnellino-rotola" />
-          ))}
-        </div>
-      )}
+      {/* Sempre presente (vuota prima del colpo): a tutta altezza l'arena non cambia misura quando arriva l'esito */}
+      <div className="caduti">
+        {colpo && Array.from({ length: colpo.esito }, (_, i) => <Agnellino key={i} size={30} className="agnellino-rotola" />)}
+      </div>
     </div>
   );
 }

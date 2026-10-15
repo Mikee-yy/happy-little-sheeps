@@ -49,8 +49,8 @@ In tutto ci sono 789 test automatici, tutti verdi all'ultimo commit.
 8. **Cose da confermare da parte tua:**
    - la prova reale della fase 4 con 3 telefoni;
    - le decisioni D1–D45, non ancora riviste una per una;
-   - lo scollegamento di Google Analytics da Firebase;
-   - la limitazione della chiave Firebase al dominio del sito e la chiusura dell'avviso di GitHub.
+   - ~~lo scollegamento di Google Analytics da Firebase~~ (fatto);
+   - ~~la limitazione della chiave Firebase al dominio del sito e la chiusura dell'avviso di GitHub~~ (fatto).
 
 ## Migliorie (aggiornato il 13 ottobre, seconda chat)
 

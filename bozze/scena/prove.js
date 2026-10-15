@@ -373,6 +373,126 @@ export async function provaDito() {
   return falliti;
 }
 
+// ---------- Correzioni dalla revisione finale (14 ottobre) ----------
+const premi = (el, tipo = 'pointerdown') => el.dispatchEvent(new PointerEvent(tipo, { bubbles: true, clientX: 5, clientY: 5, pointerId: 11, pointerType: 'touch', isPrimary: true }));
+export async function provaCorrezioni() {
+  const falliti = [], err0 = ERRORI.length;
+  await quiete();
+  // (1) saltando la pioggia, lo scroscio si ferma lo stesso
+  const s0 = { attivo: Suono.attivo, ctx: Suono.ctx, inizia: Suono.pioggiaInizia, fine: Suono.pioggiaFine };
+  let accesa = false;
+  Object.assign(Suono, { attivo: true, ctx: s0.ctx || {}, pioggiaInizia: () => { accesa = true; }, pioggiaFine: () => { accesa = false; } });
+  try {
+    avviaMeteo('pioggia-di-traverso', 'io'); await attendi(1500);
+    if (!accesa) falliti.push('(1) la pioggia non ha fatto partire lo scroscio');
+    saltaEvento(); await quiete();
+    if (accesa) falliti.push('(1) dopo il salto lo scroscio della pioggia resta acceso');
+  } finally { Object.assign(Suono, { attivo: s0.attivo, ctx: s0.ctx, pioggiaInizia: s0.inizia, pioggiaFine: s0.fine }); }
+  // (2) i suoni salvati come accesi si sbloccano al rilascio del dito, non alla pressione
+  if (typeof preparaSbloccoAudio !== 'function') falliti.push('(2) manca preparaSbloccoAudio');
+  else {
+    const acc0 = Suono.accendi, suoni0 = OPZIONI.suoni; let accensioni = 0;
+    OPZIONI.suoni = true;
+    Suono.accendi = () => { accensioni++; };
+    try {
+      preparaSbloccoAudio();
+      premi($('#scena'), 'pointerdown');
+      if (accensioni) falliti.push('(2) l\'audio prova a partire alla pressione (col dito non vale come gesto)');
+      premi($('#scena'), 'pointerup');
+      if (!accensioni) falliti.push('(2) al rilascio del dito l\'audio non prova a partire');
+    } finally { Suono.accendi = acc0; OPZIONI.suoni = suoni0; }
+  }
+  // (3) il salto non cancella la vibrazione del Guaio
+  const v0 = navigator.vibrate, opz0 = OPZIONI.vibrazione, chiamate = [];
+  navigator.vibrate = (r) => { chiamate.push(r); return true; };
+  OPZIONI.vibrazione = true;
+  try {
+    guaio('lupo-vegetariano', 'io'); await attendi(50); saltaEvento(); await quiete();
+    if (!chiamate.some((r) => JSON.stringify(r) === '[60,50,60]')) falliti.push(`(3) saltando il Guaio la vibrazione sparisce: ${JSON.stringify(chiamate)}`);
+  } finally { navigator.vibrate = v0; OPZIONI.vibrazione = opz0; }
+  // (4) con le animazioni veloci anche la rotazione del dado accelera
+  const veloci0 = OPZIONI.veloci; OPZIONI.veloci = true;
+  try {
+    tiraDado(0); await attendi(100);
+    const an = $('#dado').getAnimations();
+    if (an.some((a) => a instanceof CSSTransition)) falliti.push('(4) il dado gira ancora con una transizione CSS, che non segue la velocità');
+    if (!an.some((a) => !(a instanceof CSSTransition) && a.playbackRate === 2)) falliti.push('(4) la rotazione del dado non va a velocità 2');
+    await quiete();
+  } finally { OPZIONI.veloci = veloci0; }
+  // (5) il salto non parte toccando la tovaglia, con una carta sollevata o con il menu aperto
+  await quiete();
+  avviaMeteo('vento-dispettoso', 'io'); await attendi(300);
+  premi($('#coperta'));
+  if (REGIA.salto) falliti.push('(5) un tocco sulla tovaglia salta l\'evento');
+  REGIA.salto = false;
+  st.attiva = st.mano[0]; disponiMano();
+  premi($('#mondo'));
+  if (REGIA.salto) falliti.push('(5) il tocco che abbassa una carta sollevata salta l\'evento');
+  REGIA.salto = false; st.attiva = null; disponiMano();
+  $('#opzioni').hidden = false;
+  premi($('#mondo'));
+  if (REGIA.salto) falliti.push('(5) il tocco che chiude il menu Opzioni salta l\'evento');
+  REGIA.salto = false; $('#opzioni').hidden = true;
+  premi($('#mondo'));
+  if (!REGIA.salto) falliti.push('(5) un tocco sul prato non salta più l\'evento');
+  await quiete();
+  if (ERRORI.length > err0) falliti.push('errori: ' + ERRORI.slice(err0).join(' | ').slice(0, 300));
+  return falliti;
+}
+
+// ---------- Problemi minori della revisione (14 ottobre) ----------
+export async function provaMinori() {
+  const falliti = [], err0 = ERRORI.length;
+  if (numeroGiocatori !== 3) { cambiaGiocatori(3); await attendi(2500); }
+  await quiete();
+  // (a) "Ricomincia" a metà di un Guaio: la partita nuova parte pulita
+  guaio('lupo-vegetariano', 'io'); await attendi(300);
+  ricomincia(); await attendi(4000); await quiete(); await attendi(1500);
+  if (JSON.stringify(st.angolo.io) !== '["lupo-vegetariano"]') falliti.push(`(a) dopo Ricomincia l'angolo è ${JSON.stringify(st.angolo.io)}`);
+  const attesi = { io: DISP.agnelli.io, gregge: DISP.agnelli.gregge, ...Object.fromEntries(DISP.avversari.map((a) => [a.id, a.agnelli])) };
+  for (const [n, q] of Object.entries(attesi)) if (AREE[n].agnelli.length !== q) falliti.push(`(a) dopo Ricomincia ${n} ha ${AREE[n].agnelli.length} agnellini invece di ${q}`);
+  // (b) a 10 fotogrammi al secondo orologio e movimento avanzano insieme
+  const T0 = T, m0 = OROLOGIO.ms; await vai(2, 100);
+  const dT = (T - T0) * 1000, dm = OROLOGIO.ms - m0;
+  if (Math.abs(dT - dm) > dm * 0.05) falliti.push(`(b) a 10 fps la scena avanza di ${Math.round(dT)} ms e l'orologio di ${Math.round(dm)} ms`);
+  // (c) chi esce dalla pozzanghera e corre conta come "in viaggio"
+  await quiete();
+  avviaMeteo('pozzanghera-senza-fondo', 'io');
+  let scappati = 0;
+  while (meteoAttivo || eventoInCorso()) {
+    await attendi(50);
+    for (const g of AGNELLI) if (!g.regia && g.stato === 'corre' && !IN_VIAGGIO.has(g)) scappati++;
+  }
+  if (scappati) falliti.push(`(c) ${scappati} volte un agnellino correva senza essere in viaggio`);
+  // (d) la misura della fluidità non conta il primo fotogramma come un secondo lento
+  const f0 = { ...RISPARMIO.finestra }, l0 = RISPARMIO.secondiLenti;
+  RISPARMIO.finestra.inizio = 0; RISPARMIO.finestra.fotogrammi = 0; RISPARMIO.secondiLenti = 0;
+  misuraFluidita(5000, 0.016);
+  if (RISPARMIO.secondiLenti !== 0) falliti.push('(d) il primo fotogramma conta come un secondo lento');
+  Object.assign(RISPARMIO.finestra, f0); RISPARMIO.secondiLenti = l0;
+  // (e) zoom su un avversario annullato subito: il recinto torna esattamente com'era
+  await quiete();
+  const chi = AVVERSARI[0], A = AREE[chi], area0 = { ...A.area0 };
+  inquadra(chi); await attendi(100); sgancia(); await attendi(2500);
+  for (const k of ['x0', 'y0', 'x1', 'y1']) if (Math.abs(A[k] - area0[k]) > 0.5) { falliti.push(`(e) il recinto di ${chi} è rimasto diverso (${k} ${A[k].toFixed(1)} invece di ${area0[k].toFixed(1)})`); break; }
+  // (f) menu Opzioni: il punto resta sull'interruttore toccato, Esc lo chiude
+  $('#apri-opzioni').click();
+  const sw = interruttore('Animazioni veloci'); sw.focus(); sw.click();
+  if (document.activeElement !== interruttore('Animazioni veloci')) falliti.push('(f) dopo il tocco l\'interruttore perde il punto della tastiera');
+  interruttore('Animazioni veloci').click();
+  document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  if (!$('#opzioni').hidden) falliti.push('(f) Esc non chiude il menu Opzioni');
+  $('#opzioni').hidden = true;
+  // (g) una mossa propria spegne il salto
+  await quiete();
+  avviaMeteo('vento-dispettoso', 'io'); await attendi(300); saltaEvento();
+  tiraDado(); await attendi(50);
+  if (REGIA.salto) falliti.push('(g) tirando il dado durante un salto il salto resta acceso');
+  await quiete();
+  if (ERRORI.length > err0) falliti.push('errori: ' + ERRORI.slice(err0).join(' | ').slice(0, 300));
+  return falliti;
+}
+
 // ---------- Compito 8: riposo e modo leggero ----------
 const tocca = () => $('#scena').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: 5, clientY: 5, pointerId: 9 }));
 export async function provaRisparmio() {
@@ -455,6 +575,6 @@ export function lancia(nome, ...argomenti) {
 }
 export const stato = () => JSON.parse(JSON.stringify({ ...STATO, tempoFinto: Math.round(O.t / 1000) }));
 
-const PROVE = { installaOrologio, vai, attendi, buco, fotografia, casoMeteo, provaCompleta, riferimento, lancia, stato, provaOrologio, provaSalto, provaOpzioni, provaVibrazione, provaDito, provaRisparmio, ERRORI, O };
+const PROVE = { installaOrologio, vai, attendi, buco, fotografia, casoMeteo, provaCompleta, riferimento, lancia, stato, provaOrologio, provaSalto, provaOpzioni, provaVibrazione, provaDito, provaRisparmio, provaCorrezioni, provaMinori, ERRORI, O };
 window.PROVE = PROVE;
 export default PROVE;

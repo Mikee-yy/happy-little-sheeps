@@ -74,5 +74,5 @@ La guida non parla di animazioni. Proposta:
 
 ## Da decidere insieme
 
-- **Tovaglia:** la tieni a quadri rossi e bianchi come definitiva, o vuoi rivederla più avanti?
+- ~~**Tovaglia:** la tieni a quadri rossi e bianchi come definitiva?~~ Sì, confermata dall'utente il 14 ottobre.
 - **Le 6 illustrazioni meteo disegnate da me in bozza:** grandine, pioggia, vento, nebbia, fulmine e gelata. Vanno approvate o ridisegnate.

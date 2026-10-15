@@ -331,6 +331,8 @@ export interface Stato {
   /** Ultimi eventi (al massimo 200), per animazioni e registro. */
   eventi: Evento[];
   prossimoEvento: number;
+  /** Partita di prova: facce del dado da usare per prime, poi si torna al caso. Mai esposto nelle viste. */
+  dadoPreparato?: string[];
 }
 
 // ─── Azioni ──────────────────────────────────────────────────────────────────
@@ -440,4 +442,19 @@ export class ErroreRegola extends Error {
     this.name = 'ErroreRegola';
     this.codice = codice;
   }
+}
+
+// ─── Partita di prova ────────────────────────────────────────────────────────
+
+/** Preparazione dei primi round della partita di prova (engine/data/prova.json): si applica dopo la mescolata. */
+export interface Preparazione {
+  /** Mani iniziali (tipi di carta); se sono meno della mano iniziale si completano dalla cima del mazzo. */
+  mani: Record<IdGiocatore, IdTipoCarta[]>;
+  /** Carte da mettere in cima al mazzo principale, nell'ordine dato. */
+  cimaMazzo: IdTipoCarta[];
+  /** Guai da mettere in cima al mazzo Guai, nell'ordine dato. */
+  cimaGuai: IdTipoCarta[];
+  /** Facce del dado per i primi tiri. */
+  dado: string[];
+  primoGiocatore: IdGiocatore;
 }

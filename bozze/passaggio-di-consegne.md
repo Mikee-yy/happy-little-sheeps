@@ -41,7 +41,7 @@ il file `420c17b4-616a-46ff-ad4d-f8bd8f6ead1c.jsonl` nella cartella dei progetti
 - **Vento:** muove erba, vello delle pecore e agnellini.
 
 ### Tavolo e carte
-- **Tovaglia:** classica da picnic a quadri rossi e bianchi (decisione provvisoria: "al momento").
+- **Tovaglia:** classica da picnic a quadri rossi e bianchi (confermata dall'utente il 14 ottobre).
 - **Area carte degli avversari:** uno sterrato color sabbia, tendente al giallo, **senza sassi né ciuffi**, spostato verso i bordi dello schermo.
 - **Dado:** 3D, sempre pieno, mai trasparente, mai coperto da ciò che sta sotto.
 - **Mano a ventaglio:** tocco per sollevare, pressione lunga per leggere, trascinamento sulla tovaglia per giocare.
@@ -74,7 +74,7 @@ il file `420c17b4-616a-46ff-ad4d-f8bd8f6ead1c.jsonl` nella cartella dei progetti
 ### Da decidere o approvare
 - Le 6 illustrazioni meteo disegnate in bozza.
 - Le eccezioni alla guida di stile, scritte in `bozze/guida-stile-eccezioni.md`: ombre col sole, luce, colori d'ambiente (rosso tovaglia, sabbia, pavimento), effetti meteo, tratto delle cose lontane, animazioni. Una volta approvate vanno aggiunte a `design/guida-stile.md`.
-- Il disegno definitivo della tovaglia, da decidere insieme.
+- ~~Il disegno definitivo della tovaglia~~: confermata a quadri rossi e bianchi (14 ottobre).
 
 ## 4. Come è fatta la bozza
 
@@ -179,10 +179,18 @@ Progetto: `bozze/migliorie-progetto.md`. Piano: `bozze/migliorie-piano.md`. Regi
 
 **Esito delle prove:** tutti i test di compito verdi. Prove complete dei 72 casi passate dopo l'orologio (normale), dopo il salto (normale, veloci al 45–57% delle durate, salto con fine entro 2 s dal tocco).
 
-**Da fare alla ripresa (rinviato perché l'utente doveva spegnere il PC):**
-1. Prove complete finali sul codice definitivo: normale, veloci, salto e una in modo leggero (circa 15 minuti l'una, una alla volta, scheda davanti).
-2. Revisione finale di tutto il lavoro (A, B e le aggiunte), come prevede il metodo di esecuzione.
-3. Poi stop di fase: presentare il riassunto all'utente.
+**Chiusura del 14 ottobre:**
+- **Prove complete finali:** normale, veloci e salto, 72/72 ciascuna. In modo leggero 72/72, con al massimo 60 particelle.
+- **Revisione finale** fatta da un revisore separato, senza problemi critici. Sono state corrette, ciascuna con una prova `provaCorrezioni`:
+  - pioggia che restava accesa dopo un salto;
+  - suoni salvati che non si sbloccavano col dito;
+  - salto che cancellava la vibrazione;
+  - dado che girava fuori dall'orologio della scena;
+  - salto che partiva toccando la tovaglia, una carta sollevata o il menu.
+- **Problemi minori** in `bozze/da-fare.md`.
+- **Nel gioco:** "Nuova partita" ora riparte con dati nuovi, su richiesta dell'utente; le scelte restano solo andando e tornando dalle Regole. 799 test verdi.
+- **Non fatto:** il controllo con "Riduci movimento", perché il browser interno non simula la preferenza.
+- **Pubblicazione:** le correzioni del 14 ottobre non sono ancora pubblicate.
 
 ## 5. Problemi aperti noti
 - La bozza non ha più lavori a metà: pioggia sistemata, disposizione a 2 giocatori fatta, prove complete passate.
@@ -195,12 +203,12 @@ Progetto: `bozze/migliorie-progetto.md`. Piano: `bozze/migliorie-piano.md`. Regi
 ## 6. Cose che l'utente deve ancora confermare
 - La prova reale della fase 4 con 3 telefoni.
 - Le decisioni D1–D45 in `docs/motore.md`.
-- Lo scollegamento di Google Analytics da Firebase.
-- La limitazione della chiave Firebase al dominio del sito e la chiusura dell'avviso di GitHub.
+- ~~Lo scollegamento di Google Analytics da Firebase~~: già fatto dall'utente (confermato il 14 ottobre).
+- ~~La limitazione della chiave Firebase al dominio del sito e la chiusura dell'avviso di GitHub~~: fatto dall'utente (confermato il 14 ottobre).
 
 ## 7. Prossimo passo (in attesa della scelta dell'utente)
 
-Prima di tutto: chiudere le migliorie (vedi "Da fare alla ripresa" nella sezione 4). Poi la parte C, **partita di prova** dalla schermata principale: tu contro 2 bot, mazzo preparato, suggerimenti col pensiero della tua pecora. È già approvata come idea dall'utente e va fatta nel gioco di oggi, con un suo progetto scritto. Dopo, l'ordine consigliato:
+Le migliorie sono chiuse (14 ottobre), in attesa del via libera dell'utente. Poi la parte C, **partita di prova** dalla schermata principale: tu contro 2 bot, mazzo preparato, suggerimenti col pensiero della tua pecora. È già approvata come idea dall'utente e va fatta nel gioco di oggi, con un suo progetto scritto. Dopo, l'ordine consigliato:
 1. Portare la scena nel gioco vero (`client/`): una regia legge gli eventi del motore e li trasforma in animazioni uguali su tutti i telefoni. La parte degli agnellini va riscritta con dei test.
 2. 5–6 giocatori: limiti del motore, bilanciamento col simulatore, 2 pecore nuove.
 3. Orizzontale.
@@ -211,3 +219,33 @@ Altro ancora da fare:
 - fase 6.
 
 **Non iniziare nessuno di questi lavori senza la conferma dell'utente.**
+
+## Partita di prova (14 ottobre)
+
+Progetto `bozze/partita-prova-progetto.md`, piano `bozze/partita-prova-piano.md`, registro `.superpowers/sdd/partita-prova-piano/progress.md`. Non pubblicata (si pubblica con la nuova grafica).
+- **Motore:** `nuovaPartita` accetta `preparazione` (mani, cima del mazzo e dei Guai, primi tiri del dado `dadoPreparato`); dati in `engine/data/prova.json` (`PROVA`). Test `engine/test/prova.test.ts`, che controlla anche la storia dei tre round con i bot veri.
+- **Sessione:** `sync/prova.ts` (`SessioneProva`): seme fisso 7, bot con la strategia "semplice" e lo stesso generatore della prova del motore, pausa 1 s, niente salvataggio, `chiudi()` ferma i bot.
+- **Gioco:** pulsante "Partita di prova" nella Home; `client/src/prova/` (`regiaProva.ts`, `guida.ts` con i 15 consigli in ordine, `PartitaProva.tsx`); `Partita` ha `umano` e `testa`; in `App` la prova resta montata mentre si leggono le Regole.
+- **Storia dei tre round** (giocando le carte "ovvie"): 1) tu tiri Pascolo, Bea prende il Lupo; 2) Bea tira Furto contro di te (Beee-NO!), tu prendi la Grandine; 3) tu tiri Testata, Bea prende Crisi esistenziale. Poi "Ora sai come si gioca!".
+
+## Scena nel gioco, pezzo 1 (15 ottobre, fatto, in attesa della revisione finale)
+
+Il punto 3 ("portare la scena nel gioco vero") è diviso in 4 pezzi: 1) la scena entra nel gioco, 2) la regia che recita gli eventi, 3) le scelte dentro la scena, 4) le stanze. Si pubblica dopo i pezzi 1–3, con la partita su un dispositivo e la prova; le stanze tengono per un po' la grafica di oggi. Progetto del pezzo 1: `bozze/scena-gioco-1-progetto.md`; piano: `bozze/scena-gioco-1-piano.md` (12 compiti). Registro con tutte le scelte: `.superpowers/sdd/scena-gioco-1-piano/progress.md` (fuori da git).
+
+**Stato al 15 ottobre:**
+- Tutti i 12 compiti sono fatti e revisionati. Restano la revisione finale di tutto (revisore ad alto impegno) e lo stop di fase.
+- Nella partita su un dispositivo e nella partita di prova si gioca dentro la scena 2,5D; le scelte si fanno ancora con i pannelli di oggi, in un cassetto. La scena mostra sempre lo stato vero della partita. Le stanze (`client/src/remoto/`) non cambiano.
+- Regola anti-sbirciate: la mano di chi sta in basso è scoperta solo nella schermata privata, quando ha il telefono; durante "Passa a …" e nelle schermate pubbliche si vedono i dorsi. Nella partita di prova la mano di "Tu" è sempre scoperta (un solo umano).
+- Corretto il 15 ottobre: targhe degli avversari con nomi lunghi (dentro lo schermo e senza sovrapposizioni a 2, 3 e 4 giocatori), Testata che sta tutta nello schermo senza scorrere, consiglio del tratto della prova ("Nerina se la cava con i Predatori…"), scena caricata a parte (React.lazy, con confine d'errore e pulsante "Riprova"; tolta la soglia alzata in `vite.config.ts`).
+- Verificato: partita a 3 intera nel browser (390×844) senza errori in console; nella pagina di sviluppo 72/72 eventi in modo normale, veloce, salto e leggero.
+- Decisioni dell'utente: recinti "base" e simboli delle carte senza disegno approvati per ora, da rivedere (in `da-fare.md`). Vitest usa i fili (`pool: 'threads'`) e le scorciatoie `npm`/`npx` in `.tools/bin` lanciano il programma direttamente, per evitare le finestre di terminale.
+- Niente pubblicato, niente commit.
+
+**Mappa dei file** (`client/src/scena/`, tranne dove indicato):
+- `teatro.ts`: `creaTeatro`, unico punto d'accesso (`allinea(foto, modo)`, `distruggi`, `adatta`, `sospendi`). `ciclo.ts` è il ciclo di animazione, automatico o manuale.
+- `fotografia.ts`: funzione pura che traduce la vista del motore in ciò che la scena mostra. `contesto.ts`: ciò che i moduli condividono (DOM, orologio, aree, servizi). `orologio.ts`, `misure.ts`, `disposizioni.ts` + `.json` (geometria per posto, 2/3/4 giocatori), `piattaforma.ts` (API del browser con ripiego per jsdom).
+- `scheletro.ts` e `scena.css`: DOM e stili, tutto sotto `.teatro`.
+- Cartelle: `servizi/` (opzioni, regia, risparmio, suoni, consigli), `ambiente/` (paesaggio, flora, particelle, cielo), `personaggi/` (agnelli, branco, pecore), `carte/`, `tavolo/` (recinti, postazioni, coperta), `meteo/`, `sviluppo/`.
+- `mano.ts`, `lettura.ts`, `camera.ts`, `ordini.ts` (dado, testata, Beee-NO!, Guai, voli di carte).
+- React: `Scena.tsx` monta il teatro; `ScenaCaricata.tsx` e `caricaScena.ts` (in `client/src/partita/`) la caricano a parte; `OpzioniScena.tsx` ha gli interruttori delle Opzioni.
+- Sviluppo: `client/scena.html` (non pubblicata), `aiuti-prova.ts` (contesto finto e partite simulate per le prove).

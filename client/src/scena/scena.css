@@ -1,0 +1,284 @@
+/* Scena unica, sempre di giorno sul prato: un solo aspetto voluto, niente tema scuro.
+   La scena è disegnata in un riquadro logico 390×844 (telefono in verticale) e scalata per stare nello schermo. */
+.teatro {
+  /* Nomi brevi della bozza, presi dai token del progetto (design/design-tokens.css) */
+  --notte: var(--colore-inchiostro); --gesso: var(--colore-carta); --nebbia: var(--colore-sfondo); --menta: var(--colore-menta); --lilla: var(--colore-lilla);
+  --albicocca: var(--colore-albicocca); --limone: var(--colore-limone); --fango: var(--colore-fango); --celeste: var(--colore-celeste); --ombra-pulsante: var(--colore-ombra-pulsante);
+  color-scheme: light;
+  position: relative; width: 100%; height: 100%;
+}
+@property --cielo { syntax: '<color>'; inherits: true; initial-value: #B5D6F2; }
+@property --orizzonte { syntax: '<color>'; inherits: true; initial-value: #E4E9F2; }
+@property --prato { syntax: '<color>'; inherits: true; initial-value: #9ED9C3; }
+@property --sole { syntax: '<color>'; inherits: true; initial-value: #F2E27A; }
+@property --stelle { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --nuvola { syntax: '<color>'; inherits: true; initial-value: #FBFAF5; }
+.teatro [hidden] { display: none !important; }
+.teatro { font-family: var(--font-testo); color: var(--notte); -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+.teatro .schermo { position: relative; height: 100%; overflow: hidden; background: var(--cielo);
+  --collina: color-mix(in srgb, var(--prato) 58%, var(--orizzonte));
+  --pavimento: color-mix(in srgb, var(--fango) 42%, var(--prato));
+  --sabbia: color-mix(in srgb, #F2E27A 48%, #CDB08F);
+  --erba: color-mix(in srgb, var(--prato) 80%, var(--notte));
+  transition: --cielo 2.6s, --orizzonte 2.6s, --prato 2.6s, --sole 2.6s, --stelle 2.6s, --nuvola 2.6s; }
+.teatro .schermo.ora-giorno { --cielo: #B5D6F2; --orizzonte: #E4E9F2; --prato: #9ED9C3; --sole: #F2E27A; --stelle: 0; --nuvola: #FBFAF5; }
+.teatro .schermo.ora-pomeriggio { --cielo: #B5D6F2; --orizzonte: #F2E27A; --prato: #9ED9C3; --sole: #F2E27A; --stelle: 0; --nuvola: #FBFAF5; }
+.teatro .schermo.ora-tramonto { --cielo: #C4B3EE; --orizzonte: #F7B98B; --prato: color-mix(in srgb, #9ED9C3 84%, #F7B98B); --sole: #F7B98B; --stelle: 0; --nuvola: color-mix(in srgb, #FBFAF5 75%, #F7B98B); }
+.teatro .schermo.ora-sera { --cielo: color-mix(in srgb, #C4B3EE 58%, #23264A); --orizzonte: #C4B3EE; --prato: color-mix(in srgb, #9ED9C3 76%, #23264A); --sole: #F7B98B; --stelle: 1; --nuvola: color-mix(in srgb, #FBFAF5 70%, #C4B3EE); }
+/* Temporale (eventi meteo): vince sull'ora del giorno finché dura */
+.teatro .schermo.tempesta { --cielo: color-mix(in srgb, #C4B3EE 50%, #23264A); --orizzonte: color-mix(in srgb, #E4E9F2 65%, #C4B3EE); --prato: color-mix(in srgb, #9ED9C3 80%, #23264A); --nuvola: color-mix(in srgb, #E4E9F2 72%, #23264A); }
+.teatro .scena { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform-origin: 0 0; }
+.teatro .camera { position: absolute; inset: 0; transform-origin: 0 0; }
+.teatro .mondo { position: absolute; inset: 0; }
+.teatro .ui { position: absolute; inset: 0; pointer-events: none; }
+.teatro .hud,
+.teatro .opzioni,
+.teatro .eventi,
+.teatro .azioni-carta,
+.teatro .lettura,
+.teatro .finale { pointer-events: auto; }
+.teatro .consiglio { pointer-events: none; }
+.teatro .abs { position: absolute; }
+/* Cielo e paesaggio: fasce piatte che vanno oltre i bordi del riquadro, così lo schermo largo resta pieno */
+.teatro .cielo { position: absolute; left: -1400px; top: -2400px; width: 3190px; height: 2560px; background: var(--cielo); }
+/* cielo di un solo colore: niente fascia sull orizzonte */
+.teatro .cielo-svg,
+.teatro .nuvole-svg,
+.teatro .paesaggio,
+.teatro .flora { position: absolute; left: 0; top: 0; overflow: visible; }
+.teatro .stelle { opacity: var(--stelle); }
+/* Quando una nuvola copre il sole il prato si scurisce appena; le ombre sotto le cose seguono il sole */
+.teatro .penombra { position: absolute; left: -1400px; top: -600px; width: 3190px; height: 1700px; background: var(--notte); opacity: 0; pointer-events: none; z-index: 1950; }
+.teatro .ombra-recinto { fill: var(--notte); opacity: var(--oop, .15); }
+/* Pecore */
+.teatro .pecora { position: absolute; transform-origin: 50% 92%; }
+.teatro .pecora .reazione { transform-origin: 50% 92%; }
+.teatro .pecora svg { display: block; width: 100%; height: auto; overflow: visible; }
+.teatro .targa { position: absolute; transform: translateX(-50%); white-space: nowrap; font: 800 11px/1 var(--font-titoli); letter-spacing: .08em; text-transform: uppercase;
+  background: var(--gesso); border: 2px solid var(--notte); border-radius: 999px; padding: 4px 9px 3px; }
+.teatro .targa.turno { background: var(--limone); }
+.teatro .ventaglio { position: absolute; width: 0; height: 0; }
+.teatro .ventaglio i { position: absolute; left: -11px; top: -29px; width: 22px; height: 31px; transform-origin: 50% 115%; }
+/* Il tappetino davanti a ogni avversario: lì stanno le sue carte coperte e i suoi Guai, su un fondo pulito */
+.teatro .tappetino { position: absolute; background: var(--gesso); border: 2px solid var(--notte); border-radius: 12px; box-shadow: 0 3px 0 rgba(35,38,74,.18); z-index: 290; }
+.teatro .ventaglio svg,
+.teatro .mini svg { display: block; width: 100%; height: 100%; }
+.teatro .mini { position: absolute; transform-origin: 50% 100%; }
+/* Recinti */
+.teatro .recinto { position: absolute; overflow: visible; pointer-events: none; }
+.teatro .cartello { position: absolute; transform: translateX(-50%); font: 800 14px/1 var(--font-titoli); font-variant-numeric: tabular-nums; background: var(--fango);
+  border: 2.5px solid var(--notte); border-radius: 6px; padding: 5px 8px 4px; white-space: nowrap; }
+.teatro .cartello.piccolo { font-size: 10px; padding: 3px 5px 2px; border-width: 2px; }
+.teatro .cartello.quasi { background: var(--limone); }
+/* Agnellini */
+.teatro .agn { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.teatro .agn svg.ombra { position: absolute; left: -14px; top: -25.8px; width: 28px; height: 28px; transform-origin: 14px 25.8px; filter: brightness(0); opacity: var(--oop, .15); pointer-events: none; }
+.teatro .agn .corpo { position: absolute; left: 0; top: 0; width: 28px; height: 28px; transform-origin: 14px 25.8px; cursor: pointer; }
+.teatro .agn svg { display: block; width: 28px; height: 28px; overflow: visible; }
+/* Meteo */
+.teatro .pozza,
+.teatro .saetta { position: absolute; overflow: visible; pointer-events: none; }
+.teatro .saetta { left: 0; top: 0; z-index: 3200; }
+.teatro .pozza .cerchio { transform-box: fill-box; transform-origin: 50% 50%; animation: increspa 1.8s ease-out infinite; }
+.teatro .pozza .cerchio.due { animation-delay: -.9s; }
+@keyframes increspa { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.teatro .pozza .occhi-lupo { transform-box: fill-box; transform-origin: 50% 50%; animation: an-palpebra 2.6s ease-in-out infinite; }
+.teatro .lampo { position: absolute; left: -1400px; top: -600px; width: 3190px; height: 1700px; background: var(--gesso); z-index: 3250; pointer-events: none; opacity: 0; }
+.teatro .gelo { position: absolute; left: -1400px; top: -600px; width: 3190px; height: 1700px; background: var(--celeste); z-index: 1940; pointer-events: none; opacity: 0; mix-blend-mode: multiply; }
+.teatro .nebbia-svg { position: absolute; left: 0; top: 0; overflow: visible; z-index: 1900; pointer-events: none; opacity: .84; }
+.teatro .flora path { transition: stroke .8s, opacity .8s, stroke-width .8s; }
+.teatro .flora.ghiacciato path { stroke: var(--gesso); opacity: .95; stroke-width: 2.6; }
+.teatro .pozza .mulinello { transform-box: view-box; transform-origin: 0 0; animation: mulinello 1.4s linear infinite; }
+@keyframes mulinello { to { transform: rotate(-360deg); } }
+.teatro .pozza .nuvoletta { transform-box: fill-box; transform-origin: 50% 50%; }
+.teatro .agn .corpo svg.extra { position: absolute; left: 0; top: 0; pointer-events: none; }
+.teatro [data-chi],
+.teatro .agn { transition: opacity .6s; }
+.teatro .linee-zoom { position: absolute; overflow: visible; pointer-events: none; z-index: 2400; }
+.teatro .terreno { position: absolute; overflow: visible; z-index: 290; pointer-events: none; }
+.teatro .mano.ventoso .cm svg { transform-origin: 50% 100%; animation: svolazza .32s ease-in-out infinite alternate; }
+@keyframes svolazza { from { transform: rotate(-2deg) skewX(-2deg); } to { transform: rotate(2.5deg) skewX(2deg); } }
+/* Illustrazioni delle carte in primo piano */
+.teatro .anima .an { transform-box: fill-box; transform-origin: 50% 50%; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+.teatro .anima .an-germoglio { transform-origin: 50% 100%; animation-name: an-oscilla; animation-duration: 2.6s; }
+.teatro .anima .an-luccica { animation-name: an-luccica; animation-duration: 2.2s; }
+.teatro .anima .an-calza { transform-origin: 55% 4%; animation-name: an-oscilla-piccola; animation-duration: 1.9s; }
+.teatro .anima .an-r2 { animation-delay: -1s; }
+.teatro .anima .an-ondeggia { transform-origin: 50% 100%; animation-name: an-oscilla-piccola; animation-duration: 3s; }
+.teatro .anima .an-gocce { animation-name: an-cade; animation-duration: 1.3s; animation-timing-function: ease-in; }
+.teatro .anima .an-campana { transform-origin: 50% 0%; animation-name: an-campana; animation-duration: 1.4s; }
+.teatro .anima .an-batacchio { transform-origin: 50% -140%; animation-name: an-campana; animation-duration: 1.4s; animation-direction: reverse; }
+.teatro .anima .an-onde { animation-name: an-onde; animation-duration: .7s; animation-timing-function: ease-out; }
+.teatro .anima .an-urlo { animation-name: an-urlo; animation-duration: 1.6s; }
+.teatro .anima .an-pop { transform-origin: 50% 80%; animation-name: an-pop; animation-duration: 2.4s; animation-timing-function: ease-out; }
+.teatro .anima .an-tratteggio { animation-name: an-tratteggio; animation-duration: .8s; animation-timing-function: linear; }
+.teatro .anima .an-zampe { transform-origin: 50% 100%; animation-name: an-zampe; animation-duration: 1.2s; }
+.teatro .anima .an-stella { animation-name: an-stella; animation-duration: 2.2s; animation-timing-function: linear; }
+.teatro .anima .an-nuvola { animation-name: an-galleggia; animation-duration: 3s; }
+.teatro .anima .an-chicco { animation-name: an-chicco; animation-duration: 1.6s; animation-timing-function: cubic-bezier(.5,0,.8,.6); }
+.teatro .anima .an-cespuglio { transform-origin: 50% 100%; animation-name: an-fruscia; animation-duration: 2.8s; }
+.teatro .anima .an-occhi { animation-name: an-palpebra; animation-duration: 3.4s; }
+.teatro .anima .an-pupille { animation-name: an-pupille; animation-duration: 3.4s; }
+.teatro .anima .an-lampo { animation-name: an-lampo; animation-duration: 2.2s; animation-timing-function: steps(1); }
+.teatro .anima .an-pioggia { animation-name: an-pioggia; animation-duration: .45s; animation-timing-function: linear; }
+.teatro .anima .an-banco { animation-name: an-banco; animation-duration: 4s; }
+.teatro .anima .an-vortice { animation-name: an-vortice; animation-duration: 1s; animation-timing-function: linear; }
+.teatro .anima .an-ciuffo { animation-name: an-ciuffo; animation-duration: 1.8s; }
+.teatro .anima .an-ruota { animation-name: an-ruota; animation-duration: 14s; animation-timing-function: linear; }
+.teatro .anima .an-pulsa { animation-name: an-pulsa; animation-duration: 2s; }
+.teatro .anima .an-increspa { animation-name: an-increspa; animation-duration: 2s; animation-timing-function: ease-out; }
+@keyframes an-oscilla { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes an-oscilla-piccola { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes an-luccica { 0%, 55%, 100% { transform: scale(0) rotate(0); } 70% { transform: scale(1.2) rotate(45deg); } 85% { transform: scale(.9) rotate(80deg); } }
+@keyframes an-cade { 0% { transform: translateY(-10px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(34px); opacity: 0; } }
+@keyframes an-campana { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(13deg); } }
+@keyframes an-onde { 0% { transform: scale(.8); opacity: .2; } 45% { opacity: 1; } 100% { transform: scale(1.18); opacity: 0; } }
+@keyframes an-urlo { 0%, 58%, 100% { transform: scale(1) rotate(0); } 64% { transform: scale(1.09) rotate(-2.5deg); } 70% { transform: scale(1.07) rotate(2.5deg); } 76% { transform: scale(1.08) rotate(-1.5deg); } 84% { transform: scale(1) rotate(0); } }
+@keyframes an-pop { 0%, 30%, 100% { transform: scale(1); } 8% { transform: scale(1.14); } 16% { transform: scale(.95); } 22% { transform: scale(1.02); } }
+@keyframes an-tratteggio { to { stroke-dashoffset: -12; } }
+@keyframes an-zampe { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-7deg); } 80% { transform: rotate(6deg); } 90% { transform: rotate(-3deg); } }
+@keyframes an-stella { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.3); } 100% { transform: rotate(360deg) scale(1); } }
+@keyframes an-galleggia { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes an-chicco { 0% { transform: translateY(-48px); opacity: 0; } 15% { opacity: 1; } 68% { transform: translateY(0); } 78% { transform: translateY(-7px); } 88% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(0); opacity: 0; } }
+@keyframes an-fruscia { 0%, 40%, 100% { transform: rotate(0); } 46% { transform: rotate(-2deg); } 52% { transform: rotate(2deg); } 58% { transform: rotate(-1deg); } 64% { transform: rotate(0); } }
+@keyframes an-palpebra { 0%, 42%, 50%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.08); } }
+@keyframes an-pupille { 0%, 15% { transform: translateX(0); } 25%, 38% { transform: translateX(-4px); } 55%, 80% { transform: translateX(4px); } 92%, 100% { transform: translateX(0); } }
+@keyframes an-lampo { 0%, 100% { opacity: 1; } 8% { opacity: .25; } 12% { opacity: 1; } 16% { opacity: .35; } 20% { opacity: 1; } }
+@keyframes an-pioggia { to { stroke-dashoffset: -22; } }
+@keyframes an-banco { 0%, 100% { transform: translateX(-10px); } 50% { transform: translateX(12px); } }
+@keyframes an-vortice { to { stroke-dashoffset: -35; } }
+@keyframes an-ciuffo { 0%, 100% { transform: translate(0, 0) rotate(-10deg); } 50% { transform: translate(10px, -10px) rotate(14deg); } }
+@keyframes an-ruota { to { transform: rotate(360deg); } }
+@keyframes an-pulsa { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes an-increspa { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+.teatro .decoro { position: absolute; z-index: 1500; pointer-events: none; }
+.teatro .decoro svg { display: block; overflow: visible; }
+.teatro .belino { display: block; transform: translate(-50%, -100%); font: 800 11px/1 var(--font-titoli); background: var(--gesso); border: 1.8px solid var(--notte); border-radius: 999px; padding: 3px 7px 2px; white-space: nowrap; }
+.teatro .belino.piccolo { font-size: 9px; padding: 2px 5px 1px; }
+.teatro .zeta { position: absolute; font: 800 11px var(--font-titoli); color: var(--notte); pointer-events: none; z-index: 1500; }
+/* Coperta da picnic in prospettiva: le carte ci stanno sopra con il loro spessore */
+.teatro .piano { position: absolute; z-index: 355; left: 20px; top: 130px; width: 350px; height: 350px; perspective: 640px; perspective-origin: 50% 30%; pointer-events: none; }
+.teatro .coperta { position: absolute; inset: 0; transform-origin: 50% 100%; transform: rotateX(50deg); transform-style: preserve-3d; border: 3px solid var(--notte); border-radius: 24px;
+  /* Tovaglia da picnic a quadri rossi e bianchi: due righe rosse semitrasparenti che si incrociano */
+  --rosso-tovaglia: rgba(214, 64, 52, .55);
+  background-color: var(--gesso);
+  background-image: repeating-linear-gradient(90deg, var(--rosso-tovaglia) 0 25px, transparent 25px 50px),
+                    repeating-linear-gradient(0deg, var(--rosso-tovaglia) 0 25px, transparent 25px 50px); }
+.teatro .pila { position: absolute; width: 74px; height: 104px; transform-style: preserve-3d; pointer-events: auto; cursor: pointer; }
+.teatro .pila::before { content: ""; position: absolute; inset: 0; transform: translate(var(--ox, 5px), var(--oy, 6px)); background: var(--notte); opacity: var(--oop, .16); border-radius: 7px; }
+.teatro .strato { position: absolute; inset: 0; background: var(--gesso); border: 1.5px solid var(--notte); border-radius: 6px; }
+.teatro .strato.cima { border: 0; background: none; }
+.teatro .strato.cima svg { display: block; width: 100%; height: 100%; }
+.teatro .vuoto { position: absolute; inset: 0; border: 2.5px dashed var(--notte); border-radius: 7px; opacity: .45; }
+.teatro .scarto { position: absolute; inset: 0; }
+.teatro .scarto svg { display: block; width: 100%; height: 100%; }
+.teatro .dicitura { position: absolute; transform: translateX(-50%); font: 800 13px/1 var(--font-titoli); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; color: var(--notte);
+  background: var(--gesso); border: 2px solid var(--notte); border-radius: 999px; padding: 5px 9px 4px; }
+/* Il dado vive su una copia trasparente della tovaglia, un gradino sopra: così mentre rotola non finisce mai "sotto"
+   la tovaglia o le carte. Sulla tovaglia vera resta solo la sua ombra. */
+.teatro .dado-piano { position: absolute; z-index: 356; left: 20px; top: 130px; width: 350px; height: 350px; perspective: 640px; perspective-origin: 50% 30%; pointer-events: none; }
+.teatro .dado-coperta { position: absolute; inset: 0; transform-origin: 50% 100%; transform: rotateX(50deg); transform-style: preserve-3d; border: 3px solid transparent; }
+.teatro .dado-base,
+.teatro .dado-pos { position: absolute; left: 150px; top: 218px; width: 48px; height: 48px; }
+.teatro .dado-pos { transform-style: preserve-3d; pointer-events: auto; cursor: pointer; }
+.teatro .dado-ombra { position: absolute; inset: 3px; background: var(--notte); border-radius: 10px; }
+.teatro .dado-ombra-sole { position: absolute; inset: 0; opacity: var(--oop, .16); transform: translate(var(--ox, 6px), var(--oy, 7px)) scale(1.05); }
+.teatro .dado-salto { position: absolute; inset: 0; transform-style: preserve-3d; }
+.teatro .dado { position: absolute; inset: 0; transform-style: preserve-3d; }
+/* Facce piene: gli angoli fuori dal disegno della faccia sono color inchiostro, come uno spigolo, mai trasparenti */
+.teatro .fd { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 4px; background: var(--notte); }
+.teatro .fd svg { display: block; width: 100%; height: 100%; }
+/* Carte in mano e carte in volo */
+.teatro .mano { position: absolute; inset: 0; pointer-events: none; z-index: 2000; }
+.teatro .cm,
+.teatro .volante { position: absolute; left: 0; top: 0; width: 250px; height: 350px; transform-origin: 50% 50%; }
+.teatro .cm { pointer-events: auto; touch-action: none; cursor: grab; transition: transform .4s cubic-bezier(.3,1.25,.5,1), filter .3s;
+  filter: drop-shadow(0 7px 0 rgba(35,38,74,.22)); }
+.teatro .cm.attiva { filter: drop-shadow(0 26px 0 rgba(35,38,74,.16)); }
+.teatro .cm.spenta { filter: drop-shadow(0 7px 0 rgba(35,38,74,.22)) brightness(.93); }
+.teatro .cm.trascinata { transition: none; cursor: grabbing; filter: drop-shadow(0 30px 0 rgba(35,38,74,.14)); }
+.teatro .cm svg { display: block; width: 100%; height: 100%; }
+/* Dorsi della mano coperta: niente tocco, niente lettura */
+.teatro .cm.dorso { pointer-events: none; cursor: default; }
+.teatro .volante { transform-style: preserve-3d; z-index: 3000; pointer-events: none; filter: drop-shadow(0 18px 0 rgba(35,38,74,.16)); }
+.teatro .faccia { position: absolute; inset: 0; backface-visibility: hidden; }
+.teatro .faccia svg { display: block; width: 100%; height: 100%; }
+.teatro .retro { transform: rotateY(180deg); }
+.teatro .azioni-carta { position: absolute; left: 0; right: 0; top: 628px; display: flex; justify-content: center; gap: 12px; z-index: 2600; }
+/* Interfaccia: pulsanti, suggerimenti, fumetti */
+.teatro .btn { font: 800 13px/1 var(--font-titoli); letter-spacing: .06em; text-transform: uppercase; color: var(--notte); background: var(--gesso);
+  border: 2.5px solid var(--notte); border-radius: 14px; box-shadow: 0 4px 0 var(--ombra-pulsante); padding: 10px 14px 9px; cursor: pointer; }
+.teatro .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ombra-pulsante); }
+.teatro .btn.primario { background: var(--limone); }
+.teatro .btn:focus-visible { outline: 3px solid var(--notte); outline-offset: 3px; }
+.teatro .hud { position: absolute; left: 12px; right: 12px; top: 10px; display: flex; justify-content: space-between; z-index: 4000; }
+.teatro .hud .btn { padding: 8px 12px 7px; font-size: 12px; }
+.teatro .consiglio { position: absolute; left: 50%; top: 646px; height: 14px; box-sizing: border-box; transform: translateX(-50%); z-index: 3900; white-space: nowrap; font: 700 10px/10px var(--font-testo);
+  /* In coordinate della scena (scalata con S, senza ingrandimento della mano): tra la staccionata davanti del recinto in basso (paletti fino a ~644) e la cima delle carte (690 a riposo con ingrandimento 1,25) */
+  background: var(--gesso); border: 1.5px solid var(--notte); border-radius: 999px; padding: 1px 9px 0; transition: opacity .4s; }
+/* Menu Opzioni: sotto il pulsante a sinistra, nello stile del pannello di prova */
+.teatro .opzioni { position: absolute; left: 12px; top: 56px; z-index: 4100; background: var(--gesso); border: 2.5px solid var(--notte); border-radius: 14px;
+  box-shadow: 0 6px 0 var(--notte); padding: 12px; display: grid; gap: 9px; width: 210px; }
+.teatro .opzioni .btn { text-align: left; font-size: 12px; box-shadow: 0 3px 0 var(--ombra-pulsante); }
+.teatro .opzioni [role=switch][aria-checked="true"] { background: var(--limone); }
+.teatro .eventi { position: absolute; right: 12px; top: 56px; z-index: 4100; background: var(--gesso); border: 2.5px solid var(--notte); border-radius: 14px;
+  box-shadow: 0 6px 0 var(--notte); padding: 12px; display: grid; gap: 9px; width: 230px; }
+.teatro .eventi .btn { text-align: left; font-size: 12px; box-shadow: 0 3px 0 var(--ombra-pulsante); }
+.teatro .griglia-eventi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.teatro .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.teatro .eventi .btn.chip { padding: 6px 9px 5px; font-size: 11px; box-shadow: 0 2px 0 var(--ombra-pulsante); }
+.teatro .eventi .btn.chip.attivo { background: var(--limone); }
+.teatro .griglia-eventi .btn { padding: 8px 8px 7px; }
+.teatro .eventi p { margin: 0 0 2px; font: 700 11px var(--font-testo); letter-spacing: .12em; text-transform: uppercase; }
+.teatro .fumetto { position: absolute; z-index: 3500; font: 800 15px/1.1 var(--font-titoli); background: var(--gesso); border: 2.5px solid var(--notte); border-radius: 14px;
+  padding: 7px 11px 6px; white-space: nowrap; pointer-events: none; transform-origin: 50% 100%; }
+.teatro .fumetto::after { content: ""; position: absolute; left: var(--coda, 50%); bottom: -9px; width: 12px; height: 12px; background: var(--gesso);
+  border-right: 2.5px solid var(--notte); border-bottom: 2.5px solid var(--notte); transform: translateX(-50%) rotate(45deg); }
+.teatro .scoppio { position: absolute; left: 195px; top: 380px; width: 270px; height: 150px; margin: -75px 0 0 -135px; z-index: 3600; pointer-events: none; opacity: 0; }
+.teatro .lettura { position: absolute; inset: -400px -600px 0; z-index: 5000; background: rgba(35,38,74,.62); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 150px; gap: 16px; }
+.teatro .lettura .grande { width: 270px; height: 378px; filter: drop-shadow(0 10px 0 rgba(14,16,48,.5)); }
+.teatro .lettura .grande svg { width: 100%; height: 100%; display: block; }
+.teatro .lettura span { font: 700 13px var(--font-testo); color: var(--gesso); }
+.teatro .finale { position: absolute; inset: -400px -600px 0; z-index: 5200; display: flex; align-items: flex-start; justify-content: center; padding-top: 650px; background: rgba(35,38,74,.35); }
+.teatro .finale .pannello { background: var(--gesso); border: 3px solid var(--notte); border-radius: 18px; box-shadow: 0 8px 0 var(--notte); padding: 18px 22px; text-align: center; width: 300px; display: grid; gap: 10px; justify-items: center; }
+/* Mano a misura di dito: queste parti crescono di --kd (calcolato in adatta) attorno al loro punto d'appoggio.
+   Mano e pulsanti della carta attorno al centro in basso; pulsanti in alto e menu attorno al centro in alto. */
+.teatro .mano { transform: scale(var(--kd, 1)); transform-origin: 195px 844px; }
+.teatro .azioni-carta { transform: scale(var(--kd, 1)); transform-origin: 195px 216px; }
+.teatro .hud { transform: scale(var(--kd, 1)); transform-origin: 183px 0; }
+.teatro .opzioni { transform: scale(var(--kd, 1)); transform-origin: 183px -46px; }
+.teatro .eventi { transform: scale(var(--kd, 1)); transform-origin: calc(100% - 183px) -46px; }
+.teatro .lettura .grande,
+.teatro .lettura span { transform: scale(var(--kd, 1)); transform-origin: 50% 100%; }
+.teatro .finale .pannello { transform: scale(var(--kd, 1)); transform-origin: 50% 100%; }
+/* Modo leggero (telefoni lenti): l'ombra disegnata sulla forma della carta diventa un'ombra netta del riquadro, molto meno pesante */
+.teatro .leggero .cm,
+.teatro .leggero .cm.attiva,
+.teatro .leggero .cm.trascinata,
+.teatro .leggero .volante { filter: none; box-shadow: 0 7px 0 rgba(35,38,74,.22); border-radius: 18px; }
+.teatro .leggero .cm.spenta { filter: brightness(.93); box-shadow: 0 7px 0 rgba(35,38,74,.22); border-radius: 18px; }
+.teatro .finale h2 { margin: 0; font: 800 32px/1 var(--font-titoli); text-transform: uppercase; letter-spacing: .01em; }
+.teatro .finale p { margin: 0; font: 400 15px var(--font-testo); }
+.teatro .coriandolo { position: absolute; width: 9px; height: 14px; border: 1.5px solid var(--notte); border-radius: 2px; z-index: 5100; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .teatro .an { animation: none !important; }
+}
+/* Targhe e segnalini dei giocatori */
+.teatro .targa { max-width: 112px; overflow: hidden; text-overflow: ellipsis; }
+/* Nomi lunghi: carattere più piccolo. La larghezza massima e lo scivolamento ai bordi li decide targhe.ts, per posto */
+.teatro .targa.lunga { font-size: 9px; letter-spacing: .03em; padding: 4px 6px 3px; }
+/* Larghi quanto la scritta più lunga (max-content) fino alla fascia della targa (max-width in linea): oltre vanno a capo */
+.teatro .segnalini { position: absolute; width: max-content; display: flex; flex-direction: column; align-items: center; gap: 3px; transform: translate(-50%, -100%); pointer-events: none; }
+.teatro .segnalini .segnalino { max-width: 100%; white-space: normal; text-align: center; }
+.teatro .segnalino { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font: 700 10px/1 var(--font-testo); background: var(--gesso); color: var(--notte);
+  border: 2px solid var(--notte); border-radius: 999px; padding: 3px 7px 2px; }
+.teatro .segnalino.un-guaio { background: var(--albicocca); }
+.teatro .segnalino.quasi-pieno { background: var(--limone); }
+.teatro .segnalino.fuori { background: var(--sfondo); }
+.teatro .avviso-icona { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; border-radius: 50%; background: var(--notte); color: var(--gesso); font: 800 9px/1 var(--font-titoli); }
+/* Carte del round e Guaio del round */
+.teatro .carte-round { position: absolute; width: 0; height: 0; }
+.teatro .carta-round { position: absolute; }
+.teatro .carta-round svg { display: block; width: 100%; height: 100%; }
+.teatro .guaio-round { position: absolute; left: 290px; top: 60px; width: 56px; height: 78px; transform: translateZ(10px) rotate(6deg); }
+.teatro .guaio-round svg { display: block; width: 100%; height: 100%; }

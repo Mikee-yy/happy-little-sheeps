@@ -23,7 +23,8 @@ creaMazzoGuai(): IdCarta[]                                  // 24 istanze non me
 configPer(numeroGiocatori: number): ConfigPartita
 
 // Partita
-nuovaPartita(o: { giocatori: Array<{ id: IdGiocatore; nome: string; pecora: IdPecora }>; seme: number }): Stato
+nuovaPartita(o: { giocatori: Array<{ id: IdGiocatore; nome: string; pecora: IdPecora }>; seme: number; preparazione?: Preparazione }): Stato
+                                                            // preparazione: solo la partita di prova (PROVA, da prova.json), vedi §3
 applica(stato: Stato, azione: Azione): Stato
 tentaApplica(stato: Stato, azione: Azione): { ok: true; stato: Stato } | { ok: false; errore: ErroreRegola }
 vistaPer(stato: Stato, giocatore: IdGiocatore | null): Vista
@@ -51,6 +52,9 @@ eFaseAutomatica(nome: NomeFase): boolean                                // guaio
 7. Avvia il round 1 (sezione 4.1). Lo stato restituito è in fase `guaio` con il Guaio già scoperto.
 
 Mazzo principale: 44 Trovate + 18 Belati (16 del brief + 2 "Visita di Garzina") = 62 carte; a 2 giocatori 50 carte. Mazzo Guai: 24.
+
+
+**Partita di prova (preparazione facoltativa).** Con `preparazione` (dati in `engine/data/prova.json`, esportati come `PROVA`), dopo la mescolata normale `nuovaPartita` dà a ogni giocatore la mano indicata (completata dalla cima del mazzo se più corta), mette in cima al mazzo e al mazzo Guai le carte indicate, fissa il primo giocatore e salva in `stato.dadoPreparato` le facce dei primi tiri: `lanciaDado` le usa per prime, poi torna al caso. Tipo sconosciuto, copie insufficienti, giocatore o faccia sconosciuti: `preparazione_non_valida`. `dadoPreparato` non compare mai nelle viste. Senza preparazione il risultato è identico a prima.
 
 ## 4. Macchina a stati del round
 

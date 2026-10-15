@@ -7,7 +7,9 @@ import { SessioneOspite, SessioneTavolo } from '../../sync/ospite';
 import { normalizzaCodice } from '../../sync/stanza';
 import type { Iscrizione } from '../../sync/stanza';
 import { Sprite } from './grafica';
+import { precaricaScena } from './partita/caricaScena';
 import { Partita } from './partita/Partita';
+import { PartitaProva } from './prova/PartitaProva';
 import {
   archivioHost,
   connetti,
@@ -23,7 +25,7 @@ import { Home, Preparazione, Regole, scelteIniziali } from './schermate';
 import type { SceltePreparazione } from './schermate';
 import { T } from './testi';
 
-type Schermata = 'home' | 'preparazione' | 'partita' | 'regole' | 'crea' | 'entra' | 'stanza' | 'tavolo' | 'collegamento';
+type Schermata = 'home' | 'preparazione' | 'partita' | 'prova' | 'regole' | 'crea' | 'entra' | 'stanza' | 'tavolo' | 'collegamento';
 
 /** Seme della partita: la casualità del motore è riproducibile, ma ogni partita nuova parte da un seme diverso. */
 function nuovoSeme(): number {
@@ -64,6 +66,8 @@ export function App() {
           : 'home',
   );
   const [dopoRegole, setDopoRegole] = useState<Schermata>('home');
+  /** Partita di prova in corso: resta montata (nascosta) mentre si leggono le Regole; il numero la fa ripartire da capo. */
+  const [prova, setProva] = useState<number | null>(null);
   const [scelte, setScelte] = useState<SceltePreparazione>(scelteIniziali);
   const [stanza, setStanza] = useState<{ sessione: SessioneHost | SessioneOspite; iscrizione: Iscrizione } | null>(null);
   const [tavolo, setTavolo] = useState<SessioneTavolo | null>(null);
@@ -116,6 +120,8 @@ export function App() {
 
   const inizia = (g: GiocatoreLocale[]) => {
     setGiocatori(g);
+    // Una partita nuova parte sempre da scelte nuove (la rivincita usa `giocatori`, non queste)
+    setScelte(scelteIniziali());
     setSessione(SessioneLocale.nuova(g, nuovoSeme(), archivio));
     setSchermata('partita');
   };
@@ -163,9 +169,11 @@ export function App() {
         ? 'partita'
         : dopoRegole === 'stanza' && stanza
           ? 'stanza'
-          : dopoRegole === 'preparazione'
-            ? 'preparazione'
-            : 'home';
+          : dopoRegole === 'prova' && prova !== null
+            ? 'prova'
+            : dopoRegole === 'preparazione'
+              ? 'preparazione'
+              : 'home';
     contenuto = <Regole onIndietro={() => setSchermata(ritorno)} />;
   } else if (schermata === 'crea' || schermata === 'entra') {
     contenuto = (
@@ -208,7 +216,12 @@ export function App() {
         multigiocatore={multigiocatoreDisponibile()}
         iscrizione={iscrizione}
         avviso={avviso}
-        onNuova={() => setSchermata('preparazione')}
+        onNuova={() => {
+          // La scena (pacchetto a parte) comincia a scaricarsi mentre si scelgono i nomi
+          precaricaScena();
+          setScelte(scelteIniziali());
+          setSchermata('preparazione');
+        }}
         onCrea={() => {
           setAvviso(null);
           setSchermata('crea');
@@ -223,6 +236,7 @@ export function App() {
           setIscrizione(null);
         }}
         onRiprendi={() => {
+          precaricaScena();
           const s = SessioneLocale.riprendi(archivio);
           if (!s) {
             archivio.cancella();
@@ -234,6 +248,11 @@ export function App() {
           setSchermata('partita');
         }}
         onRegole={() => regole('home')}
+        onProva={() => {
+          precaricaScena();
+          setProva((n) => (n ?? 0) + 1);
+          setSchermata('prova');
+        }}
       />
     );
   }
@@ -241,7 +260,20 @@ export function App() {
   return (
     <>
       <Sprite />
-      {contenuto}
+      {schermata !== 'prova' && contenuto}
+      {prova !== null && (
+        <div hidden={schermata !== 'prova'}>
+          <PartitaProva
+            key={prova}
+            nascosta={schermata !== 'prova'}
+            onHome={() => {
+              setProva(null);
+              setSchermata('home');
+            }}
+            onRegole={() => regole('prova')}
+          />
+        </div>
+      )}
     </>
   );
 }

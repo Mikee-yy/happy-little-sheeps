@@ -15,6 +15,7 @@ export function Home(p: {
   iscrizione: Iscrizione | null;
   avviso: string | null;
   onNuova: () => void;
+  onProva: () => void;
   onRiprendi: () => void;
   onCrea: () => void;
   onEntra: () => void;
@@ -28,7 +29,6 @@ export function Home(p: {
       <h1 className="logo">
         <img src={logo} alt={T.titolo} />
       </h1>
-      <p className="sottotitolo">{T.sottotitolo}</p>
       <div className="home-pecore" aria-hidden="true">
         {SETUP.pecore.map((pc) => (
           <Pecora key={pc.id} pecora={pc.id} size={72} />
@@ -56,11 +56,13 @@ export function Home(p: {
             ?
           </button>
         </div>
-        {spiega && (
-          <p className="spiega-qui" id="spiega-qui">
-            {T.home.spiegaQui}
-          </p>
-        )}
+        {/* Sempre presente (nascosta finché chiusa): aria-controls del "?" punta sempre a qualcosa */}
+        <p className="spiega-qui" id="spiega-qui" hidden={!spiega}>
+          {T.home.spiegaQui}
+        </p>
+        <Pulsante largo secondario onClick={p.onProva}>
+          {T.prova.pulsante}
+        </Pulsante>
         {p.multigiocatore && p.iscrizione && (
           <div className="rientro">
             <Pulsante largo onClick={p.onRientra}>
@@ -93,7 +95,7 @@ const PECORE = SETUP.pecore.map((pc) => pc.id);
 export function Riassunto({ onRegole }: { onRegole: () => void }) {
   return (
     <section className="riassunto" id="riassunto">
-      <h2>{T.riassunto.titolo}</h2>
+      <h2 tabIndex={-1}>{T.riassunto.titolo}</h2>
       <ul>
         {T.riassunto.righe.map((r) => (
           <li key={r.forte}>
@@ -113,6 +115,8 @@ export function Riassunto({ onRegole }: { onRegole: () => void }) {
 function scendiAlRiassunto() {
   const ridotto = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   document.getElementById('riassunto')?.scrollIntoView?.({ behavior: ridotto ? 'auto' : 'smooth', block: 'start' });
+  // Anche il punto della tastiera (e del lettore di schermo) passa al riassunto
+  document.querySelector<HTMLElement>('#riassunto h2')?.focus({ preventScroll: true });
 }
 
 /** Scelte della preparazione: le tiene App, così sopravvivono a un giro nelle Regole. */

@@ -4,7 +4,6 @@ import type { NomeFase, TipoGuaioCarta } from '../../engine/src';
 
 export const T = {
   titolo: 'Happy Little Sheeps',
-  sottotitolo: 'Tenere pecore, guai seri.',
 
   home: {
     giocaQui: 'Gioca su questo dispositivo',
@@ -32,6 +31,39 @@ export const T = {
     nomiDoppi: 'Ogni giocatore deve avere un nome diverso.',
     nomeVuoto: 'Scrivi un nome per ogni giocatore.',
     pecoreDoppie: 'Ogni giocatore deve avere una pecora diversa.',
+  },
+
+  /** Partita di prova contro due bot: pulsante, attesa dei bot, consigli della guida (bozze/partita-prova-progetto.md). */
+  prova: {
+    pulsante: 'Partita di prova',
+    pensa: (nome: string) => `${nome} sta pensando…`,
+    consiglioTitolo: 'Consiglio',
+    hoCapito: 'Ho capito',
+    consigli: {
+      inizio: 'Questa è una partita di prova contro Bea e Leo. Lo scopo è riempire per primo il tuo Ovile di agnellini. Ti spiego le cose man mano che succedono.',
+      guaio: 'Ogni round si scopre un Guaio. Chi farà il punteggio più basso se lo prende.',
+      tratto: 'Nerina se la cava con i Predatori: con loro ha +1. Con il Meteo invece ha −1.',
+      scelta:
+        'Scegli in segreto una Trovata: il numero grande è il suo valore. Chi fa di più tira il dado, chi fa di meno prende il Guaio. Tieni premuta una carta per leggerla tutta.',
+      gemelle: 'Le carte con il quadrifoglio sono Gemelle: due insieme si giocano come una sola e i valori si sommano.',
+      rivelazione: 'Le Trovate si scoprono tutte insieme. Il punteggio è valore + tratto della pecora + effetti + Belati.',
+      belatoPunteggio: 'Ora si possono giocare i Belati "durante il calcolo del punteggio". Belato di Gruppo dà +2 a chi vuoi tu.',
+      tuoDado: 'Hai il punteggio più alto: tira il Dado del Pastore!',
+      pascolo: 'Pascolo: chi ha tirato prende agnellini dal Gregge e li porta nel suo Ovile.',
+      furto: 'Furto: chi ha tirato ruba agnellini agli altri giocatori.',
+      beeeNo: 'Hai un Beee-NO!: si gioca in qualsiasi momento e annulla il dado, l\'effetto di una Trovata o un altro Belato. Usalo adesso!',
+      testata: 'Testata del Montone: trascina il montone verso l\'Ovile e lascia andare. Più tiri, più agnellini tornano nel Gregge.',
+      guaioTuo:
+        'Il Guaio finisce nel tuo Angolo. In cambio prendi un agnellino e puoi scartare una carta. Attenzione: con 3 Guai uguali o 3 diversi sei fuori.',
+      guaioBot: 'Il più basso prende il Guaio, ma riceve un agnellino di consolazione.',
+      fineRound: 'A fine round tutti ripescano fino ad avere 5 carte.',
+    },
+    fine: {
+      titolo: 'Ora sai come si gioca!',
+      testo: 'Se il mazzo finisce, si gioca un ultimo round e vince chi ha più agnellini.',
+      continua: 'Continua la partita',
+      home: 'Torna alla schermata principale',
+    },
   },
 
   /** Riassunto in fondo alla scelta dei giocatori: la parte "forte" va in grassetto. */
@@ -319,6 +351,82 @@ export const T = {
     aspettaRivincita: 'L\'host può avviare una nuova partita con gli stessi giocatori.',
     lancioDi: (nome: string) => `${nome} lancia il dado…`,
     testataDi: (nome: string, bersaglio: string) => `${nome} prende la mira sull'Ovile di ${bersaglio}…`,
+  },
+
+  scena: {
+    riassunto: {
+      posto: (nome: string, agnellini: number, posti: number, guai: number) =>
+        `${nome}: ${agnellini === 1 ? '1 agnellino' : `${agnellini} agnellini`} su ${posti}, ${guai === 1 ? '1 Guaio' : `${guai} Guai`}`,
+      eliminata: (nome: string) => `${nome}: eliminata`,
+      gregge: (n: number) => `Gregge: ${n === 1 ? '1 agnellino' : `${n} agnellini`}`,
+    },
+    consigli: {
+      solleva: 'Tocca una carta per sollevarla',
+      leggi: 'Tieni premuta una carta per leggerla',
+    },
+    /** La scena si scarica a parte: se non arriva (rete assente, sito appena aggiornato). */
+    caricamento: {
+      fallito: 'Il prato non si è caricato. Controlla la connessione e riprova.',
+      riprova: 'Riprova',
+    },
+    /** Il cassetto dei pannelli sopra la scena: la maniglia lo abbassa (si guarda il prato) e lo rialza. */
+    cassetto: {
+      abbassa: 'Guarda il prato',
+      alza: 'Torna alle scelte',
+    },
+    opzioni: {
+      /** Titolo della parte Opzioni nel menu della partita. */
+      titolo: 'Opzioni',
+      suoni: 'Suoni',
+      vibrazione: 'Vibrazione',
+      veloci: 'Animazioni veloci',
+      rivedi: 'Rivedi i suggerimenti',
+      si: 'sì',
+      no: 'no',
+    },
+    scoppio: 'BEEE-NO!',
+    /** I fumetti degli agnellini che giocano (bozza, righe 1458 e 1478). */
+    belini: { coro: 'Beee!', risposta: 'beee', scappa: 'beee!', sorpreso: 'beee?!', fulminato: 'bzz!', plop: 'plop?' },
+    /** I fumetti degli ordini della scena: Guai, meteo, Beee-NO! e facce del dado (bozza, righe 1986–1991, 2072, 2091 e 2336–2525). */
+    fumetti: {
+      guaio: (nome: string) => `${nome}!`,
+      beeeNo: 'Beee-NO!',
+      grandine: 'Ahia, grandine!',
+      vento: 'Mi spettina!',
+      nebbia: "Dov'è finito il gregge?",
+      fulmine: 'Che ricci!',
+      gelata: 'Brrr… ad agosto?',
+      pozzanghera: 'Quanto sarà profonda?',
+      pascolo: (q: number) => `Pascolo ${q}!`,
+      furto: (q: number) => `Furto ${q}!`,
+      testata: 'Testata!',
+    },
+    diciture: { mazzo: 'Mazzo', scarti: 'Scarti', guai: 'Guai' },
+    /** Cartello del gregge e diciture della coperta con i conti (bozza, righe 1184 e 1790). */
+    gregge: (n: number) => `Gregge ${n}`,
+    mazzo: (n: number) => `Mazzo ${n}`,
+    guai: (n: number) => `Guai ${n}`,
+    scarti: 'Scarti',
+    /** Sulla targa di ogni giocatore. */
+    segnalini: {
+      unGuaio: "1 Guaio all'eliminazione",
+      quasiPieno: (n: number) => (n === 1 ? 'Manca 1' : `Mancano ${n}`),
+    },
+    fuoriDalRound: 'Fuori dal round',
+    /** Le carte disegnate (bozza, righe 581–582 e 637): nomi dei tipi di Guaio, momento dei Belati, piedi, fumetto di ripiego. */
+    carte: {
+      tipi: { meteo: 'METEO', predatori: 'PREDATORI', drammi: 'DRAMMI', tosatura: 'TOSATURA' },
+      quando: {
+        punteggio: 'CALCOLO DEL PUNTEGGIO',
+        salvataggio: 'PRENDI UN GUAIO',
+        sempre: 'IN QUALSIASI MOMENTO',
+        dopo_guaio: 'DOPO UN GUAIO',
+      },
+      piede: { trovata: 'TROVATA', belato: 'BELATO', guaio: 'GUAIO' },
+      beee: 'Beee!',
+    },
+    lettura: { lascia: 'Lascia per chiudere', tocca: 'Tocca per chiudere' },
+    etichette: { mazzo: 'Mazzo', dado: 'Dado' },
   },
 
   e: ' e ',

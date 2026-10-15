@@ -1,0 +1,18 @@
+{
+  "giocatori": [
+    { "id": "g1", "nome": "Tu", "pecora": "nerina" },
+    { "id": "g2", "nome": "Bea", "pecora": "ricciolo" },
+    { "id": "g3", "nome": "Leo", "pecora": "sospirella" }
+  ],
+  "preparazione": {
+    "mani": {
+      "g1": ["carriola", "calzino-gemello", "ciliegie-appaiate", "belato-di-gruppo", "beee-no"],
+      "g2": ["capriola", "cannocchiale", "sasso-comodo", "agnellino-smarrito", "orecchino-gemello"],
+      "g3": ["balla-di-fieno", "coperta-di-lana", "trifoglio-qualunque", "scorta-nel-vello", "megafono-di-latta"]
+    },
+    "cimaMazzo": ["tappi-per-le-orecchie", "fischietto-da-richiamo", "cannocchiale", "balla-di-fieno", "capriola", "coperta-di-lana"],
+    "cimaGuai": ["lupo-vegetariano", "grandine-a-sorpresa", "crisi-esistenziale"],
+    "dado": ["pascolo_piccolo", "furto_piccolo", "testata"],
+    "primoGiocatore": "g1"
+  }
+}

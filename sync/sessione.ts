@@ -5,7 +5,7 @@ import type { Azione, IdGiocatore, Vista } from '../engine/src';
 export type EsitoInvio = { ok: true } | { ok: false; codice: string; messaggio: string };
 
 export interface Sessione {
-  readonly modo: 'locale' | 'realtime';
+  readonly modo: 'locale' | 'realtime' | 'prova';
   /** Vista della partita per un giocatore, o per il tavolo (null). */
   vista(per: IdGiocatore | null): Vista;
   /** Azioni valide adesso per un giocatore o per il sistema. */

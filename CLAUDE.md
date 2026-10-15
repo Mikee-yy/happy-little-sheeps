@@ -7,6 +7,8 @@ Gioco di carte nel browser per 2–4 giocatori. Brief canonico: `brief-codice2.m
 - `engine/` — motore puro in TypeScript: `src/` (codice), `data/` (`cards.json`, `setup.json`), `test/` (Vitest; aiuti in `test/aiuti.ts`).
 - `design/` — pacchetto grafico definitivo (SVG, token, guida di stile). Non ridisegnare.
 - `client/` — interfaccia React (Vite, radice `client/`): `src/partita/` modalità "Passa il telefono", `src/remoto/` più dispositivi, `src/testi.ts` tutte le stringhe. `client/prova.html` (solo sviluppo, non pubblicata): tre telefoni affiancati su un database in memoria.
+- `client/src/scena/` — teatro della scena 2,5D: moduli ricavati dalla bozza, fotografia della partita, allineamento. Un solo punto d'accesso, `creaTeatro` (`teatro.ts`); React lo monta con `Scena.tsx`, caricata a parte.
+- `client/scena.html` — solo sviluppo, non pubblicata: scena da sola, pannello "Prova eventi", banco di prova.
 - `sync/` — interfaccia `Sessione` con due implementazioni: `locale.ts` (un dispositivo) e `host.ts`/`ospite.ts` (stanze). Il servizio realtime sta dietro `Trasporto`: `trasporto-firebase.ts` (vero) e `trasporto-memoria.ts` (test, riproduce `database.rules.json`).
 - `database.rules.json` — regole di accesso di Firebase, da incollare nella console (guida in `docs/firebase.md`).
 - `docs/` — specifiche.
@@ -25,6 +27,8 @@ npm run simula -- --partite 1000            # simulatore: rapporto in docs/rappo
 npm run simula -- --variante brief-originale # confronto con i numeri di partenza del brief (engine/sim/varianti.ts)
 npm run esperimenti -- --giocatori 3        # griglia posti dell'Ovile × dado
 ```
+
+`npm test`, `npm run typecheck`, `npm run build` e `npx vitest|tsc|vite|tsx` passano dalle scorciatoie di `.tools/bin`, che lanciano il programma direttamente (niente finestre di terminale). Vitest usa i fili (`pool: 'threads'`).
 
 Il simulatore (`engine/sim/`) ha due giocatori simulati: `casuale` (richiesto dal brief) e `semplice` (buon senso, come il bot). Le varianti modificano lo stato iniziale senza toccare i file dati.
 

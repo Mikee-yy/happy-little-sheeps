@@ -109,7 +109,8 @@ export function lanciaDado(s: Stato, a: Extract<Azione, { tipo: 'lanciaDado' }>)
   giocatoreAttivo(s, a.giocatore);
   const lanciatore = s.datiRound.lanciatori[f.indice];
   if (a.giocatore !== lanciatore) errore('non_tocca_a_te', `Lancia ${String(lanciatore)}`);
-  const uscita = estraiFaccia(s, s.config.dado);
+  // Partita di prova: prima i tiri preparati, poi il caso
+  const uscita = s.dadoPreparato?.length ? faccia(s, s.dadoPreparato.shift()!) : estraiFaccia(s, s.config.dado);
   emetti(s, { tipo: 'dado_lanciato', giocatore: lanciatore, faccia: uscita.id });
   const fase: FaseRisoluzione = {
     nome: 'risoluzione_dado',

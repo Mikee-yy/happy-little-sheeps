@@ -12,13 +12,13 @@ import {
   richiediLibero,
   successivoNonEliminato,
 } from './comune';
-import { configPer, creaMazzoGuai, creaMazzoPrincipale, defTrovata, eTrovata, pecoraEsiste } from './dati';
+import { configPer, creaMazzoGuai, creaMazzoPrincipale, defTrovata, eTrovata, pecoraEsiste, tipoDi } from './dati';
 import { entraEffetti } from './effetti';
 import { vittoriaMazzoFinito } from './fine';
 import { proseguiGuaioAlPeggiore } from './guai';
 import { righeDiBase } from './punteggio';
 import { intero, mescola } from './rng';
-import type { Azione, IdCarta, IdGiocatore, IdPecora, Stato } from './tipi';
+import type { Azione, IdCarta, IdGiocatore, IdPecora, IdTipoCarta, Preparazione, Stato } from './tipi';
 
 /**
  * Id non vuoto e diverso dai nomi di Object.prototype ("__proto__", "constructor", "toString"…):
@@ -31,6 +31,8 @@ function idValido(id: unknown): id is IdGiocatore {
 export function nuovaPartita(o: {
   giocatori: Array<{ id: IdGiocatore; nome: string; pecora: IdPecora }>;
   seme: number;
+  /** Partita di prova: mani, cima del mazzo e dei Guai, primi tiri del dado (engine/data/prova.json). */
+  preparazione?: Preparazione;
 }): Stato {
   if (!Array.isArray(o?.giocatori) || o.giocatori.length < 2 || o.giocatori.length > 4) {
     errore('giocatori_non_validi', 'Servono da 2 a 4 giocatori');
@@ -84,16 +86,35 @@ export function nuovaPartita(o: {
   };
   mescola(s, s.mazzo);
   mescola(s, s.mazzoGuai);
-  s.primoGiocatore = s.giocatori[intero(s, n)]!.id;
+  if (o.preparazione) applicaPreparazione(s, o.preparazione);
+  else s.primoGiocatore = s.giocatori[intero(s, n)]!.id;
   const ordine = ordineDa(s, s.primoGiocatore);
   for (let k = 0; k < config.manoIniziale; k++) {
     for (const id of ordine) {
+      // Con la preparazione le mani sono già (in parte) date: si completano fino alla mano iniziale
+      if (giocatore(s, id).mano.length > k) continue;
       const carta = s.mazzo.shift();
       if (carta !== undefined) giocatore(s, id).mano.push(carta);
     }
   }
   iniziaRound(s, 1);
   return s;
+}
+
+/** Partita di prova: dopo la mescolata mette al loro posto le carte preparate e fissa i primi tiri del dado. */
+function applicaPreparazione(s: Stato, p: Preparazione): void {
+  const prendi = (mazzo: IdCarta[], tipo: IdTipoCarta): IdCarta => {
+    const i = mazzo.findIndex((c) => tipoDi(c) === tipo);
+    if (i < 0) errore('preparazione_non_valida', `Carta non disponibile per la preparazione: ${tipo}`);
+    return mazzo.splice(i, 1)[0]!;
+  };
+  for (const g of s.giocatori) g.mano = (p.mani[g.id] ?? []).map((t) => prendi(s.mazzo, t));
+  s.mazzo.unshift(...p.cimaMazzo.map((t) => prendi(s.mazzo, t)));
+  s.mazzoGuai.unshift(...p.cimaGuai.map((t) => prendi(s.mazzoGuai, t)));
+  if (!s.giocatori.some((g) => g.id === p.primoGiocatore)) errore('preparazione_non_valida', `Primo giocatore sconosciuto: ${p.primoGiocatore}`);
+  s.primoGiocatore = p.primoGiocatore;
+  for (const f of p.dado) if (!s.config.dado.some((d) => d.id === f)) errore('preparazione_non_valida', `Faccia sconosciuta: ${f}`);
+  s.dadoPreparato = [...p.dado];
 }
 
 export function iniziaRound(s: Stato, numero: number): void {
