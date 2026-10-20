@@ -10,11 +10,16 @@ import { SessioneOspite } from '../../sync/ospite';
 import type { Iscrizione } from '../../sync/stanza';
 import { ArchivioMemoria } from '../../sync/trasporto-memoria';
 import { Sprite } from './grafica';
+import { ospita, precaricaStanza } from './remoto/durataStanza';
 import { Stanza } from './remoto/Stanza';
 
 async function avvia() {
+  precaricaStanza();
   const rete = new ArchivioMemoria();
-  const host = await SessioneHost.crea(rete.dispositivo('uid-ada'), archivioInMemoria(), { nome: 'Ada', pecora: 'ricciolo', gettone: 'a' });
+  // Chi ospita aspetta la durata normale delle recite, come nelle stanze vere
+  const host = await ospita((o) =>
+    SessioneHost.crea(rete.dispositivo('uid-ada'), archivioInMemoria(), { nome: 'Ada', pecora: 'ricciolo', gettone: 'a' }, undefined, o),
+  );
   const ospiti = [
     await SessioneOspite.entra(rete.dispositivo('uid-bea'), host.codice, { nome: 'Bea', pecora: 'brontolana', gettone: 'b' }),
     await SessioneOspite.entra(rete.dispositivo('uid-cleo'), host.codice, { nome: 'Cleo', pecora: 'sospirella', gettone: 'c' }),

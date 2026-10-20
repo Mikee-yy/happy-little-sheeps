@@ -9,7 +9,7 @@ import { tipoDi } from '../../../../engine/src';
 import type { IdGiocatore, Luogo } from '../../../../engine/src';
 import { TAVOLOZZA as P } from '../ambiente/paesaggio';
 import type { OpzioniParticella, TipoParticella } from '../ambiente/particelle';
-import type { Camera } from '../camera';
+import type { Camera, SeguaceRecinto } from '../camera';
 import type { Orologio } from '../orologio';
 import { H, W } from '../misure';
 import type { Palco } from '../palco';
@@ -88,6 +88,13 @@ export interface Strumenti {
   fumata(x: number, y: number, n?: number, k?: number): void;
   saetta(da: [number, number], a: [number, number]): void;
   stalattiti(nome: Luogo, quanti: number): SVGSVGElement;
+  /** Vedi `Camera.seguiRecinto`: per ciò che il meteo ha disegnato sul recinto ingrandito di `chi`. */
+  seguiRecinto(chi: IdGiocatore, fn: SeguaceRecinto): void;
+  /**
+   * Un elemento libero (`svgLibero`) sul recinto ingrandito di `chi`: mentre il recinto torna normale si sposta e
+   * rimpicciolisce con lui (z: lo strato per la nuova y), finché resta nella pagina.
+   */
+  seguiElemento(chi: IdGiocatore, el: HTMLElement | SVGElement, z?: (y: number) => number): void;
   /** Gli agnellini liberi (bozza, riga 1395). */
   libero(g: Agnello): boolean;
 }
@@ -202,7 +209,8 @@ export function creaMeteo(palco: Palco, camera: Camera, effetti: Readonly<Record
   const pecore = (): Pecora[] => palco.giocatori().map((c) => palco.pecora(c)).filter((p): p is Pecora => !!p);
   const particella = palco.particella;
   const vista = () => palco.amb()?.vista() ?? { x: 0, y: 0, w: W, h: H };
-  const libero = (g: Agnello) => !g.regia && ['fermo', 'bruca', 'cammina', 'guarda'].includes(g.stato);
+  // Chi è alzato dal teatro (furto) non è libero: né i giochi né il meteo lo portano via mentre la domanda è sul tavolo
+  const libero = (g: Agnello) => !g.regia && !g.sollevato && ['fermo', 'bruca', 'cammina', 'guarda'].includes(g.stato);
 
   function ferma(): void {
     const m = attivo;
@@ -245,7 +253,8 @@ export function creaMeteo(palco: Palco, camera: Camera, effetti: Readonly<Record
   // Gli agnellini di un'area si stringono vicini (sotto la pioggia, per il freddo, per paura).
   // centri: uno o più punti di raccolta [x, y]; ognuno va al più vicino
   async function rannicchia(m: Maniglia, a: Area, centri: Array<[number, number]>, sec: number, opz: OpzioniRannicchia = {}): Promise<void> {
-    const gs = a.agnelli.filter((g) => !g.regia && !g.inViaggio);
+    // Chi è alzato dal teatro (furto) resta dov'è
+    const gs = a.agnelli.filter((g) => !g.regia && !g.inViaggio && !g.sollevato);
     if (!gs.length) return;
     prendi(gs);
     m.pulisci(() => rilascia(gs));
@@ -397,7 +406,29 @@ export function creaMeteo(palco: Palco, camera: Camera, effetti: Readonly<Record
     }
     const el = svgLibero(r.x, y, 100 + Math.round(r.yDavanti) + 3, `<g class="ghiaccioli">${s}</g>`);
     ctx.anima(el.firstChild as Element, [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 1600, easing: 'ease-out', fill: 'forwards' });
+    // Appesi alla traversa: se il recinto torna alla sua forma, restano appesi lì
+    camera.seguiRecinto(nome, () => {
+      if (!el.isConnected) return false;
+      const q = area(nome).recinto as FormaRecinto & { alto: number };
+      el.style.left = `${q.x}px`;
+      el.style.top = `${q.yDavanti - q.alto * 0.62 + 3.5 * q.k}px`;
+      el.style.zIndex = String(100 + Math.round(q.yDavanti) + 3);
+      el.style.scale = `${(q.larg / r.larg).toFixed(4)} ${(q.k / r.k).toFixed(4)}`;
+    });
     return el;
+  }
+
+  function seguiElemento(chi: IdGiocatore, el: HTMLElement | SVGElement, z?: (y: number) => number): void {
+    let scala = 1;
+    camera.seguiRecinto(chi, (mp) => {
+      if (!el.isConnected) return false;
+      const p = mp.punto(parseFloat(el.style.left) || 0, parseFloat(el.style.top) || 0);
+      el.style.left = `${p.x}px`;
+      el.style.top = `${p.y}px`;
+      scala *= mp.k;
+      el.style.scale = scala.toFixed(4);
+      if (z) el.style.zIndex = String(z(p.y));
+    });
   }
 
   const strumenti: Strumenti = {
@@ -423,6 +454,8 @@ export function creaMeteo(palco: Palco, camera: Camera, effetti: Readonly<Record
     fumata,
     saetta,
     stalattiti,
+    seguiRecinto: (chi, fn) => camera.seguiRecinto(chi, fn),
+    seguiElemento,
     libero,
   };
 

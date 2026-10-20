@@ -2,9 +2,10 @@
 // Beee-NO! di un ospite sul dado, ricarica e rientro, pausa e bot, host che si scollega, timer, pulizia.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applica, vistaPer } from '../engine/src';
-import type { Azione, IdGiocatore, Stato } from '../engine/src';
+import type { Azione, Evento, IdGiocatore, Stato } from '../engine/src';
 import { avanza, chiudiPunteggio, conFaccia, prosegui, scegli, scenario } from '../engine/test/aiuti';
 import { SessioneHost, TEMPI } from './host';
+import type { OpzioniHost } from './host';
 import { archivioInMemoria } from './locale';
 import type { Archivio } from './locale';
 import { SeiHostDellaStanza, SessioneOspite } from './ospite';
@@ -42,14 +43,16 @@ interface Tavolata {
 }
 
 /** Host + ospiti in sala d'attesa, già sistemati nei loro posti. */
-async function tavolata(nOspiti = 2): Promise<Tavolata> {
+async function tavolata(nOspiti = 2, opzioni?: OpzioniHost): Promise<Tavolata> {
   const rete = new ArchivioMemoria();
   const salvataggioHost = archivioInMemoria();
-  const host = await SessioneHost.crea(rete.dispositivo('uid-host'), salvataggioHost, {
-    nome: 'Ada',
-    pecora: 'ricciolo',
-    gettone: 'gettone-host',
-  });
+  const host = await SessioneHost.crea(
+    rete.dispositivo('uid-host'),
+    salvataggioHost,
+    { nome: 'Ada', pecora: 'ricciolo', gettone: 'gettone-host' },
+    undefined,
+    opzioni,
+  );
   const nomi = ['Bea', 'Cleo', 'Dora'];
   const pecore = ['brontolana', 'sospirella', 'nerina'] as const;
   const ospiti: SessioneOspite[] = [];
@@ -68,11 +71,11 @@ async function tavolata(nOspiti = 2): Promise<Tavolata> {
 }
 
 /** Sostituisce lo stato dell'host (salvataggio + ripresa) per partire da una situazione costruita. */
-async function conStato(tv: Tavolata, stato: Stato): Promise<SessioneHost> {
+async function conStato(tv: Tavolata, stato: Stato, opzioni?: OpzioniHost): Promise<SessioneHost> {
   tv.host.chiudi();
   const dati = JSON.parse(tv.salvataggioHost.leggi()!);
   tv.salvataggioHost.scrivi(JSON.stringify({ ...dati, stato }));
-  const host = await SessioneHost.riprendi(tv.rete.dispositivo('uid-host'), tv.salvataggioHost);
+  const host = await SessioneHost.riprendi(tv.rete.dispositivo('uid-host'), tv.salvataggioHost, opzioni);
   if (!host) throw new Error('ripresa fallita');
   tv.host = host;
   await scorri();
@@ -509,6 +512,301 @@ describe('Tempi', () => {
     expect(tv.host.pubblico().prosegueAlle).not.toBeNull();
     await scorri((TEMPI.prosegui.guaio ?? 0) + 50);
     expect(tv.host.vista(null).fase.nome).toBe('scelta');
+  });
+});
+
+// La scena dei telefoni recita ogni mossa: chi ospita aspetta la durata normale (iniettata, qui finta) prima di
+// chiudere la finestra, far proseguire le fasi automatiche o far muovere i bot.
+describe('Durata delle animazioni (opzione durataRecita)', () => {
+  const RECITA = 3000;
+  /** Finta durataRecita: 3 secondi per ogni mossa che produce eventi. */
+  const tremila: OpzioniHost = { durataRecita: (eventi: Evento[]) => (eventi.length > 0 ? RECITA : 0) };
+
+  /** Tavolata con il dado di Ada pronto da tirare, host con l'opzione. */
+  async function alDado(opzioni: OpzioniHost = tremila) {
+    const tv = await tavolata(2, opzioni);
+    tv.host.inizia(1);
+    await scorri();
+    const host = await conStato(tv, statoAlDado(), opzioni);
+    return { tv, host, finestraMs: host.pubblico().impostazioni.finestraSecondi * 1000 };
+  }
+
+  it('la finestra si apre con scadenza = ora + recita + secondi della finestra, e si chiude non prima', async () => {
+    const { host, finestraMs } = await alDado();
+    const ora = host.ora();
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    expect(host.pubblico().scadenza).toBe(ora + RECITA + finestraMs);
+    await scorri(RECITA + finestraMs - 100);
+    expect(host.vista(null).finestra).not.toBeNull();
+    await scorri(200);
+    expect(host.vista(null).finestra).toBeNull();
+  });
+
+  it('senza opzione la scadenza è quella di oggi: ora + secondi della finestra', async () => {
+    const { host, finestraMs } = await alDado({});
+    const ora = host.ora();
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    expect(host.pubblico().scadenza).toBe(ora + finestraMs);
+  });
+
+  it('una durataRecita che si rompe conta 0: la partita va avanti, si pubblica e la scadenza è quella di oggi', async () => {
+    const errori = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const rotta: OpzioniHost = {
+      durataRecita: () => {
+        throw new Error('durata rotta');
+      },
+    };
+    const { tv, host, finestraMs } = await alDado(rotta);
+    const ora = host.ora();
+    expect(() => host.invia({ tipo: 'lanciaDado', giocatore: 'g1' })).not.toThrow();
+    // Una riga in console per sessione di chi ospita, non una a ogni mossa
+    const righe = errori.mock.calls.length;
+    expect(righe).toBeGreaterThan(0);
+    expect(host.vista(null).fase.nome).toBe('risoluzione_dado');
+    expect(host.pubblico().scadenza).toBe(ora + finestraMs);
+    await scorri();
+    // Pubblicata: gli ospiti vedono il dado lanciato e la stessa scadenza
+    const bea = tv.ospiti[0] as SessioneOspite;
+    expect(bea.vista(null).fase.nome).toBe('risoluzione_dado');
+    expect(bea.pubblico()?.scadenza).toBe(ora + finestraMs);
+    // La finestra si chiude da sola alla scadenza di oggi
+    await scorri(finestraMs + 100);
+    expect(host.vista(null).finestra).toBeNull();
+    expect(errori).toHaveBeenCalledTimes(righe);
+    errori.mockRestore();
+  });
+
+  it('una mossa che non fa recitare niente (durata 0) non sposta la scadenza', async () => {
+    const { host, finestraMs } = await alDado({ durataRecita: () => 0 });
+    const ora = host.ora();
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    expect(host.pubblico().scadenza).toBe(ora + finestraMs);
+  });
+
+  it('una mossa nella stessa finestra non cambia la scadenza; un Beee-NO! apre una finestra nuova col suo conto', async () => {
+    const { tv, host, finestraMs } = await alDado();
+    const ora = host.ora();
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    const scadenza = host.pubblico().scadenza;
+    await scorri(1000);
+    const [bea, cleo] = tv.ospiti as [SessioneOspite, SessioneOspite];
+    cleo.invia(cleo.azioni('g3').find((a) => a.tipo === 'passa')!);
+    await scorri(500);
+    expect(host.pubblico().scadenza).toBe(scadenza);
+    bea.invia(bea.azioni('g2').find((a) => a.tipo === 'giocaBelato')!);
+    await scorri();
+    expect(host.ora()).toBe(ora + 1500);
+    // La recita del Beee-NO! si mette in coda dopo quella del dado, ancora in corso: fine a ora + 2 * RECITA.
+    expect(host.pubblico().scadenza).toBe(ora + 2 * RECITA + finestraMs);
+  });
+
+  it('la scadenza non dipende dagli ospiti: stessa sequenza di azioni, stessa scadenza (relativa)', async () => {
+    const relative: number[] = [];
+    for (const conPassa of [false, true]) {
+      const { tv, host } = await alDado();
+      const ora = host.ora();
+      host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+      await scorri(800);
+      if (conPassa) {
+        // Un ospite che passa non sposta la scadenza di chi ospita.
+        const cleo = tv.ospiti[1]!;
+        cleo.invia(cleo.azioni('g3').find((a) => a.tipo === 'passa')!);
+        await scorri(300);
+      }
+      relative.push(host.pubblico().scadenza! - ora);
+    }
+    expect(relative[0]).toBe(relative[1]);
+  });
+
+  it('una fase automatica avanza dopo la recita + la pausa di oggi', async () => {
+    const tv = await tavolata(1, tremila);
+    const ora = tv.host.ora();
+    tv.host.inizia(2);
+    expect(tv.host.vista(null).fase.nome).toBe('guaio');
+    const pausa = TEMPI.prosegui.guaio ?? 0;
+    expect(tv.host.pubblico().prosegueAlle).toBe(ora + RECITA + pausa);
+    await scorri(RECITA + pausa - 50);
+    expect(tv.host.vista(null).fase.nome).toBe('guaio');
+    await scorri(100);
+    expect(tv.host.vista(null).fase.nome).toBe('scelta');
+  });
+
+  it('senza opzione la fase automatica avanza come oggi, dopo la sola pausa', async () => {
+    const tv = await tavolata(1);
+    const ora = tv.host.ora();
+    tv.host.inizia(2);
+    expect(tv.host.pubblico().prosegueAlle).toBe(ora + (TEMPI.prosegui.guaio ?? 0));
+  });
+
+  it('un bot muove non prima della fine della recita normale', async () => {
+    const { tv, host } = await alDado();
+    tv.ospiti[1]!.chiudi();
+    await scorri();
+    host.sostituisciConBot('g3');
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    await scorri(RECITA - 100);
+    expect(host.vista(null).finestra?.inAttesa).toContain('g3');
+    await scorri(200);
+    expect(host.vista(null).finestra?.inAttesa).not.toContain('g3');
+  });
+
+  it('un bot non muove prima del suo ritardo di oggi, anche se la recita è più corta', async () => {
+    const { tv, host } = await alDado({ durataRecita: (e: Evento[]) => (e.length > 0 ? 500 : 0) });
+    tv.ospiti[1]!.chiudi();
+    await scorri();
+    host.sostituisciConBot('g3');
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    await scorri(TEMPI.bot - 100);
+    expect(host.vista(null).finestra?.inAttesa).toContain('g3');
+    await scorri(200);
+    expect(host.vista(null).finestra?.inAttesa).not.toContain('g3');
+  });
+
+  it('senza opzione il bot muove dopo il suo ritardo di oggi', async () => {
+    const { tv, host } = await alDado({});
+    tv.ospiti[1]!.chiudi();
+    await scorri();
+    host.sostituisciConBot('g3');
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    await scorri(TEMPI.bot + 100);
+    expect(host.vista(null).finestra?.inAttesa).not.toContain('g3');
+  });
+
+  it('giocatore in pausa: la finestra non scade; quando riparte lo fa a tempo pieno, senza la recita già finita', async () => {
+    const { tv, host, finestraMs } = await alDado();
+    tv.ospiti[1]!.chiudi();
+    await scorri();
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    expect(host.pubblico().pausa).toEqual(['g3']);
+    expect(host.pubblico().scadenza).toBeNull();
+    await scorri(RECITA + finestraMs + 5000);
+    expect(host.vista(null).finestra).not.toBeNull();
+    host.sostituisciConBot('g3');
+    expect(host.pubblico().scadenza).toBe(host.ora() + finestraMs);
+  });
+
+  it('una fase automatica che riparte dopo una pausa conta solo la pausa di oggi', async () => {
+    const tv = await tavolata(1, tremila);
+    tv.host.inizia(2);
+    tv.ospiti[0]!.chiudi();
+    await scorri(RECITA + 1000);
+    expect(tv.host.vista(null).fase.nome).toBe('guaio');
+    tv.host.sostituisciConBot('g2');
+    expect(tv.host.pubblico().prosegueAlle).toBe(tv.host.ora() + (TEMPI.prosegui.guaio ?? 0));
+  });
+
+  it('host scollegato: nessun timer; al ritorno la finestra riparte a tempo pieno, senza la recita', async () => {
+    const { tv, host, finestraMs } = await alDado();
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    await scorri();
+    tv.rete.impostaConnessione('uid-host', false);
+    await scorri(RECITA + finestraMs + 5000);
+    expect(host.vista(null).finestra).not.toBeNull();
+    tv.rete.impostaConnessione('uid-host', true);
+    await scorri();
+    expect(host.pubblico().scadenza).toBe(host.ora() + finestraMs);
+    await scorri(finestraMs - 500);
+    expect(host.vista(null).finestra).not.toBeNull();
+    await scorri(1000);
+    expect(host.vista(null).finestra).toBeNull();
+  });
+
+  // Le recite si mettono in coda come quelle del regista: una mossa corta non anticipa la fine di una lunga ancora in corso.
+  describe('recite in coda', () => {
+    /** Durata finta guidata dal test: ogni mossa con eventi prende il valore successivo (0 se la coda è vuota). */
+    function conCoda() {
+      const coda: number[] = [];
+      const opzioni: OpzioniHost = { durataRecita: (eventi: Evento[]) => (eventi.length > 0 ? (coda.shift() ?? 0) : 0) };
+      return { coda, opzioni };
+    }
+
+    it('una mossa senza recita non anticipa la fine di quella lunga: il bot aspetta comunque', async () => {
+      const { coda, opzioni } = conCoda();
+      const { tv, host } = await alDado(opzioni);
+      tv.ospiti[1]!.chiudi();
+      await scorri();
+      host.sostituisciConBot('g3');
+      coda.push(3000);
+      host.invia({ tipo: 'lanciaDado', giocatore: 'g1' }); // A: t, 3000
+      await scorri(1000);
+      const bea = tv.ospiti[0]!;
+      coda.push(0);
+      bea.invia(bea.azioni('g2').find((a) => a.tipo === 'giocaBelato')!); // B: t + 1000, 0
+      await scorri(1900); // t + 2900
+      expect(host.vista(null).finestra?.inAttesa).toContain('g3');
+      await scorri(200); // t + 3100
+      expect(host.vista(null).finestra?.inAttesa).not.toContain('g3');
+    });
+
+    it('una fase automatica non parte prima della fine della recita lunga + la pausa', async () => {
+      const { coda, opzioni } = conCoda();
+      const tv = await tavolata(1, opzioni);
+      tv.host.inizia(2);
+      await scorri(10_000);
+      expect(tv.host.vista(null).fase.nome).toBe('scelta');
+      const bea = tv.ospiti[0]!;
+      const ora = tv.host.ora();
+      coda.push(3000);
+      tv.host.invia(tv.host.azioni('g1').find((a) => a.tipo === 'scegliTrovata')!); // A: t, 3000
+      await scorri(1000);
+      coda.push(0);
+      bea.invia(bea.azioni('g2').find((a) => a.tipo === 'scegliTrovata')!); // B: t + 1000, 0 -> rivelazione
+      await scorri();
+      expect(tv.host.vista(null).fase.nome).toBe('rivelazione');
+      expect(tv.host.pubblico().prosegueAlle).toBe(ora + 3000 + (TEMPI.prosegui.rivelazione ?? 0));
+    });
+
+    it('due recite in coda si sommano: la finestra aperta dalla seconda scade dopo la fine di entrambe', async () => {
+      const { coda, opzioni } = conCoda();
+      const { tv, host, finestraMs } = await alDado(opzioni);
+      const ora = host.ora();
+      coda.push(3000);
+      host.invia({ tipo: 'lanciaDado', giocatore: 'g1' }); // A: t, 3000
+      await scorri(1000);
+      const bea = tv.ospiti[0]!;
+      coda.push(2000);
+      bea.invia(bea.azioni('g2').find((a) => a.tipo === 'giocaBelato')!); // B: t + 1000, 2000 -> fine a t + 5000
+      await scorri();
+      expect(host.pubblico().scadenza).toBe(ora + 5000 + finestraMs);
+    });
+  });
+
+  it('riprendendo una stanza le mosse già recitate non fanno aspettare di nuovo', async () => {
+    const tv = await tavolata(1, tremila);
+    tv.host.inizia(2);
+    await scorri(100);
+    tv.host.chiudi();
+    const host = (await SessioneHost.riprendi(tv.rete.dispositivo('uid-host'), tv.salvataggioHost, tremila))!;
+    await scorri();
+    expect(host.pubblico().prosegueAlle).toBe(host.ora() + (TEMPI.prosegui.guaio ?? 0));
+  });
+
+  describe('durata data dopo (si scarica con la scena)', () => {
+    it("vale dalle mosse nuove: quelle già fatte non fanno aspettare, la prossima sì", async () => {
+      const { host, finestraMs } = await alDado({});
+      // Arriva a partita già avviata: un secondo per evento, così si vede quali eventi conta
+      const durata = vi.fn((eventi: Evento[]) => eventi.length * 1000);
+      host.impostaDurataRecita(durata);
+      await scorri();
+      const primaSeq = host.vista(null).eventi.reduce((m, e) => Math.max(m, e.seq), -1);
+      const ora = host.ora();
+      host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+      const nuovi = host.vista(null).eventi.filter((e) => e.seq > primaSeq);
+      expect(nuovi.length).toBeGreaterThan(0);
+      // Solo gli eventi del lancio: niente della storia di prima
+      expect(durata).toHaveBeenCalledTimes(1);
+      expect(durata.mock.calls[0]![0]).toEqual(nuovi);
+      expect(host.pubblico().scadenza).toBe(ora + nuovi.length * 1000 + finestraMs);
+    });
+
+    it('in sala d\'attesa: la partita che parte dopo la usa dalla prima mossa', async () => {
+      const tv = await tavolata(1);
+      tv.host.impostaDurataRecita(() => 3000);
+      const ora = tv.host.ora();
+      tv.host.inizia(2);
+      await scorri();
+      expect(tv.host.pubblico().prosegueAlle).toBe(ora + 3000 + (TEMPI.prosegui.guaio ?? 0));
+    });
   });
 });
 

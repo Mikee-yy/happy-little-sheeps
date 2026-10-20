@@ -1,6 +1,6 @@
 // Pannelli d'azione per ogni momento del round. Ogni pannello costruisce i controlli a partire
 // dalle azioni valide fornite dal motore: non può proporre mosse illegali.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Azione, IdCarta, IdGiocatore, Vista } from '../../../engine/src';
 import { Dado3D, FacciaDado } from '../grafica';
 import { T } from '../testi';
@@ -255,11 +255,19 @@ export function PannelloPunteggio({ v, giocatore, azioni, invia, onIndietro, man
 export function PannelloLancio({ v, giocatore, azioni, invia }: PropsPannello) {
   const lancia = filtra(azioni, 'lanciaDado')[0];
   const [rotola, setRotola] = useState(false);
+  // Un solo lancio per tocco: mossa e funzione più recenti si leggono al momento, così un nuovo disegno della pagina
+  // mentre il dado rotola non fa ripartire l'attesa né mandare il lancio due volte
+  const ultimo = useRef({ lancia, invia });
+  ultimo.current = { lancia, invia };
+  const puoLanciare = lancia !== undefined;
   useEffect(() => {
-    if (!rotola || !lancia) return;
-    const t = setTimeout(() => invia(lancia), 900);
+    if (!rotola || !puoLanciare) return;
+    const t = setTimeout(() => {
+      const { lancia: l, invia: manda } = ultimo.current;
+      if (l) manda(l);
+    }, 900);
     return () => clearTimeout(t);
-  }, [rotola, lancia, invia]);
+  }, [rotola, puoLanciare]);
   return (
     <div className="pannello pannello-dado">
       <Titolo aiuto={v.datiRound.lanciatori.length > 1 ? T.dado.pari : undefined}>{T.dado.tocca(nome(v, giocatore))}</Titolo>

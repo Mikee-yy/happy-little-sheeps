@@ -55,7 +55,8 @@ export const saltello = (g: Agnello, h = 10) =>
   });
 
 const distanza = (p: { x: number; y: number }, q: { x: number; y: number }) => Math.hypot(p.x - q.x, p.y - q.y);
-const libero = (g: Agnello) => !g.regia && ['fermo', 'bruca', 'cammina', 'guarda'].includes(g.stato);
+// Chi è alzato dal teatro (furto) non è libero: né i giochi né il meteo lo portano via mentre la domanda è sul tavolo
+const libero = (g: Agnello) => !g.regia && !g.sollevato && ['fermo', 'bruca', 'cammina', 'guarda'].includes(g.stato);
 
 export function prendi(gs: Agnello[]): void {
   gs.forEach((g) => {

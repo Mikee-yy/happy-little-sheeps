@@ -3,8 +3,8 @@ import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { IdCarta, IdGiocatore, RigaPunteggio, Vista } from '../../../engine/src';
 import { Agnellino, Avatar, IconaGuaio, Quadrifoglio } from '../grafica';
-import { elenco, T } from '../testi';
-import { carta, descriviEvento, giocatoreDi, mancanti, tipiPericolosi, tipoGuaio, totaleRighe } from './descrizioni';
+import { T } from '../testi';
+import { carta, datiAvvisi, descriviEvento, giocatoreDi, mancanti, tipiPericolosi, tipoGuaio, totaleRighe } from './descrizioni';
 
 export function Pulsante(p: {
   children: ReactNode;
@@ -133,7 +133,7 @@ export function Mano(p: {
 }) {
   const zoom = useIngrandimento();
   return (
-    <div className="mano">
+    <div className="mano mano-pannello">
       {p.carte.map((c) => {
         const toccabile = p.onTocca && (!p.toccabili || p.toccabili.includes(c));
         const { eraTenuta, ...gesti } = zoom.props(c);
@@ -222,29 +222,28 @@ export function RigaOvile({ v, id, attiva }: { v: Vista; id: IdGiocatore; attiva
 
 /** Avvisi per il giocatore che ha il dispositivo: un Guaio all'eliminazione, pochi agnellini alla vittoria. */
 export function Avvisi({ v, id }: { v: Vista; id: IdGiocatore }) {
-  const g = giocatoreDi(v, id);
-  if (g.eliminato) return null;
-  const pericolosi = tipiPericolosi(v, id);
-  const mancano = mancanti(v, id);
+  const avvisi = datiAvvisi(v, id);
+  if (avvisi.length === 0) return null;
   return (
     <>
-      {pericolosi.length > 0 && (
-        <div className="avviso avviso-pericolo" role="alert">
-          <span className="punto-esclamativo">!</span>
-          <div>
-            <strong>{T.avvisi.pericoloTitolo}</strong>
-            <div>{T.avvisi.pericolo(elenco(pericolosi.map((t) => T.tipiGuaio[t])))}</div>
+      {avvisi.map((a) =>
+        a.tipo === 'pericolo' ? (
+          <div key={a.tipo} className="avviso avviso-pericolo" role="alert">
+            <span className="punto-esclamativo">!</span>
+            <div>
+              <strong>{a.titolo}</strong>
+              <div>{a.testo}</div>
+            </div>
           </div>
-        </div>
-      )}
-      {mancano <= 3 && (
-        <div className="avviso avviso-vittoria">
-          <Agnellino size={30} />
-          <div>
-            <strong>{T.avvisi.vittoriaTitolo(mancano)}</strong>
-            <div>{T.avvisi.vittoria}</div>
+        ) : (
+          <div key={a.tipo} className="avviso avviso-vittoria">
+            <Agnellino size={30} />
+            <div>
+              <strong>{a.titolo}</strong>
+              <div>{a.testo}</div>
+            </div>
           </div>
-        </div>
+        ),
       )}
     </>
   );

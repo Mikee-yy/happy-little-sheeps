@@ -228,18 +228,18 @@ Progetto `bozze/partita-prova-progetto.md`, piano `bozze/partita-prova-piano.md`
 - **Gioco:** pulsante "Partita di prova" nella Home; `client/src/prova/` (`regiaProva.ts`, `guida.ts` con i 15 consigli in ordine, `PartitaProva.tsx`); `Partita` ha `umano` e `testa`; in `App` la prova resta montata mentre si leggono le Regole.
 - **Storia dei tre round** (giocando le carte "ovvie"): 1) tu tiri Pascolo, Bea prende il Lupo; 2) Bea tira Furto contro di te (Beee-NO!), tu prendi la Grandine; 3) tu tiri Testata, Bea prende Crisi esistenziale. Poi "Ora sai come si gioca!".
 
-## Scena nel gioco, pezzo 1 (15 ottobre, fatto, in attesa della revisione finale)
+## Scena nel gioco, pezzo 1 (15 ottobre, fatto e salvato in locale nel commit 033b38b)
 
 Il punto 3 ("portare la scena nel gioco vero") è diviso in 4 pezzi: 1) la scena entra nel gioco, 2) la regia che recita gli eventi, 3) le scelte dentro la scena, 4) le stanze. Si pubblica dopo i pezzi 1–3, con la partita su un dispositivo e la prova; le stanze tengono per un po' la grafica di oggi. Progetto del pezzo 1: `bozze/scena-gioco-1-progetto.md`; piano: `bozze/scena-gioco-1-piano.md` (12 compiti). Registro con tutte le scelte: `.superpowers/sdd/scena-gioco-1-piano/progress.md` (fuori da git).
 
 **Stato al 15 ottobre:**
-- Tutti i 12 compiti sono fatti e revisionati. Restano la revisione finale di tutto (revisore ad alto impegno) e lo stop di fase.
+- Tutti i 12 compiti sono fatti e revisionati, revisione finale compresa. Salvato in un commit locale (033b38b), non pubblicato.
 - Nella partita su un dispositivo e nella partita di prova si gioca dentro la scena 2,5D; le scelte si fanno ancora con i pannelli di oggi, in un cassetto. La scena mostra sempre lo stato vero della partita. Le stanze (`client/src/remoto/`) non cambiano.
 - Regola anti-sbirciate: la mano di chi sta in basso è scoperta solo nella schermata privata, quando ha il telefono; durante "Passa a …" e nelle schermate pubbliche si vedono i dorsi. Nella partita di prova la mano di "Tu" è sempre scoperta (un solo umano).
 - Corretto il 15 ottobre: targhe degli avversari con nomi lunghi (dentro lo schermo e senza sovrapposizioni a 2, 3 e 4 giocatori), Testata che sta tutta nello schermo senza scorrere, consiglio del tratto della prova ("Nerina se la cava con i Predatori…"), scena caricata a parte (React.lazy, con confine d'errore e pulsante "Riprova"; tolta la soglia alzata in `vite.config.ts`).
 - Verificato: partita a 3 intera nel browser (390×844) senza errori in console; nella pagina di sviluppo 72/72 eventi in modo normale, veloce, salto e leggero.
 - Decisioni dell'utente: recinti "base" e simboli delle carte senza disegno approvati per ora, da rivedere (in `da-fare.md`). Vitest usa i fili (`pool: 'threads'`) e le scorciatoie `npm`/`npx` in `.tools/bin` lanciano il programma direttamente, per evitare le finestre di terminale.
-- Niente pubblicato, niente commit.
+- Niente pubblicato.
 
 **Mappa dei file** (`client/src/scena/`, tranne dove indicato):
 - `teatro.ts`: `creaTeatro`, unico punto d'accesso (`allinea(foto, modo)`, `distruggi`, `adatta`, `sospendi`). `ciclo.ts` è il ciclo di animazione, automatico o manuale.
@@ -249,3 +249,39 @@ Il punto 3 ("portare la scena nel gioco vero") è diviso in 4 pezzi: 1) la scena
 - `mano.ts`, `lettura.ts`, `camera.ts`, `ordini.ts` (dado, testata, Beee-NO!, Guai, voli di carte).
 - React: `Scena.tsx` monta il teatro; `ScenaCaricata.tsx` e `caricaScena.ts` (in `client/src/partita/`) la caricano a parte; `OpzioniScena.tsx` ha gli interruttori delle Opzioni.
 - Sviluppo: `client/scena.html` (non pubblicata), `aiuti-prova.ts` (contesto finto e partite simulate per le prove).
+
+## Scena nel gioco, pezzo 2: la regia (19 ottobre, fatto e revisionato, in attesa dello stop di fase)
+
+Progetto `bozze/scena-gioco-2-progetto.md`, piano `bozze/scena-gioco-2-piano.md` (5 compiti), registro con tutte le scelte `.superpowers/sdd/scena-gioco-2-piano/progress.md` (fuori da git). Niente commit.
+
+- **Cosa fa:** la scena recita le mosse del motore (Guaio del round, carte girate e punteggi, carte giocate in volo, Beee-NO!, dado e dichiarazioni, furti e pascoli, Testata, Guai col meteo o il Lupo, cure, eliminazione, festa finale). Mentre recita, il cassetto, il "Passa il dispositivo", il consiglio della prova e la classifica aspettano; i bot della prova pure.
+- **Decisioni dell'utente:** meteo sempre a piena durata; la partita aspetta solo i primi 5 s, poi il pannello compare e il meteo continua sullo sfondo (anche il Lupo); lo zoom sull'avversario torna al tavolo intero a 5 s; un tocco sul prato salta; "Animazioni veloci" resta; a fine partita la festa (si può saltare), poi la classifica. Per il pezzo 4: il conto alla rovescia del Beee-NO! va in pausa durante le animazioni.
+- **Regole di sicurezza:** al più 25 s veri per battuta (se il browser non disegna, la partita non resta ferma); oltre 8 battute in coda la scena si mette in pari subito; la prima fotografia e il ritorno da un'altra scheda si mostrano subito, senza recitare.
+- **File:** `client/src/scena/regia/copione.ts` (funzione pura: eventi → battute, con l'attesa di ognuna), `regia/regista.ts` (recita le battute in fila e dice quando la scena è "occupata"), ordini nuovi in `ordini.ts`; `Teatro.recita`, `occupato`, `ascoltaOccupato`; `Scena.tsx` (prop `vista`, `onOccupato`), `Partita.tsx` (`scenaOccupata`), `sync/prova.ts` (`pausa`).
+- **Verificato nel browser (19 ottobre, 390×844):** partite intere a 2, 3 e 4 e la prova fino alla fine, senza errori in console; zoom sul Lupo di Bea con ritorno a 5,0 s e pannello a 5,1 s; tocco sul prato che libera il pannello in meno di un secondo; Beee-NO!, festa e classifica. "Ultimo round!" non è capitato (partite finite con l'Ovile pieno): è coperto dalle prove automatiche.
+- **Corretto durante le prove nel browser:** dopo un meteo il pannello tornava a quasi 8 s perché la partita aspettava anche l'agnellino di consolazione; ora l'agnellino corre mentre si gioca.
+- **Corretto dopo la revisione finale (19 ottobre):** il Beee-NO! non vola più due volte; all'annullamento esplode la scritta, la carta annullata torna un momento al centro e si scuote, e chi l'aveva giocata trasale. "Ultimo round!" compare all'inizio del vero ultimo round, anche se il mazzo finisce a metà di un round. Durante le animazioni la propria mano scoperta si aggiorna subito: la carta giocata esce dal ventaglio e quelle pescate entrano.
+- **Lasciato com'è (da decidere se serve):** il tempo massimo di 25 s vale per ogni battuta, non per la recita intera; se il browser smette di disegnare senza segnalare la finestra coperta, il pannello può tardare di più.
+
+## Scena nel gioco, pezzo 3: le scelte dentro la scena (20 ottobre, fatto e revisionato)
+
+Progetto `bozze/scena-gioco-3-progetto.md`, piano `bozze/scena-gioco-3-piano.md` (7 compiti), registro `.superpowers/sdd/scena-gioco-3-piano/progress.md` (fuori da git). Niente commit (il pezzo 2 non è ancora in commit).
+
+- **Cosa fa:** nella partita su un dispositivo e nella prova si gioca toccando la scena. La carta si gioca toccandola e poi "Gioca · N", o trascinandola sulla tovaglia; i bersagli si scelgono toccando la pecora o il recinto illuminati; il dado si tocca; il furto si fa toccando i recinti (gli agnellini presi si alzano) e "Conferma"; "Chi risponde?" si risponde toccando la propria pecora o "Nessuno"; "Guarda le prime 2" mostra due carte grandi; la cura si fa toccando il Guaio dell'angolo; nei momenti senza scelta c'è "Continua". La scritta "cosa fare" sta nella striscia in alto al posto della cronaca. I consigli della prova sono la nuvoletta del pensiero della propria pecora; quando tocca a un bot la nuvoletta dice che sta pensando. La Testata usa il riquadro di mira di oggi, sopra la scena.
+- **Decisioni dell'utente (19 ottobre):** gioco della carta in due modi; bersagli toccando la pecora; Testata col riquadro di oggi (la fionda nella scena è segnata in `da-fare.md`); risposte toccando la propria pecora; furto toccando i recinti; pulsante "Continua"; consigli come pensiero; strada "la scena chiede, il gioco decide". Il 20 ottobre: con una domanda a schermo il tocco sul prato abbassa le carte e salta il meteo che continua sullo sfondo.
+- **File:** `client/src/scena/scelte/` (tipi, domanda, tavolo, carte: puri), `client/src/scena/chiedi.ts` (la scena mostra la domanda), `mano.ts` (modo comandato e trascinamento), `Teatro.chiedi / smettiDiChiedere / pensa`, `Scena.tsx` e `ScenaCaricata.tsx` (props `domanda`, `suGesto`, `pensiero`, `onPronto`), `Partita.tsx` (domanda a scena libera, scelta a metà, blocco dopo una mossa, riserva col cassetto), `PartitaProva.tsx` (pensieri).
+- **Verificato nel browser (20 ottobre, 390×844):** la prova fino alla fine (con "Ultimo round!", festa e classifica) e partite intere a 2, 3 e 4 giocate solo toccando la scena, nessun errore in console, nessun cassetto; trascinamento sulla tovaglia; scritta su due righe a 4 giocatori senza coprire le targhe.
+- **Corretto nel giro finale:** carte della mano usabili con la tastiera, fuoco ritrovato dopo ogni mossa, avvisi della striscia mai tagliati.
+
+## Rifiniture prima della pubblicazione (20 ottobre, fatte)
+
+Registro `.superpowers/sdd/rifiniture/`. "Cura" con conferma (toccando il Guaio dell'angolo compare "Cura <Guaio>"); striscia in alto più compatta (avvisi con "!" su righe proprie, a 4 giocatori non copre le targhe) con una X che la nasconde per quella domanda; messaggio se la scena non si carica (senza rete / "il gioco è stato aggiornato, ricarica la pagina"); suono di fondo fermato davvero (contesto audio sospeso); scena ferma sotto "Passa il dispositivo"; classi esplicite `.mano-pannello` e `.consiglio-riquadro` per i pannelli.
+
+## Scena nel gioco, pezzo 4: le stanze (20 ottobre, fatto e revisionato, in attesa del commit e della pubblicazione)
+
+Progetto `bozze/scena-gioco-4-progetto.md`, piano `bozze/scena-gioco-4-piano.md`, registro `.superpowers/sdd/scena-gioco-4-piano/progress.md` (fuori da git). Niente commit.
+
+- **Cosa fa:** nelle stanze ogni telefono ha la sua pecora in basso e la sua mano scoperta; le scelte si fanno toccando la scena come nel pezzo 3 (senza "Chi risponde?" e senza "Continua"); la striscia dice cosa fare o chi si aspetta; il conto alla rovescia del Beee-NO! sta nella striscia, resta pieno e fermo per la durata normale dell'animazione e poi scende, uguale per tutti; le fasi automatiche e i bot sostituti aspettano le animazioni; tolto lo "Spettacolo"; vista proiettore con la scena (senza mano). Riserva con i pannelli se la scena non si carica.
+- **Decisioni dell'utente (20 ottobre):** durata normale fissa per il conto alla rovescia (non il telefono più lento); fasi automatiche che avanzano da sole dopo l'animazione; bot che aspettano; via lo Spettacolo; proiettore con la scena.
+- **Come è fatto:** `client/src/scena/regia/durate.ts` + `durate.json` (durata normale delle battute del copione, misurata sulla scena) passata a `SessioneHost` per iniezione (`OpzioniHost.durataRecita`, `impostaDurataRecita`), caricata a parte per non appesantire il sito; chi ospita mette in coda le recite (`fineRecita`) e calcola scadenza, fasi automatiche e bot; `client/src/partita/GiocoInScena.tsx` è il pezzo comune con `Partita`; `momentoRemoto`/`scrittaAttesa` in `client/src/remoto/regiaRemota.ts`; il blocco dopo una mossa nelle stanze usa la "generazione" della propria situazione (un evento altrui non sblocca, un rifiuto sì, 4 s di sicurezza). Le regole di Firebase non cambiano.
+- **Verificato nel browser (20 ottobre):** `client/prova.html` con tre telefoni, partita intera e rivincita con un bot sostituto, conto alla rovescia fermo e poi in discesa, nessun errore; partita su un telefono (X e altezza della striscia); 72/72 casi del meteo. Non provati nel browser: vista proiettore (coperta dalle prove automatiche) e suono (da ascoltare).

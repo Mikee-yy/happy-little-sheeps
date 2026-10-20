@@ -48,6 +48,33 @@ export function tipiPericolosi(v: Vista, id: IdGiocatore): TipoGuaioCarta[] {
 /** Agnellini che mancano per riempire l'Ovile. */
 export const mancanti = (v: Vista, id: IdGiocatore): number => v.config.postiOvile - giocatoreDi(v, id).agnellini;
 
+/** Un avviso per chi ha il dispositivo: titolo e testo (il pannello li mostra su due righe). */
+export interface DatiAvviso {
+  tipo: 'pericolo' | 'vittoria';
+  titolo: string;
+  testo: string;
+}
+
+/** Gli avvisi di un giocatore: un Guaio all'eliminazione, pochi agnellini alla vittoria. Vuoti se è eliminato. */
+export function datiAvvisi(v: Vista, id: IdGiocatore): DatiAvviso[] {
+  if (giocatoreDi(v, id).eliminato) return [];
+  const avvisi: DatiAvviso[] = [];
+  const pericolosi = tipiPericolosi(v, id);
+  if (pericolosi.length > 0) {
+    avvisi.push({
+      tipo: 'pericolo',
+      titolo: T.avvisi.pericoloTitolo,
+      testo: T.avvisi.pericolo(elenco(pericolosi.map((t) => T.tipiGuaio[t]))),
+    });
+  }
+  const mancano = mancanti(v, id);
+  if (mancano <= 3) avvisi.push({ tipo: 'vittoria', titolo: T.avvisi.vittoriaTitolo(mancano), testo: T.avvisi.vittoria });
+  return avvisi;
+}
+
+/** Gli stessi avvisi come frasi, per la scritta in alto della scena ("Titolo. Testo."). */
+export const avvisiDi = (v: Vista, id: IdGiocatore): string[] => datiAvvisi(v, id).map((a) => `${a.titolo}. ${a.testo}`);
+
 const segno = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
 /** Cosa sta per succedere: testo della finestra di reazione. */

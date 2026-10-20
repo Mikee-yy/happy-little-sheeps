@@ -609,8 +609,8 @@ button.carta {
   padding: 2px 4px;
 }
 
-/* La mano dei pannelli; quella della scena (.teatro .mano) ha i suoi stili in scena/scena.css */
-.mano:not(.teatro .mano) {
+/* La mano dei pannelli (classe sua, messa da Mano in componenti.tsx); quella della scena (.teatro .mano) ha i suoi stili in scena/scena.css */
+.mano-pannello {
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -1176,62 +1176,16 @@ button.carta {
 .conto span {
   position: relative;
 }
-
-.spettacolo {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: auto;
-  z-index: 5;
-  background: color-mix(in srgb, var(--colore-sfondo) 70%, transparent);
+/* Fermo finché dura la recita normale della mossa: la barra resta piena */
+.conto.fermo .conto-barra {
+  transition: none;
 }
-.spettacolo-scena {
-  display: grid;
-  justify-items: center;
-  gap: var(--spazio-2);
-  background: var(--colore-carta);
-  border: var(--tratto-ui-forte) solid var(--colore-inchiostro);
-  border-radius: var(--raggio-pannello);
-  box-shadow: var(--ombra-piena);
-  padding: var(--spazio-4) var(--spazio-5);
-  text-align: center;
-  font-weight: 700;
-  max-width: 90vw;
-}
-.spettacolo-scena p {
-  margin: 0;
-}
-.spettacolo-dado svg {
-  animation: rotola 0.9s ease-out forwards, sparisci 0.01s 0.9s forwards;
-}
-.spettacolo-faccia {
-  opacity: 0;
-  animation: compari 0.25s 0.9s ease-out forwards;
-  margin-top: -110px;
-}
-@keyframes sparisci {
-  to {
-    opacity: 0;
-  }
-}
-@keyframes compari {
-  from {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-.spettacolo-montone {
-  animation: carica 0.5s ease-in;
-}
-@keyframes carica {
-  from {
-    transform: translateX(-60px);
-  }
+/* Nella striscia in cima, sotto la scritta: più bassa e stretta, così le targhe degli avversari restano visibili */
+.testata-scena .conto {
+  height: 20px;
+  width: min(100%, 260px);
+  margin: 4px auto 0;
+  font-size: var(--testo-xs);
 }
 
 .tavolo-proiettore {
@@ -1241,6 +1195,20 @@ button.carta {
   #app:has(.tavolo-proiettore) {
     max-width: 1100px;
   }
+}
+/* Proiettore: la striscia in cima è larga come la sala; il tavolo di prima (finché la scena non c'è) sta sotto la striscia */
+.tavolo-proiettore .testata-scena {
+  max-width: 1100px;
+}
+.riserva-proiettore {
+  position: fixed;
+  inset: 72px 0 0;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+  background: var(--colore-sfondo);
 }
 
 .area-azione.bloccata {
@@ -1270,16 +1238,18 @@ button.carta {
   border-radius: 24px;
   padding: 12px;
   background: var(--colore-sfondo);
+  /* La scena, la striscia e il cassetto (fissi sullo schermo di un telefono vero) restano dentro il proprio telefono */
+  transform: translateZ(0);
 }
-.prova-telefono .velo,
-.prova-telefono .spettacolo {
+.prova-telefono .velo {
   position: sticky;
 }
 
 /* ─── Partita di prova ───────────────────────────────────────────────────── */
 
 /* Consiglio della guida e riquadro finale, sopra il pannello d'azione */
-.consiglio:not(.teatro .consiglio),
+/* .consiglio-riquadro è il consiglio nel riquadro in basso (senza scena); quello della scena (.teatro .consiglio) ha i suoi stili in scena/scena.css */
+.consiglio-riquadro,
 .fine-prova {
   display: grid;
   gap: var(--spazio-2);
@@ -1289,7 +1259,7 @@ button.carta {
   padding: var(--spazio-3) var(--spazio-4);
   margin: var(--spazio-3) 0;
 }
-.consiglio:not(.teatro .consiglio) p,
+.consiglio-riquadro p,
 .fine-prova p {
   margin: 0;
 }
@@ -1419,6 +1389,98 @@ button.carta {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* La scritta della domanda nella scena, al posto della cronaca: la stessa pillola, la cosa da fare in una riga (due al
+   più, se è lunga) e sotto gli avvisi interi, così le targhe degli avversari restano visibili come con la cronaca.
+   La pillola non prende i tocchi: quelli sotto di lei arrivano alla scena (il menu sta nell'intestazione) */
+.testata-scena .scritta-scena {
+  pointer-events: none;
+  width: fit-content;
+  max-width: 100%;
+  margin: 2px auto 0;
+  padding: 1px 10px;
+  font-size: var(--testo-xs);
+  line-height: 1.3;
+  text-align: center;
+  background: color-mix(in srgb, var(--colore-carta) 72%, transparent);
+  border-radius: 12px;
+}
+.testata-scena .scritta-scena p {
+  margin: 0;
+}
+.testata-scena .scritta {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-weight: 700;
+}
+/* L'istruzione e la X per nasconderla, sulla stessa riga */
+.testata-scena .scritta-riga {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+/* La X ha un'area di tocco di 24 px ma non allarga la striscia (margini negativi); prende i tocchi che la pillola lascia alla scena */
+.testata-scena .scritta-chiudi {
+  pointer-events: auto;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: -5px -8px -5px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+}
+.testata-scena .scritta-chiudi:focus-visible {
+  outline: 2px solid var(--colore-inchiostro);
+  border-radius: 50%;
+}
+/* Gli avvisi (pericolo, vittoria vicina) non si tagliano mai: piccoli, di seguito, ognuno col suo "!" davanti */
+.testata-scena .scritta-avvisi {
+  font-size: 10px;
+  line-height: 1.15;
+}
+.testata-scena .scritta-avviso {
+  font-weight: 400;
+}
+.testata-scena .scritta-avviso + .scritta-avviso {
+  margin-left: 4px;
+}
+.testata-scena .scritta-avviso::before {
+  content: "! ";
+  font-weight: 800;
+  color: var(--colore-pericolo);
+}
+/* L'errore del motore (non dovrebbe succedere): una riga in più nella stessa pillola */
+.testata-scena .scritta-scena .errore {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: inherit;
+  font-weight: 700;
+}
+/* Il colpo della Testata nella scena: il riquadro di mira di sempre, da sotto la striscia in cima (--spazio-alto,
+   misurata) fino in fondo; l'arena prende l'altezza che resta mantenendo le proporzioni */
+.riquadro-testata {
+  position: fixed;
+  top: var(--spazio-alto, 67px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px max(12px, env(safe-area-inset-bottom));
+}
 /* In basso, sopra il prato: il consiglio della prova (o il riquadro finale) e il cassetto dei pannelli */
 .fondo-scena {
   position: fixed;
@@ -1519,6 +1581,26 @@ button.carta {
   align-self: center;
 }
 .a-tutta-altezza .testata .caduti {
+  min-height: 30px;
+}
+/* Il riquadro della Testata sopra la scena: il pannello e l'arena come nel cassetto a tutta altezza */
+.riquadro-testata .pannello.testata {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spazio-2);
+  padding: var(--spazio-3);
+}
+.riquadro-testata .testata .arena {
+  flex: 1 1 0;
+  min-height: 0;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 360 / 440;
+  align-self: center;
+}
+.riquadro-testata .testata .caduti {
   min-height: 30px;
 }
 /* "Passa il dispositivo": copre la scena (che resta montata sotto) */

@@ -1,8 +1,9 @@
 // Partita di prova: tu contro Bea e Leo, con la guida che spiega ogni momento la prima volta che capita.
+// I consigli e il riquadro finale sono il pensiero della propria pecora (la nuvoletta nella scena).
 import { useEffect, useState } from 'react';
 import { SessioneProva } from '../../../sync/prova';
 import { Partita, useAggiornamenti } from '../partita/Partita';
-import { Pulsante } from '../partita/componenti';
+import type { Pensiero } from '../scena/scelte/tipi';
 import { T } from '../testi';
 import { prossimoConsiglio, provaGuidataFinita } from './guida';
 import type { IdConsiglio } from './guida';
@@ -24,34 +25,32 @@ export function PartitaProva({ onHome, onRegole, nascosta }: { onHome: () => voi
   const consiglio = prossimoConsiglio(v, umano, sessione.azioni(umano), visti);
   const fine = !fineMostrata && provaGuidataFinita(v);
 
-  const testa = fine ? (
-    <div className="fine-prova" role="status">
-      <h2>{T.prova.fine.titolo}</h2>
-      <p>{T.prova.fine.testo}</p>
-      <Pulsante largo onClick={() => setFineMostrata(true)}>
-        {T.prova.fine.continua}
-      </Pulsante>
-      <Pulsante largo secondario onClick={onHome}>
-        {T.prova.fine.home}
-      </Pulsante>
-    </div>
-  ) : consiglio ? (
-    <div className="consiglio" role="status">
-      <strong>{T.prova.consiglioTitolo}</strong>
-      <p>{T.prova.consigli[consiglio]}</p>
-      <Pulsante secondario onClick={() => setVisti(new Set([...visti, consiglio]))}>
-        {T.prova.hoCapito}
-      </Pulsante>
-    </div>
-  ) : null;
+  const pensiero: Pensiero | null = fine
+    ? {
+        titolo: T.prova.fine.titolo,
+        testo: T.prova.fine.testo,
+        pulsanti: [
+          { testo: T.prova.fine.continua, azione: () => setFineMostrata(true) },
+          { testo: T.prova.fine.home, secondario: true, azione: onHome },
+        ],
+      }
+    : consiglio
+      ? {
+          titolo: T.prova.consiglioTitolo,
+          testo: T.prova.consigli[consiglio],
+          pulsanti: [{ testo: T.prova.hoCapito, azione: () => setVisti(new Set([...visti, consiglio])) }],
+        }
+      : null;
 
   return (
     <Partita
       sessione={sessione}
       umano={umano}
-      testa={testa}
+      pensiero={pensiero}
       senzaAzioni={fine}
       nascosta={nascosta}
+      // Mentre la scena recita i bot aspettano: le mosse non si accavallano a quelle ancora in scena
+      onScenaOccupata={(occupata) => sessione.pausa(occupata)}
       onHome={onHome}
       onRegole={onRegole}
       onRigioca={() => {

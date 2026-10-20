@@ -1,6 +1,7 @@
 // Scheletro del DOM della scena (bozza scena.src.html, righe 264–320), con classi al posto degli id:
 // più teatri possono stare nella stessa pagina. Dell'interfaccia in alto restano solo i contenitori;
 // i pulsanti Opzioni e Prova eventi stanno nel gioco o nella pagina di sviluppo.
+// Il mondo disegnato (.camera) è nascosto ai lettori di schermo; lo strato .ui (zone, pulsanti, mano) no.
 import { T } from '../testi';
 
 export interface ElementiScena {
@@ -34,7 +35,7 @@ const PUNTI_SCOPPIO =
 const HTML = `
 <div class="schermo ora-giorno">
   <div class="scena">
-    <div class="camera"><div class="mondo">
+    <div class="camera" aria-hidden="true"><div class="mondo">
       <div class="cielo"></div>
       <svg class="cielo-svg" width="390" height="844" aria-hidden="true">
         <g class="stelle" fill="#FBFAF5" stroke="#23264A" stroke-width="1.5">

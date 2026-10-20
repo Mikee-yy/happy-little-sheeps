@@ -20,6 +20,7 @@ import {
   salvaIscrizione,
   segnaInStanza,
 } from './remoto/connessione';
+import { ospita, precaricaStanza } from './remoto/durataStanza';
 import { ModuloStanza, Stanza, VistaTavolo } from './remoto/Stanza';
 import { Home, Preparazione, Regole, scelteIniziali } from './schermate';
 import type { SceltePreparazione } from './schermate';
@@ -77,10 +78,12 @@ export function App() {
 
   const rientra = async (i: Iscrizione) => {
     setSchermata('collegamento');
+    // La scena (e per chi ospita la durata delle sue recite) comincia a scaricarsi mentre ci si ricollega
+    precaricaStanza();
     try {
       const t = await connetti();
       let s: SessioneHost | SessioneOspite | null;
-      s = i.ruolo === 'host' ? await SessioneHost.riprendi(t, archivioHost()) : await SessioneOspite.rientra(t, i);
+      s = i.ruolo === 'host' ? await ospita((o) => SessioneHost.riprendi(t, archivioHost(), o)) : await SessioneOspite.rientra(t, i);
       if (!s) throw new Error(T.stanza.nonDisponibile);
       setStanza({ sessione: s, iscrizione: i });
       setSchermata('stanza');
@@ -94,6 +97,8 @@ export function App() {
   // All'apertura: vista tavolo dal link, oppure rientro automatico dopo un ricaricamento della pagina.
   useEffect(() => {
     if (indirizzo?.tipo === 'tavolo') {
+      // La scena comincia a scaricarsi mentre ci si collega
+      precaricaScena();
       void (async () => {
         try {
           const t = await connetti();

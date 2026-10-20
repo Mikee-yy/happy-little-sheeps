@@ -14,6 +14,8 @@ export interface Coperta {
   aggiorna(f: Fotografia, subito?: boolean): void;
   /** Il dado fermo sulla faccia del lancio (id della faccia del motore), o sulla prima se null. */
   dado(faccia: string | null): void;
+  /** Il Guaio del round scoperto subito, senza dissolvenza (la carta in volo è appena atterrata); la fotografia lo conferma. */
+  guaioRound(id: IdCarta | null): void;
   distruggi(): void;
 }
 
@@ -139,6 +141,7 @@ export function creaCoperta(ctx: Contesto): Coperta {
   return {
     aggiorna,
     dado,
+    guaioRound: (id) => aggiornaGuaioRound(id, true),
     distruggi() {
       svuota(scarti);
       guaioRound?.el.remove();

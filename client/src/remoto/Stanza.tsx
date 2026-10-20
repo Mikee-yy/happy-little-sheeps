@@ -1,7 +1,11 @@
 // Schermate della modalità a più dispositivi: creare o entrare in una stanza, sala d'attesa, partita sul proprio
 // telefono, pausa, vista tavolo da proiettare.
+// La partita sul proprio telefono si gioca dentro la scena 2,5D (GiocoInScena, come su un dispositivo): in basso la propria
+// pecora con la mano sempre scoperta, mai quella degli altri; le scelte si fanno toccando la scena; nella striscia in cima
+// la domanda, chi si aspetta o la fase che prosegue da sola, e il conto alla rovescia. Finché la scena non è pronta (si
+// scarica, o non arriva) si gioca coi pannelli di prima, in un cassetto.
 import qrcode from 'qrcode-generator';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { SETUP } from '../../../engine/src';
 import type { Azione, IdGiocatore, IdPecora, Vista } from '../../../engine/src';
 import { SessioneHost } from '../../../sync/host';
@@ -9,9 +13,13 @@ import { SeiHostDellaStanza, SessioneOspite, StanzaInesistente } from '../../../
 import type { SessioneTavolo } from '../../../sync/ospite';
 import { normalizzaCodice, nuovoGettone } from '../../../sync/stanza';
 import type { Iscrizione, Pubblico } from '../../../sync/stanza';
-import { Avatar, Dado3D, FacciaDado, Montone } from '../grafica';
+import { Avatar } from '../grafica';
 import { Cronaca, Mano, Pulsante, Riepilogo } from '../partita/componenti';
-import { nome, nomi } from '../partita/descrizioni';
+import { GiocoInScena } from '../partita/GiocoInScena';
+import { ScenaCaricata } from '../partita/ScenaCaricata';
+import { fotografia } from '../scena/fotografia';
+import { OpzioniScena } from '../scena/OpzioniScena';
+import type { Teatro } from '../scena/teatro';
 import {
   PannelloAutomatico,
   PannelloBelatoFinale,
@@ -31,7 +39,8 @@ import { Testata } from '../partita/Testata';
 import { Riassunto } from '../schermate';
 import { T } from '../testi';
 import { archivioHost, connetti, leggiIscrizione, linkStanza, linkTavolo, salvaIscrizione, segnaInStanza } from './connessione';
-import { scenaRemota } from './regiaRemota';
+import { ospita, precaricaStanza } from './durataStanza';
+import { momentoRemoto, scenaRemota, scrittaAttesa } from './regiaRemota';
 import type { ScenaRemota } from './regiaRemota';
 
 type SessioneStanza = SessioneHost | SessioneOspite;
@@ -111,17 +120,24 @@ function SceltaPecora(p: { valore: IdPecora; occupate?: IdPecora[]; onScegli: (x
   );
 }
 
+/**
+ * La barra del tempo per reagire. La scadenza (ora del servizio) comprende la recita normale della mossa: finché manca più
+ * della finestra (`totale` secondi) la barra è piena e ferma, poi scende fino alla scadenza.
+ */
 export function ContoAllaRovescia({ scadenza, ora, totale }: { scadenza: number; ora: () => number; totale: number }) {
   const [adesso, setAdesso] = useState(ora);
   useEffect(() => {
     const id = setInterval(() => setAdesso(ora()), 200);
     return () => clearInterval(id);
   }, [ora]);
+  const finestra = totale * 1000;
   const resto = Math.max(0, scadenza - adesso);
+  const fermo = resto > finestra;
+  const visibile = Math.min(resto, finestra);
   return (
-    <div className="conto" role="timer" aria-live="off">
-      <div className="conto-barra" style={{ width: `${Math.min(100, (resto / (totale * 1000)) * 100)}%` }} />
-      <span>{T.stanza.tempo(Math.ceil(resto / 1000))}</span>
+    <div className={`conto${fermo ? ' fermo' : ''}`} role="timer" aria-live="off">
+      <div className="conto-barra" style={{ width: `${finestra > 0 ? (visibile / finestra) * 100 : 0}%` }} />
+      <span>{T.stanza.tempo(Math.ceil(visibile / 1000))}</span>
     </div>
   );
 }
@@ -153,6 +169,8 @@ export function ModuloStanza(p: {
   const invia = async () => {
     setOccupato(true);
     setErrore(null);
+    // La scena (e la durata delle sue recite, per chi ospita) comincia a scaricarsi: di solito arriva in sala d'attesa
+    precaricaStanza();
     try {
       globalThis.localStorage?.setItem('hls-nome', nomeG.trim());
     } catch {
@@ -162,7 +180,7 @@ export function ModuloStanza(p: {
       const t = await connetti();
       const gettone = nuovoGettone();
       if (p.modo === 'crea') {
-        const s = await SessioneHost.crea(t, archivioHost(), { nome: nomeG, pecora, gettone });
+        const s = await ospita((o) => SessioneHost.crea(t, archivioHost(), { nome: nomeG, pecora, gettone }, undefined, o));
         p.onDentro(s, { codice: s.codice, ruolo: 'host', idGiocatore: 'g1', nome: nomeG.trim(), pecora, gettone });
       } else {
         const c = normalizzaCodice(codice)!;
@@ -179,7 +197,7 @@ export function ModuloStanza(p: {
         } catch (e) {
           if (!(e instanceof SeiHostDellaStanza)) throw e;
           // Chi ha creato la stanza riapre il link: riprende il ruolo di host, non entra come ospite.
-          const host = await SessioneHost.riprendi(t, archivioHost());
+          const host = await ospita((o) => SessioneHost.riprendi(t, archivioHost(), o));
           if (!host || host.codice !== c) throw new Error(T.stanza.hostAltrove);
           p.onDentro(host, host.iscrizione());
         }
@@ -345,51 +363,6 @@ function SalaAttesa({
 
 // ─── Partita sul proprio telefono ───────────────────────────────────────────
 
-/** Il lancio e la Testata degli altri si vedono "in diretta" su ogni dispositivo. */
-function Spettacolo({ v, io }: { v: Vista; io: IdGiocatore }) {
-  const [visto, setVisto] = useState(() => v.eventi[v.eventi.length - 1]?.seq ?? 0);
-  const [mostra, setMostra] = useState<{ testo: string; faccia?: string; testata?: boolean } | null>(null);
-  useEffect(() => {
-    const nuovi = v.eventi.filter((e) => e.seq > visto);
-    if (nuovi.length === 0) return;
-    setVisto(nuovi[nuovi.length - 1]!.seq);
-    for (const e of [...nuovi].reverse()) {
-      if (e.tipo === 'dado_lanciato' && e.giocatore !== io) {
-        setMostra({ testo: `${nome(v, e.giocatore)}: ${T.dado.facce[e.faccia] ?? e.faccia}`, faccia: e.faccia });
-        break;
-      }
-      if (e.tipo === 'testata' && e.giocatore !== io) {
-        setMostra({ testo: `${nome(v, e.giocatore)} → ${nome(v, e.bersaglio)}: ${T.testata.risultato(e.esito)}`, testata: true });
-        break;
-      }
-    }
-  }, [v, visto, io]);
-  useEffect(() => {
-    if (!mostra) return;
-    const t = setTimeout(() => setMostra(null), 2400);
-    return () => clearTimeout(t);
-  }, [mostra]);
-  if (!mostra) return null;
-  return (
-    <div className="spettacolo" role="status" onClick={() => setMostra(null)}>
-      <div className="spettacolo-scena">
-        {mostra.faccia && (
-          <>
-            <span className="spettacolo-dado">
-              <Dado3D size={110} />
-            </span>
-            <span className="spettacolo-faccia">
-              <FacciaDado faccia={mostra.faccia} size={110} />
-            </span>
-          </>
-        )}
-        {mostra.testata && <Montone size={200} className="spettacolo-montone" />}
-        <p>{mostra.testo}</p>
-      </div>
-    </div>
-  );
-}
-
 function Pausa(p: {
   pub: Pubblico;
   host: SessioneHost | null;
@@ -429,33 +402,51 @@ function Pausa(p: {
   );
 }
 
-function PannelloAttesa({ v, sc, io, pub, ora }: { v: Vista; sc: Extract<ScenaRemota, { tipo: 'attesa' }>; io: IdGiocatore; pub: Pubblico; ora: () => number }) {
-  const f = v.fase;
-  let testo: string;
-  if (sc.finestra) testo = T.stanza.attesaReazioni;
-  else if (f.nome === 'scelta' || f.nome === 'belato_finale') testo = T.stanza.attesaScelte;
-  else if (f.nome === 'risoluzione_dado' && f.passo === 'esito_testata' && f.dichiarazione?.effetto === 'testata') {
-    testo = T.stanza.testataDi(nome(v, f.lanciatore), nome(v, f.dichiarazione.bersaglio));
-  } else if (f.nome === 'dado') testo = T.stanza.lancioDi(nomi(v, sc.di));
-  else testo = T.stanza.attesaDi(nomi(v, sc.di));
+/** Nei pannelli di riserva, quando tocca agli altri: chi si aspetta (come nella striscia), il riepilogo e la propria mano. */
+function PannelloAttesa({ v, sc, io }: { v: Vista; sc: Extract<ScenaRemota, { tipo: 'attesa' }>; io: IdGiocatore }) {
   const mano = v.giocatori.find((g) => g.id === io)?.mano ?? [];
   return (
     <div className="pannello">
       <div className="pannello-titolo">
-        <h2>{testo}</h2>
+        <h2>{scrittaAttesa(sc, v)}</h2>
       </div>
-      {sc.finestra && pub.scadenza && <ContoAllaRovescia scadenza={pub.scadenza} ora={ora} totale={pub.impostazioni.finestraSecondi} />}
       <Riepilogo v={v} />
       {mano.length > 0 && <Mano carte={mano} />}
     </div>
   );
 }
 
+/**
+ * La situazione di `io` sul suo telefono: cambia quando cambia qualcosa per lui (schermo, mosse permesse, la sua scelta,
+ * la finestra, la sua richiesta, il suo posto e la sua mano), non quando un altro fa una mossa che non lo tocca. Una mossa
+ * mandata a chi ospita resta "in attesa" finché la situazione non cambia (o arriva un rifiuto).
+ */
+function situazioneDi(v: Vista, io: IdGiocatore, sc: ScenaRemota, azioni: Azione[]): string {
+  const f = v.fase;
+  return JSON.stringify([
+    sc,
+    azioni,
+    v.round,
+    f.nome,
+    'miaScelta' in f ? f.miaScelta : null,
+    v.finestra?.voce ?? null,
+    v.attesa.giocatori.includes(io),
+    v.richiesta?.giocatore === io ? v.richiesta : null,
+    v.giocatori.find((g) => g.id === io) ?? null,
+  ]);
+}
+
+/** Tempo massimo di una mossa in attesa di chi ospita: poi la scelta si sblocca comunque (ultima risorsa). */
+const ATTESA_MASSIMA_MS = 4000;
+
 function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: () => void; onRegole: () => void }) {
   const { sessione, io } = p;
   const host = sessione instanceof SessioneHost ? sessione : null;
+  const ospite = sessione instanceof SessioneOspite ? sessione : null;
   const pub = sessione.pubblico()!;
+  /** La vista privata (con la propria mano) e quella del tavolo, che la scena recita. */
   const v = sessione.vista(io);
+  const tavolo = sessione.vista(null);
   const azioni = sessione.azioni(io);
   const sc = scenaRemota(v, io, azioni);
   const [menu, setMenu] = useState(false);
@@ -463,22 +454,62 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
   const [passaDaSolo, setPassaDaSolo] = preferenza('hls-passa-da-solo', false);
   const [aperta] = useState(() => sessione.ora());
   const [rifiutoNascosto, setRifiutoNascosto] = useState(0);
-  const [bloccato, setBloccato] = useState(false);
+  /** Il cassetto della riserva abbassato vale solo per la schermata in cui lo si è abbassato. */
+  const [abbassatoIn, setAbbassatoIn] = useState<string | null>(null);
+  const idCassetto = useId();
+  const teatro = useRef<Teatro | null>(null);
+  /** La scena sta recitando: la domanda e la classifica aspettano. */
+  const [scenaOccupata, setScenaOccupata] = useState(false);
+  /** A partita finita la classifica compare solo a festa finita nella scena. */
+  const [classifica, setClassifica] = useState(false);
+  /** Mosse rimaste in attesa più di ATTESA_MASSIMA_MS: ognuna sblocca la scelta (vedi `sblocca`). */
+  const [scadute, setScadute] = useState(0);
+  /** La mossa partita per chi ospita: la situazione e lo sblocco di quando è partita. */
+  const [inviata, setInviata] = useState<{ situazione: string; sblocca: number } | null>(null);
   const ora = useCallback(() => sessione.ora(), [sessione]);
 
-  // Sul telefono di un ospite la risposta dell'host arriva dopo un attimo: niente doppi tocchi nel frattempo.
-  useEffect(() => sessione.ascolta(() => setBloccato(false)), [sessione]);
+  // Rifiuti di chi ospita (solo sugli ospiti: le mosse di chi ospita si applicano subito); quelli di prima di aprire la
+  // partita non contano
+  const ultimoRifiuto = ospite?.rifiuto() ?? null;
+  const rifiutoDopo = ultimoRifiuto && ultimoRifiuto.quando > aperta ? ultimoRifiuto : null;
+  const rifiuto = rifiutoDopo && rifiutoDopo.quando > rifiutoNascosto ? rifiutoDopo : null;
   useEffect(() => {
-    if (!bloccato) return;
-    const t = setTimeout(() => setBloccato(false), 4000);
+    if (!rifiuto) return;
+    const t = setTimeout(() => setRifiutoNascosto(rifiuto.quando), 5000);
     return () => clearTimeout(t);
-  }, [bloccato]);
+  }, [rifiuto]);
 
+  // Punto di revisione 4: cambia a ogni rifiuto (e a ogni attesa scaduta); la scelta riparte vuota e i gesti tornano validi
+  const sblocca = (rifiutoDopo?.quando ?? 0) + scadute;
+  // La generazione della situazione: cresce a ogni suo cambio, così una situazione che torna uguale a una di prima (passo
+  // nei Belati di punteggio, un altro gioca un Belato, la finestra scade e si riapre) è comunque nuova e non resta bloccata
+  const testoSituazione = situazioneDi(v, io, sc, azioni);
+  const [generazione, setGenerazione] = useState({ testo: testoSituazione, n: 0 });
+  if (generazione.testo !== testoSituazione) setGenerazione({ testo: testoSituazione, n: generazione.n + 1 });
+  const situazione = String(generazione.testo === testoSituazione ? generazione.n : generazione.n + 1);
+  // Sul telefono di un ospite la risposta di chi ospita arriva dopo un attimo: niente doppie mosse nel frattempo, anche
+  // se intanto arrivano le mosse degli altri
+  const inAttesa = inviata !== null && inviata.situazione === situazione && inviata.sblocca === sblocca;
+  useEffect(() => {
+    if (!inAttesa) return;
+    const t = setTimeout(() => setScadute((n) => n + 1), ATTESA_MASSIMA_MS);
+    return () => clearTimeout(t);
+  }, [inAttesa]);
+
+  // Situazione e sblocco di questo disegno, letti da `invia` al momento dell'invio
+  const attuale = useRef({ situazione, sblocca });
+  attuale.current = { situazione, sblocca };
+  /**
+   * Manda la mossa; restituisce se è partita (per gli ospiti l'esito vero arriva dopo: un rifiuto, o la vista nuova).
+   * Stabile tra un disegno e l'altro: la Testata e il dado della riserva la attendono in un effetto, e una funzione nuova
+   * a ogni disegno farebbe ripartire (e raddoppiare) il loro invio mentre si aspetta chi ospita.
+   */
   const invia = useCallback(
-    (a: Azione) => {
+    (a: Azione): boolean => {
       const r = sessione.invia(a);
       setErrore(r.ok ? null : T.errori.azione(r.messaggio));
-      if (r.ok && sessione instanceof SessioneOspite) setBloccato(true);
+      if (r.ok && sessione instanceof SessioneOspite) setInviata({ ...attuale.current });
+      return r.ok;
     },
     [sessione],
   );
@@ -493,18 +524,22 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
     // Una volta per finestra: la chiave cambia a ogni nuova dichiarazione.
   }, [passaDaSolo, soloPassa, chiaveFinestra]);
 
-  const ultimoRifiuto = sessione instanceof SessioneOspite ? sessione.rifiuto() : null;
-  const rifiuto = ultimoRifiuto && ultimoRifiuto.quando > Math.max(aperta, rifiutoNascosto) ? ultimoRifiuto : null;
-  useEffect(() => {
-    if (!rifiuto) return;
-    const t = setTimeout(() => setRifiutoNascosto(rifiuto.quando), 5000);
-    return () => clearTimeout(t);
-  }, [rifiuto]);
-  const hostAssente = sessione instanceof SessioneOspite && !sessione.hostOnline();
+  const hostAssente = ospite !== null && !ospite.hostOnline();
   const scollegato = !sessione.online();
   const inPausa = pub.pausa.length > 0 || hostAssente || scollegato;
+  const fine = sc.tipo === 'fine';
 
-  if (sc.tipo === 'fine') {
+  // La festa nella scena: la classifica aspetta che finisca (come nella partita su un dispositivo; vedi Partita.tsx: gli
+  // effetti di layout di Scena girano prima di questo, quindi il teatro sa già se recita la fine). Senza scena, subito.
+  useEffect(() => {
+    if (!fine) {
+      setClassifica(false);
+      return;
+    }
+    if (!scenaOccupata && !(teatro.current?.occupato() ?? false)) setClassifica(true);
+  }, [fine, scenaOccupata]);
+
+  if (fine && classifica) {
     return (
       <FinePartita
         v={v}
@@ -516,16 +551,49 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
     );
   }
 
-  const conto = pub.scadenza && (sc.tipo === 'pannello' && (sc.pannello === 'reazione' || sc.pannello === 'punteggio')) ? (
-    <ContoAllaRovescia scadenza={pub.scadenza} ora={ora} totale={pub.impostazioni.finestraSecondi} />
-  ) : null;
+  // Il telefono è suo: in basso la sua pecora, con la mano sempre scoperta (mai quella degli altri: viene dalla sua vista)
+  const foto = fotografia(tavolo, io, v.giocatori.find((g) => g.id === io)?.mano ?? null);
+  const momento = momentoRemoto(sc, io, v, tavolo, azioni);
+  const conAzioni = !inPausa && !scenaOccupata && !fine;
+  const messaggio = errore ?? rifiuto?.messaggio ?? null;
+  const togliErrore = () => {
+    setErrore(null);
+    if (rifiuto) setRifiutoNascosto(rifiuto.quando);
+  };
 
+  // La striscia senza domanda: chi si aspetta, o la fase che prosegue da sola; altrimenti la cronaca. Con l'errore (o il
+  // rifiuto di chi ospita) sotto
+  const testoStriscia = sc.tipo === 'attesa' ? scrittaAttesa(sc, tavolo) : sc.tipo === 'automatica' ? T.fasi[tavolo.fase.nome] : null;
+  const striscia = testoStriscia ? (
+    <div className="scritta-scena" role="status">
+      <p className="scritta">{testoStriscia}</p>
+      {sc.tipo === 'automatica' && <p>{T.stanza.prosegue}</p>}
+      {messaggio && <p className="errore">{messaggio}</p>}
+    </div>
+  ) : (
+    <>
+      <Cronaca v={tavolo} />
+      {messaggio && (
+        <div className="scritta-scena" role="alert">
+          <p className="errore">{messaggio}</p>
+        </div>
+      )}
+    </>
+  );
+  // Il tempo per reagire, per chi può rispondere e per chi aspetta
+  const conto =
+    pub.scadenza !== null && !fine ? <ContoAllaRovescia scadenza={pub.scadenza} ora={ora} totale={pub.impostazioni.finestraSecondi} /> : null;
+
+  // La riserva, finché la scena non è pronta: i pannelli di prima, in un cassetto
+  const reazione = sc.tipo === 'pannello' && (sc.pannello === 'reazione' || sc.pannello === 'punteggio');
   let pannello: React.ReactNode;
-  if (sc.tipo === 'automatica') {
+  if (sc.tipo === 'fine') {
+    pannello = null;
+  } else if (sc.tipo === 'automatica') {
     const prosegui = host ? host.azioni('sistema').find((a) => a.tipo === 'prosegui') : undefined;
     pannello = <PannelloAutomatico v={v} onContinua={prosegui ? () => invia(prosegui) : undefined} />;
   } else if (sc.tipo === 'attesa') {
-    pannello = <PannelloAttesa v={v} sc={sc} io={io} pub={pub} ora={ora} />;
+    pannello = <PannelloAttesa v={v} sc={sc} io={io} />;
   } else {
     const props = { v, giocatore: io, azioni, invia };
     switch (sc.pannello) {
@@ -564,29 +632,54 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
         break;
     }
   }
+  const abbassato = abbassatoIn === chiaveFinestra;
+  // Nel tiro del montone il cassetto prende tutta l'altezza sotto la striscia
+  const aTuttaAltezza = !abbassato && sc.tipo === 'pannello' && sc.pannello === 'testata';
+  const riserva = fine ? null : (
+    <section className={`cassetto${abbassato ? ' abbassato' : ''}`}>
+      <button
+        type="button"
+        className="maniglia"
+        aria-expanded={!abbassato}
+        aria-controls={idCassetto}
+        onClick={() => setAbbassatoIn(abbassato ? null : chiaveFinestra)}
+      >
+        {abbassato ? T.scena.cassetto.alza : T.scena.cassetto.abbassa}
+      </button>
+      <div className="cassetto-contenuto" id={idCassetto} hidden={abbassato}>
+        <section className={`area-azione${inAttesa ? ' bloccata' : ''}`} key={chiaveFinestra}>
+          {pannello}
+          {reazione && (
+            <label className="opzione">
+              <input type="checkbox" checked={passaDaSolo} onChange={(e) => setPassaDaSolo(e.target.checked)} />
+              {T.stanza.passaDaSolo}
+            </label>
+          )}
+        </section>
+      </div>
+    </section>
+  );
 
   return (
-    <div className="partita">
-      <Intestazione v={v} onMenu={() => setMenu(true)} />
-      <Tavolo v={v} attivo={io} />
-      <Cronaca v={v} />
-      {errore && (
-        <p className="errore" role="alert">
-          {errore}
-        </p>
-      )}
-      {rifiuto && <p className="errore">{rifiuto.messaggio}</p>}
-      <section className={`area-azione ${bloccato ? 'bloccata' : ''}`} key={chiaveFinestra}>
-        {conto}
-        {pannello}
-        {conto && (
-          <label className="opzione">
-            <input type="checkbox" checked={passaDaSolo} onChange={(e) => setPassaDaSolo(e.target.checked)} />
-            {T.stanza.passaDaSolo}
-          </label>
-        )}
-      </section>
-      <Spettacolo v={v} io={io} />
+    <div className="partita con-scena">
+      <GiocoInScena
+        tavolo={tavolo}
+        foto={foto}
+        momento={momento}
+        conAzioni={conAzioni}
+        invia={invia}
+        errore={messaggio}
+        togliErrore={togliErrore}
+        onMenu={() => setMenu(true)}
+        sopraStriscia={conto}
+        strisciaSenzaDomanda={striscia}
+        riserva={riserva}
+        riservaATuttaAltezza={aTuttaAltezza}
+        rifTeatro={teatro}
+        onOccupato={setScenaOccupata}
+        sblocca={sblocca}
+        situazione={situazione}
+      />
       {inPausa && (
         <Pausa pub={pub} host={host} hostAssente={hostAssente} scollegato={scollegato} onRegole={p.onRegole} onEsci={p.onEsci} />
       )}
@@ -603,6 +696,8 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
             <input type="checkbox" checked={passaDaSolo} onChange={(e) => setPassaDaSolo(e.target.checked)} />
             {T.stanza.passaDaSolo}
           </label>
+          <h3 className="menu-sezione">{T.scena.opzioni.titolo}</h3>
+          <OpzioniScena className="opzioni-menu" rivediSuggerimenti={() => teatro.current?.rivediSuggerimenti()} onChiudi={() => setMenu(false)} />
         </Menu>
       )}
     </div>
@@ -680,17 +775,31 @@ export function Stanza(p: { sessione: SessioneStanza; iscrizione: Iscrizione; on
   return <PartitaRemota sessione={sessione} io={io} onEsci={p.onEsci} onRegole={p.onRegole} />;
 }
 
-/** Vista tavolo senza mani, da proiettare (brief §5). */
+/**
+ * Vista tavolo senza mani, da proiettare (brief §5): la scena che recita tutte le mosse, senza mano, senza domande e senza
+ * conto alla rovescia; in basso la pecora del primo giocatore; in alto la cronaca. Se la scena non c'è (si scarica, o non
+ * arriva) il tavolo di prima.
+ */
 export function VistaTavolo({ sessione, onEsci }: { sessione: SessioneTavolo; onEsci: () => void }) {
   useAggiornamenti(sessione);
+  const [scenaPronta, setScenaPronta] = useState(false);
   const v = sessione.vista();
   if (!v) return <main className="passaggio">{T.stanza.aspettaHost}</main>;
+  // Il proiettore non mostra mai una mano: la fotografia non ne ha
+  const foto = fotografia(v, v.giocatori[0]!.id, null);
   return (
-    <div className="partita tavolo-proiettore">
-      <Intestazione v={v} onMenu={onEsci} />
-      <Tavolo v={v} attivo={null} />
-      <Cronaca v={v} quanti={5} />
-      <Riepilogo v={v} />
+    <div className="partita con-scena tavolo-proiettore">
+      <ScenaCaricata foto={foto} vista={v} onPronto={setScenaPronta} />
+      <div className="testata-scena">
+        <Intestazione v={v} onMenu={onEsci} />
+        <Cronaca v={v} quanti={5} />
+      </div>
+      {!scenaPronta && (
+        <div className="riserva-proiettore">
+          <Tavolo v={v} attivo={null} />
+          <Riepilogo v={v} />
+        </div>
+      )}
     </div>
   );
 }

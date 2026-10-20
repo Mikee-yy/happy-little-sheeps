@@ -334,7 +334,7 @@ describe('consigli', () => {
 
   it('i consigli sono quelli dei testi', async () => {
     const m = await carica();
-    expect(m.consigli.CONSIGLI).toEqual([T.scena.consigli.solleva, T.scena.consigli.leggi]);
+    expect(m.consigli.CONSIGLI).toEqual([T.scena.consigli.solleva, T.scena.consigli.leggi, T.scena.consigli.trascina]);
   });
 
   it('rivediSuggerimenti toglie la chiave e mostra il primo consiglio', async () => {
@@ -349,7 +349,7 @@ describe('consigli', () => {
     expect(elemento.style.opacity).toBe('1');
   });
 
-  it('passo dopo passo: il secondo consiglio compare, poi sparisce e la chiave vale 1', async () => {
+  it('passo dopo passo: il secondo consiglio compare, poi il terzo, che sparisce e la chiave vale 1', async () => {
     const m = await carica();
     const { elemento, c } = preparati(m);
     c.rivediSuggerimenti();
@@ -358,19 +358,40 @@ describe('consigli', () => {
     vi.advanceTimersByTime(500);
     expect(elemento.textContent).toBe(T.scena.consigli.leggi);
     expect(elemento.style.opacity).toBe('1');
+    // il secondo non sparisce da solo
+    vi.advanceTimersByTime(20000);
+    expect(elemento.textContent).toBe(T.scena.consigli.leggi);
+    expect(elemento.style.opacity).toBe('1');
+    expect(localStorage.getItem('hls-consigli-visti')).toBeNull();
+    c.nascondi(2);
+    vi.advanceTimersByTime(500);
+    expect(elemento.textContent).toBe(T.scena.consigli.trascina);
+    expect(elemento.style.opacity).toBe('1');
     expect(localStorage.getItem('hls-consigli-visti')).toBeNull();
     vi.advanceTimersByTime(7500);
     expect(elemento.style.opacity).toBe('0');
     expect(localStorage.getItem('hls-consigli-visti')).toBe('1');
   });
 
-  it('nascondi(2) subito: tutti visti, chiave 1; non va indietro', async () => {
+  it('il terzo consiglio si supera con la prima carta giocata trascinando (nascondi(3))', async () => {
+    const m = await carica();
+    const { elemento, c } = preparati(m);
+    c.rivediSuggerimenti();
+    c.nascondi(2);
+    vi.advanceTimersByTime(500);
+    expect(elemento.textContent).toBe(T.scena.consigli.trascina);
+    c.nascondi(3);
+    expect(elemento.style.opacity).toBe('0');
+    expect(localStorage.getItem('hls-consigli-visti')).toBe('1');
+  });
+
+  it('nascondi(3) subito: tutti visti, chiave 1; non va indietro', async () => {
     const m = await carica();
     const { c } = preparati(m);
-    c.nascondi(2);
+    c.nascondi(3);
     expect(localStorage.getItem('hls-consigli-visti')).toBe('1');
     c.nascondi(1);
-    expect(c.passo).toBe(2);
+    expect(c.passo).toBe(3);
   });
 
   it('se bloccato non nasconde; applicaGiaVisti spegne tutto', async () => {
@@ -526,5 +547,92 @@ describe('contesto finto', () => {
     fatte.push(ctx.animaInterfaccia(el, [], { duration: 1 }));
     expect(fatte[0]!.playbackRate).toBe(2);
     expect(fatte[1]!.playbackRate).toBe(1);
+  });
+});
+
+describe('generatore dei suoni: fermo davvero', () => {
+  /** Un contesto audio finto con le sole chiamate che il fermo e la ripresa usano. */
+  function contestoAudioFinto(suspend: () => unknown = () => Promise.resolve()) {
+    const ctx = { currentTime: 0, suspend: vi.fn(suspend), resume: vi.fn(() => Promise.resolve()) };
+    const gain = { setTargetAtTime: vi.fn() };
+    return { ctx, gain };
+  }
+  async function generatoreCon(finto: ReturnType<typeof contestoAudioFinto>) {
+    const m = await carica();
+    const g = new m.suoni.GeneratoreSuoni();
+    g.ctx = finto.ctx as unknown as AudioContext;
+    g.uscita = { gain: finto.gain } as unknown as GainNode;
+    g.attivo = true;
+    return g;
+  }
+
+  it('ferma() sospende il contesto audio, abbassa il volume e smette il campanaccio periodico', async () => {
+    vi.useFakeTimers();
+    const finto = contestoAudioFinto();
+    const g = await generatoreCon(finto);
+    const campanaccio = vi.spyOn(g, 'campanaccio').mockImplementation(() => undefined);
+    g.caso = () => 0;
+    g.accendi(); // contesto già presente: riparte il campanaccio periodico
+    vi.advanceTimersByTime(8000);
+    expect(campanaccio).toHaveBeenCalledTimes(1);
+    g.ferma();
+    expect(finto.ctx.suspend).toHaveBeenCalledTimes(1);
+    expect(finto.gain.setTargetAtTime).toHaveBeenLastCalledWith(0, 0, 0.1);
+    expect(g.attivo).toBe(false);
+    vi.advanceTimersByTime(40_000);
+    expect(campanaccio).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('ferma() senza contesto, o con un contesto che rifiuta di sospendersi, non lancia', async () => {
+    const m = await carica();
+    expect(() => new m.suoni.GeneratoreSuoni().ferma()).not.toThrow();
+    const lancia = await generatoreCon(
+      contestoAudioFinto(() => {
+        throw new Error('chiuso');
+      }),
+    );
+    expect(() => lancia.ferma()).not.toThrow();
+    const rifiuta = await generatoreCon(contestoAudioFinto(() => Promise.reject(new Error('chiuso'))));
+    expect(() => rifiuta.ferma()).not.toThrow();
+    await Promise.resolve();
+  });
+
+  it('un teatro nuovo dopo il fermo riaccende: accendi() riprende il contesto sospeso', async () => {
+    const finto = contestoAudioFinto();
+    const g = await generatoreCon(finto);
+    g.ferma();
+    g.accendi();
+    expect(finto.ctx.resume).toHaveBeenCalledTimes(1);
+    expect(g.attivo).toBe(true);
+    expect(finto.gain.setTargetAtTime).toHaveBeenLastCalledWith(0.9, 0, 0.1);
+    g.ferma();
+  });
+
+  it('sospendi() ferma contesto e campanaccio senza spegnere; riprendi() li riporta solo se i suoni sono accesi', async () => {
+    vi.useFakeTimers();
+    const finto = contestoAudioFinto();
+    const g = await generatoreCon(finto);
+    const campanaccio = vi.spyOn(g, 'campanaccio').mockImplementation(() => undefined);
+    g.caso = () => 0;
+    g.accendi();
+    finto.ctx.resume.mockClear();
+    g.sospendi();
+    expect(finto.ctx.suspend).toHaveBeenCalledTimes(1);
+    expect(g.attivo).toBe(true);
+    vi.advanceTimersByTime(40_000);
+    expect(campanaccio).not.toHaveBeenCalled();
+    g.riprendi();
+    expect(finto.ctx.resume).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(8000);
+    expect(campanaccio).toHaveBeenCalledTimes(1);
+    // con i suoni spenti (attivo falso) la ripresa non fa niente
+    g.sospendi();
+    g.spegni();
+    finto.ctx.resume.mockClear();
+    g.riprendi();
+    expect(finto.ctx.resume).not.toHaveBeenCalled();
+    g.ferma();
+    vi.useRealTimers();
   });
 });

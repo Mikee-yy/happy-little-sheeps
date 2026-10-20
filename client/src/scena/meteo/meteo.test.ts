@@ -141,7 +141,8 @@ describe('ordini.guaio: ogni Guaio con effetto, per ogni posto e numero di gioca
 });
 
 describe('ordini: salto, vibrazione, dado, spostamenti', () => {
-  it('salto: un Guaio nebbia saltato dopo 1 s finisce entro 4 s', async () => {
+  // La scena con l'ambiente è pesante in jsdom: col PC carico il tempo vero supera i 5 s predefiniti
+  it('salto: un Guaio nebbia saltato dopo 1 s finisce entro 4 s', { timeout: 30_000 }, async () => {
     const t = manuale(true);
     t.allinea(fotoIniziale(3), 'calmo');
     void t.ordini.guaio('nebbia-fitta', 'g1');

@@ -78,3 +78,54 @@ describe('SessioneProva', () => {
     expect(gioca()).toBe(gioca());
   });
 });
+
+describe('SessioneProva.pausa (la scena recita: i bot aspettano)', () => {
+  it('pausa(true): nessuna mossa dei bot; pausa(false): la mossa arriva dopo pausaMs', () => {
+    const s = SessioneProva.nuova({ seme: 3, pausaMs: 1000 });
+    prosegui(s);
+    s.pausa(true);
+    vi.advanceTimersByTime(5000);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(0);
+    s.pausa(false);
+    vi.advanceTimersByTime(999);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(0);
+    vi.advanceTimersByTime(1);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(1);
+    s.chiudi();
+  });
+
+  it("in pausa anche una mossa dell'umano non fa ripartire i bot; avvia non toglie la pausa", () => {
+    const s = SessioneProva.nuova({ seme: 3, pausaMs: 1000 });
+    s.pausa(true);
+    prosegui(s);
+    s.avvia();
+    vi.advanceTimersByTime(5000);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(0);
+    s.pausa(false);
+    vi.advanceTimersByTime(3000);
+    expect(eventi(s, 'ha_scelto').length).toBeGreaterThan(0);
+    s.chiudi();
+  });
+
+  it('chiusa, pausa(false) non fa muovere i bot', () => {
+    const s = SessioneProva.nuova({ seme: 3, pausaMs: 1000 });
+    prosegui(s);
+    s.pausa(true);
+    s.chiudi();
+    s.pausa(false);
+    vi.advanceTimersByTime(5000);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(0);
+  });
+});
+
+describe('SessioneProva.pausa ripetuta', () => {
+  it('pausa(false) senza pausa non fa ripartire da capo la mossa già pianificata', () => {
+    const s = SessioneProva.nuova({ seme: 3, pausaMs: 1000 });
+    prosegui(s);
+    vi.advanceTimersByTime(600);
+    s.pausa(false);
+    vi.advanceTimersByTime(400);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(1);
+    s.chiudi();
+  });
+});

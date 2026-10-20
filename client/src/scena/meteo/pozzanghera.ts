@@ -25,8 +25,19 @@ function spirale(giri: number, r0: number, r1: number, fase: number): string {
 export const pozzanghera: EffettoGuaio = async (m, chi, s) => {
   const { ctx } = s.palco;
   const rand = s.rand;
-  const A = s.area(chi), sc = (A.recinto as FormaRecinto).k;
-  const X = (A.x0 + A.x1) / 2, Y = (A.y0 + A.y1) / 2 + 4 * sc, zPozza = 100 + Math.round(A.y0) - 2;
+  const A = s.area(chi);
+  // Centro e scala della pozza: se il recinto ingrandito torna normale, si spostano e si stringono con lui
+  let sc = (A.recinto as FormaRecinto).k;
+  let X = (A.x0 + A.x1) / 2, Y = (A.y0 + A.y1) / 2 + 4 * sc;
+  const zPozza = 100 + Math.round(A.y0) - 2;
+  /** I giri degli intrappolati (raggio in proporzione alla pozza). */
+  const giri = new Set<{ r: number }>();
+  s.seguiRecinto(chi, (mp) => {
+    if (!m.vivo && giri.size === 0) return false;
+    ({ x: X, y: Y } = mp.punto(X, Y));
+    sc *= mp.k;
+    for (const g of giri) g.r *= mp.k;
+  });
   const f = NUVOLETTA;
   const nuvola = s.svgLibero(
     X,
@@ -35,6 +46,7 @@ export const pozzanghera: EffettoGuaio = async (m, chi, s) => {
     `<g transform="scale(${sc})"><g class="nuvoletta"><g fill="${P.notte}" stroke="${P.notte}" stroke-width="5">${f}</g><g fill="${P.nebbia}">${f}</g></g></g>`,
     'pozza',
   );
+  s.seguiElemento(chi, nuvola);
   const nuvoletta = nuvola.querySelector('.nuvoletta')!;
   ctx.anima(nuvoletta, [{ transform: 'scale(0)' }, { transform: 'scale(1.1)', offset: 0.7 }, { transform: 'scale(1)' }], { duration: 700, easing: 'ease-out', fill: 'forwards' });
   m.pulisci(() => {
@@ -51,6 +63,7 @@ export const pozzanghera: EffettoGuaio = async (m, chi, s) => {
     `<g transform="scale(${sc} ${0.32 * sc})"><g class="mulinello"><path d="${spirale(3.2, 4, 30, 0)}" fill="none" stroke="${P.notte}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>` +
     `<path d="${spirale(2.4, 6, 25, Math.PI)}" fill="none" stroke="${P.notte}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/><circle r="5" fill="${P.notte}"/></g></g>`;
   const p = s.pozza(X, Y, 32 * sc, zPozza, mulinello, 2600);
+  s.seguiElemento(chi, p.el, () => 100 + Math.round(A.y0) - 2);
   m.pulisci(() => void p.sparisci(3000));
   // Ognuno su un giro diverso, così non si sovrappongono
   const intrappolati = new Set<Agnello>();
@@ -62,15 +75,18 @@ export const pozzanghera: EffettoGuaio = async (m, chi, s) => {
     prendi([g]);
     belino(g, T.scena.belini.sorpreso, true);
     ctx.suona('beee', 1.8);
-    const giro = (7 + ((intrappolati.size - 1) % 4) * 6) * sc, vel = 4.2 - (giro / sc) * 0.06;
-    let ang = Math.atan2((g.y - Y) / 0.32, g.x - X), r = Math.max(8 * sc, Math.hypot(g.x - X, (g.y - Y) / 0.32));
+    // Il giro è in proporzione alla pozza (sc), così si stringe con lei
+    const giro = 7 + ((intrappolati.size - 1) % 4) * 6, vel = 4.2 - giro * 0.06;
+    let ang = Math.atan2((g.y - Y) / 0.32, g.x - X);
+    const stato = { r: Math.max(8 * sc, Math.hypot(g.x - X, (g.y - Y) / 0.32)) };
+    giri.add(stato);
     void effetto(
       g,
       (dt) => {
         ang -= dt * vel;
-        r += (giro - r) * Math.min(1, dt * 1.4);
-        g.x = X + Math.cos(ang) * r;
-        g.y = Y + Math.sin(ang) * r * 0.32;
+        stato.r += (giro * sc - stato.r) * Math.min(1, dt * 1.4);
+        g.x = X + Math.cos(ang) * stato.r;
+        g.y = Y + Math.sin(ang) * stato.r * 0.32;
         g.verso = Math.sin(ang) > 0 ? 1 : -1;
         g.incl = Math.sin(ctx.T * 9 + giro) * 9;
         g.hop = -2.5;
@@ -82,6 +98,7 @@ export const pozzanghera: EffettoGuaio = async (m, chi, s) => {
     )
       .then(() => (g.regia ? muovi(g, X + Math.cos(ang) * 50 * sc, Y + Math.sin(ang) * 17 * sc, 70, 9, true) : undefined))
       .then(() => {
+        giri.delete(stato);
         g.intrappolato = false;
         intrappolati.delete(g);
         rilascia([g], true);

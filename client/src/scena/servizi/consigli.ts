@@ -2,7 +2,7 @@
 // Visti tutti, nelle partite dopo, su questo telefono, non compaiono più (finché non si chiede di rivederli).
 import { T } from '../../testi';
 
-export const CONSIGLI: string[] = [T.scena.consigli.solleva, T.scena.consigli.leggi];
+export const CONSIGLI: string[] = [T.scena.consigli.solleva, T.scena.consigli.leggi, T.scena.consigli.trascina];
 const CHIAVE_CONSIGLI = 'hls-consigli-visti';
 
 export interface Consigli {

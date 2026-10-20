@@ -1,7 +1,10 @@
 // Regia a più dispositivi: ogni dispositivo è un solo giocatore e vede sempre la propria mano.
 // Decide il pannello dalle azioni che il giocatore può fare adesso; se non ne ha, mostra chi si aspetta.
 import type { Azione, IdGiocatore, Vista } from '../../../engine/src';
+import { nome, nomi } from '../partita/descrizioni';
 import type { PannelloPrivato } from '../partita/regia';
+import type { Momento } from '../scena/scelte/tipi';
+import { T } from '../testi';
 
 export type ScenaRemota =
   | { tipo: 'fine' }
@@ -43,4 +46,34 @@ export function scenaRemota(v: Vista, io: IdGiocatore, azioni: Azione[]): ScenaR
     }
   }
   return { tipo: 'attesa', di: attesa.giocatori.filter((g) => g !== io), finestra: finestraAperta };
+}
+
+/**
+ * Il momento delle domande per il telefono di `io`; null quando si aspetta qualcun altro o la partita è finita.
+ * In stanza lo schermo è sempre quello di `io` (condiviso: falso, mano scoperta, niente mosse del sistema):
+ * le fasi automatiche le fa avanzare chi ospita, quindi non hanno domanda.
+ * @param vistaIo vista privata di `io` (con la sua mano), per gli schermi privati
+ * @param tavolo vista del tavolo, per gli schermi pubblici
+ */
+export function momentoRemoto(sc: ScenaRemota, io: IdGiocatore, vistaIo: Vista, tavolo: Vista, azioni: Azione[]): Momento | null {
+  if (sc.tipo !== 'pannello') return null;
+  const base = { azioni, sistema: [], condiviso: false, manoScoperta: true };
+  const p = sc.pannello;
+  if (p === 'lancio' || p === 'dichiarazione' || p === 'testata') {
+    return { ...base, vista: tavolo, schermo: { tipo: 'pubblica', giocatore: io, pannello: p } };
+  }
+  return { ...base, vista: vistaIo, schermo: { tipo: 'privata', giocatore: io, pannello: p } };
+}
+
+/** Testo della striscia quando si aspetta (gli stessi di prima): vuoto per gli schermi che non sono d'attesa. */
+export function scrittaAttesa(sc: ScenaRemota, tavolo: Vista): string {
+  if (sc.tipo !== 'attesa') return '';
+  const f = tavolo.fase;
+  if (sc.finestra) return T.stanza.attesaReazioni;
+  if (f.nome === 'scelta' || f.nome === 'belato_finale') return T.stanza.attesaScelte;
+  if (f.nome === 'risoluzione_dado' && f.passo === 'esito_testata' && f.dichiarazione?.effetto === 'testata') {
+    return T.stanza.testataDi(nome(tavolo, f.lanciatore), nome(tavolo, f.dichiarazione.bersaglio));
+  }
+  if (f.nome === 'dado') return T.stanza.lancioDi(nomi(tavolo, sc.di));
+  return T.stanza.attesaDi(nomi(tavolo, sc.di));
 }

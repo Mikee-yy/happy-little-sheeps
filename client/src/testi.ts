@@ -360,14 +360,38 @@ export const T = {
       eliminata: (nome: string) => `${nome}: eliminata`,
       gregge: (n: number) => `Gregge: ${n === 1 ? '1 agnellino' : `${n} agnellini`}`,
     },
+    /** Le scelte dentro la scena: scritta in alto e pulsanti (gli altri pulsanti riusano `T.azioni`). */
+    scelte: {
+      chiRisponde: 'Qualcuno risponde? Tocca la tua pecora',
+      chiPunteggio: 'Qualcuno gioca un Belato? Tocca la tua pecora',
+      rubaAncora: (n: number) => (n > 0 ? `Ruba ancora ${n}` : 'Tocca Conferma'),
+      gioca: (totale: number) => `Gioca · ${totale}`,
+      /** Il pulsante sotto un Belato (il suo nome, quando c'è una carta sollevata). */
+      giocaCarta: 'Gioca',
+      scarta: (n: number) => `Scarta (${n})`,
+      passo: 'Passo',
+      fatto: 'Fatto',
+      /** Il pulsante di conferma sotto un Guaio scelto con una sola cura (il nome del Guaio). */
+      cura: (guaio: string) => `Cura ${guaio}`,
+      /** La X nella striscia in alto: nasconde il suggerimento della domanda di adesso. */
+      chiudiScritta: 'Nascondi il suggerimento',
+      /** Il controllo di un agnellino alzato nel furto (per chi legge lo schermo): toccarlo lo rimette giù. */
+      agnellinoAlzato: (nome: string) => `Rimetti giù un agnellino di ${nome}`,
+    },
     consigli: {
       solleva: 'Tocca una carta per sollevarla',
       leggi: 'Tieni premuta una carta per leggerla',
+      trascina: 'Trascina una carta sulla tovaglia per giocarla',
     },
     /** La scena si scarica a parte: se non arriva (rete assente, sito appena aggiornato). */
     caricamento: {
       fallito: 'Il prato non si è caricato. Controlla la connessione e riprova.',
       riprova: 'Riprova',
+      /** Con la connessione presente: di solito è uscito un nuovo rilascio e i nomi dei file sono cambiati. */
+      aggiornato: 'Il gioco è stato aggiornato. Ricarica la pagina per continuare: la partita è salvata.',
+      /** Lo stesso, nella partita di prova (che non si salva). */
+      aggiornatoProva: 'Il gioco è stato aggiornato. Ricarica la pagina per continuare: la partita di prova riparte da capo.',
+      ricarica: 'Ricarica la pagina',
     },
     /** Il cassetto dei pannelli sopra la scena: la maniglia lo abbassa (si guarda il prato) e lo rialza. */
     cassetto: {
@@ -400,7 +424,14 @@ export const T = {
       pascolo: (q: number) => `Pascolo ${q}!`,
       furto: (q: number) => `Furto ${q}!`,
       testata: 'Testata!',
+      /** Il totale del round sopra ogni pecora, alla rivelazione. */
+      punteggio: (n: number) => `${n}`,
+      /** La variazione dei Belati di punteggio. */
+      delta: (n: number) => (n > 0 ? `+${n}` : `${n}`),
+      curato: 'Che sollievo!',
     },
+    /** Gli annunci a tutto prato della regia. */
+    annunci: { ultimoRound: 'Ultimo round!' },
     diciture: { mazzo: 'Mazzo', scarti: 'Scarti', guai: 'Guai' },
     /** Cartello del gregge e diciture della coperta con i conti (bozza, righe 1184 e 1790). */
     gregge: (n: number) => `Gregge ${n}`,

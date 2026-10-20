@@ -13,6 +13,12 @@ const NS = 'http://www.w3.org/2000/svg';
 
 export type StatoAgnello = 'fermo' | 'cammina' | 'corre' | 'vola' | 'bruca' | 'dorme' | 'salta' | 'guarda' | 'atterra' | 'regia' | 'parte';
 
+/** Di quanto sale (nel mondo, prima della prospettiva) un agnellino alzato dal teatro: sopra la staccionata. */
+export const QUOTA_ALZATO = 36;
+/** Velocità di salita e di discesa dell'agnellino alzato (unità del mondo al secondo). */
+const VEL_SALITA = 170;
+const VEL_DISCESA = 230;
+
 /** Stati di chi va da un'area all'altra: non è ancora arrivato e non si ferma a giocare. */
 const IN_VIAGGIO: ReadonlySet<StatoAgnello> = new Set<StatoAgnello>(['parte', 'corre', 'vola']);
 
@@ -114,6 +120,10 @@ export class Agnello {
   giunto = true;
   /** È ancora nella scena. */
   vivo = true;
+  /** Alzato dal teatro (furto): solo decorazione, resta fermo dov'è e sale sopra la staccionata; area e conti non cambiano. */
+  sollevato = false;
+  /** Di quanto è salito adesso (0 a terra, `QUOTA_ALZATO` in alto). */
+  quota = 0;
   /** Secondi che mancano alla partenza (stato 'parte'). */
   attesa = 0;
   private modoViaggio: 'corre' | 'vola' = 'corre';
@@ -148,6 +158,23 @@ export class Agnello {
   /** In viaggio da un'area all'altra (in partenza, di corsa o in volo). */
   get inViaggio(): boolean {
     return IN_VIAGGIO.has(this.stato);
+  }
+
+  /** Può essere alzato dal teatro: è nel suo recinto, libero (né in viaggio, né preso dal meteo o da un gioco, né intrappolato). */
+  get sollevabile(): boolean {
+    return this.vivo && this.giunto && !this.regia && !this.inViaggio && !this.intrappolato;
+  }
+
+  /** Alza l'agnellino sopra la staccionata (decorazione): resta fermo finché non lo si abbassa. Falso se non si può. */
+  alza(): boolean {
+    if (!this.sollevabile) return false;
+    this.sollevato = true;
+    return true;
+  }
+
+  /** Lo rimette giù: scende e riprende la sua vita (con "Riduci movimento" subito). */
+  abbassa(): void {
+    this.sollevato = false;
   }
 
   togli(): void {
@@ -289,6 +316,8 @@ export class Agnello {
     if (this.regia) this.annullaRegia();
     // Chi cambia area esce anche dalla trappola: obbedisce al motore, non al mulinello
     this.intrappolato = false;
+    this.sollevato = false;
+    this.quota = 0;
     const da = this.a;
     const i = da.agnelli.indexOf(this);
     if (i >= 0) da.agnelli.splice(i, 1);
@@ -389,7 +418,19 @@ export class Agnello {
     this.sx = 1;
     this.sy = 1;
     this.hop = 0;
+    if (this.sollevato && this.sollevabile) {
+      // Alzato dal teatro: fermo, sale sopra la staccionata (subito con "Riduci movimento"); il resto della vita aspetta
+      this.stato = 'fermo';
+      this.t = 1;
+      this.quota = this.ctx.ridotto ? QUOTA_ALZATO : Math.min(QUOTA_ALZATO, this.quota + dt * VEL_SALITA);
+      this.hop = this.quota;
+      this.disegna();
+      return;
+    }
     if (this.regia) {
+      // Preso dal meteo o da un gioco mentre era alzato: torna a terra
+      this.sollevato = false;
+      this.quota = 0;
       this.passoRegia(dt);
       this.respingi();
       this.disegna();
@@ -510,6 +551,11 @@ export class Agnello {
         }
         break;
     }
+    // Appena abbassato: scende piano piano (subito con "Riduci movimento")
+    if (this.quota > 0) {
+      this.quota = this.ctx.ridotto ? 0 : Math.max(0, this.quota - dt * VEL_DISCESA);
+      this.hop += this.quota;
+    }
     this.respingi();
     this.disegna();
   }
@@ -601,7 +647,9 @@ class CorpoDom implements CorpoAgnello {
     if (this.el.style.opacity !== sf) this.el.style.opacity = sf;
     const brr = g.brivido > 0 ? Math.sin(ctx.T * 70 + g.x) * 0.9 * g.brivido : 0;
     this.el.style.transform = `translate(${(g.x + g.ox + brr).toFixed(1)}px,${g.y.toFixed(1)}px)`;
-    this.el.style.zIndex = String(100 + Math.round(g.y) + (g.stato === 'vola' || g.stato === 'corre' ? 600 : 0));
+    this.el.style.zIndex = String(100 + Math.round(g.y) + (g.stato === 'vola' || g.stato === 'corre' || g.quota > 0 ? 600 : 0));
+    // Alzato dal teatro (furto): serve a chi vuole riconoscerlo
+    if (this.el.classList.contains('alzato') !== g.sollevato) this.el.classList.toggle('alzato', g.sollevato);
     const piega = g.stato === 'vola' ? 0 : clamp(-amb.ventoIn(g.x) * 11, -14, 6);
     this.corpo.style.transform = `translate(-14px,${(-25.8 - g.hop * k).toFixed(1)}px) skewX(${piega.toFixed(1)}deg) scale(${(g.verso * g.sx * k).toFixed(3)},${(g.sy * k).toFixed(3)}) rotate(${g.incl.toFixed(1)}deg)`;
     // Ombra: la sagoma dell'agnellino proiettata a terra dalla parte opposta al sole; resta giù quando salta, e si stringe

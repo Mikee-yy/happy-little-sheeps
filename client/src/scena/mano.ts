@@ -1,21 +1,46 @@
 // La mano di chi sta in basso (bozza scena.src.html, righe 1842–1907): ventaglio di carte da toccare, tenere e trascinare.
 // Con `carte` null mostra solo dorsi, che non rispondono a nessun gesto (regola anti-sbirciata).
 // I gesti usano tempo vero (setTimeout della tenuta): eccezione ammessa per l'interfaccia.
-// Differenze dalla bozza: niente `gioca` (il trascinamento rilasciato torna sempre nel ventaglio), niente pulsanti #rimetti/#gioca.
+// Due modi: libero (il tocco solleva da solo, il trascinamento torna sempre nel ventaglio) e comandato da una domanda
+// (`comanda`): il tocco va a chi comanda, le carte sollevate le dice lui, il trascinamento rilasciato sopra la tovaglia gioca.
+// Differenze dalla bozza: niente pulsanti #rimetti/#gioca (stanno nel teatro).
 import { defCarta } from '../../../engine/src';
 import type { IdCarta } from '../../../engine/src';
 import { cartaSVG, retroSVG } from './carte/carte';
 import type { Contesto } from './contesto';
 import type { Lettura } from './lettura';
-import { scenaInMano } from './misure';
+import { manoInScena, scenaInMano } from './misure';
+
+/** Chi comanda la mano: una domanda del gioco. */
+export interface ComandoMano {
+  /** Le carte che rispondono al tocco: le altre sono spente (si leggono ancora tenendole premute). */
+  toccabili: IdCarta[];
+  /** Le carte sollevate adesso, nell'ordine in cui stanno da sinistra a destra. */
+  sollevate: IdCarta[];
+  /** Le carte che si possono trascinare sulla tovaglia per giocarle. */
+  trascinabili: IdCarta[];
+  suTocco(id: IdCarta): void;
+  suTrascinata(id: IdCarta): void;
+}
+
+export interface OpzioniMano {
+  /** Una carta è stata giocata trascinandola (chiamata subito prima di `suTrascinata`): serve al terzo consiglio. */
+  allaGiocataTrascinando?: () => void;
+}
 
 export interface Mano {
   /** `carte`: il ventaglio scoperto; null: `dorsi` carte coperte. */
   mostra(carte: IdCarta[] | null, dorsi: number): void;
   /** La carta sollevata (al centro, ingrandita), se c'è. */
   attiva(): IdCarta | null;
-  /** Rimette nel ventaglio la carta sollevata (un tocco sulla scena, bozza riga 2669). */
+  /** Rimette nel ventaglio la carta sollevata (un tocco sulla scena, bozza riga 2669). In modo comandato non fa niente: le carte sollevate le dice chi comanda. */
   abbassa(): void;
+  /** Con una domanda la mano non decide da sola: i tocchi vanno a `suTocco`, le carte sollevate le dice chi comanda. null: modo libero di oggi. Annulla un trascinamento in corso. */
+  comanda(c: ComandoMano | null): void;
+  /** Dove stanno le carte sollevate (coordinate della scena, il centro del gruppo): per il pulsante "Gioca". null se nessuna. */
+  sollevateIn(): { x: number; y: number } | null;
+  /** Le carte scoperte, nell'ordine del ventaglio, con il loro elemento: per riportare il fuoco della tastiera. */
+  scoperte(): Array<{ id: IdCarta; el: HTMLElement }>;
   distruggi(): void;
 }
 
@@ -30,6 +55,16 @@ interface Posa {
 
 const TENUTA_MS = 430;
 const SOGLIA_TRASCINA = 9;
+/** Rilasciata con il dito sopra questa linea della scena (y minore) la carta è giocata (bozza, riga 1888). */
+const LINEA_GIOCO = 640;
+
+/** Dove sta la carta `i`-esima di `n` carte sollevate (coordinate della mano). */
+export function posaSollevata(i: number, n: number): Posa {
+  if (n <= 1) return { x: 195, y: 470, r: 0, k: 0.66 };
+  if (n === 2) return { x: 195 + (i - 0.5) * 124, y: 480, r: 0, k: 0.5 };
+  const passo = Math.min(110, 220 / (n - 1));
+  return { x: 195 + (i - (n - 1) / 2) * passo, y: 490, r: 0, k: 0.42 };
+}
 
 export const trasf = (p: Posa): string =>
   `perspective(1100px) translate(${(p.x - 125).toFixed(1)}px,${(p.y - 175).toFixed(1)}px) rotate(${(p.r || 0).toFixed(2)}deg) scale(${p.k.toFixed(3)},${(p.k * (p.sy || 1)).toFixed(3)}) rotateY(${(p.f || 0).toFixed(1)}deg)`;
@@ -41,16 +76,20 @@ export function posizioneMano(i: number, n: number): Posa {
   return { x: 195 + d * dx, y: 786 + d * d * 3.4, r: d * 6.5, k: 0.37 };
 }
 
-export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
+export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano = {}): Mano {
   const contenitore = ctx.el.mano;
   /** Le carte scoperte, per id. */
   const elementi = new Map<IdCarta, HTMLElement>();
   let ordine: IdCarta[] = [];
   let dorsi: HTMLElement[] = [];
   let attiva: IdCarta | null = null;
+  /** Chi comanda la mano, se qualcuno: gli insiemi servono a rispondere in fretta ai gesti. */
+  let com: { c: ComandoMano; toccabili: Set<IdCarta>; trascinabili: Set<IdCarta> } | null = null;
   const timer = new Set<ReturnType<typeof setTimeout>>();
   /** Per ogni carta scoperta: azzera il gesto in corso (tenuta, trascinamento). */
   const azzera = new Map<IdCarta, () => void>();
+  /** Per ogni carta scoperta: annulla il trascinamento in corso (la carta torna nel ventaglio, senza giocare). */
+  const annullaTrascinamento = new Map<IdCarta, () => void>();
   /** La carta che la lettura aperta dalla mano sta mostrando. */
   let lettaDa: IdCarta | null = null;
 
@@ -59,24 +98,53 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
     return { x: (e.clientX - m.left) / ctx.S, y: (e.clientY - m.top) / ctx.S };
   };
 
+  /** Le carte sollevate che in questa mano ci sono davvero (in modo comandato, nell'ordine di chi comanda). */
+  const sollevateOra = (): IdCarta[] => (com ? com.c.sollevate.filter((id) => elementi.has(id)) : []);
+
   function disponi() {
     const n = ordine.length;
+    const sollevate = sollevateOra();
     ordine.forEach((id, i) => {
       const el = elementi.get(id);
-      if (!el || el.classList.contains('trascinata')) return;
+      if (!el) return;
+      const posto = sollevate.indexOf(id);
+      const alzata = com ? posto >= 0 : attiva === id;
+      const spenta = com ? posto < 0 && !com.toccabili.has(id) : !!attiva && attiva !== id;
+      perTastiera(el, alzata, spenta);
+      if (el.classList.contains('trascinata')) return;
       let p = posizioneMano(i, n);
-      if (attiva === id) p = { x: 195, y: 470, r: 0, k: 0.66 };
+      if (com) {
+        if (posto >= 0) p = posaSollevata(posto, sollevate.length);
+        else if (el.dataset.su === '1' && sollevate.length === 0 && com.toccabili.has(id)) p = { ...p, y: p.y - 26, k: 0.4 };
+      } else if (attiva === id) p = { x: 195, y: 470, r: 0, k: 0.66 };
       else if (el.dataset.su === '1' && !attiva) p = { ...p, y: p.y - 26, k: 0.4 };
       el.style.transform = trasf(p);
-      el.style.zIndex = String(attiva === id ? 2500 : 2000 + i);
-      el.classList.toggle('attiva', attiva === id);
-      el.classList.toggle('spenta', !!attiva && attiva !== id);
-      const animata = attiva === id;
+      el.style.zIndex = String(alzata ? 2500 + Math.max(0, posto) : 2000 + i);
+      el.classList.toggle('attiva', alzata);
+      el.classList.toggle('spenta', spenta);
+      const animata = alzata;
       if ((el.dataset.anim === '1') !== animata) {
         el.innerHTML = cartaSVG(id, animata);
         el.dataset.anim = animata ? '1' : '';
       }
     });
+  }
+
+  /**
+   * Con una domanda le carte che rispondono (toccabili o sollevate) si raggiungono con Tab e dicono se sono sollevate;
+   * le spente no. Nel modo libero niente tastiera, come prima della domanda.
+   */
+  function perTastiera(el: HTMLElement, alzata: boolean, spenta: boolean) {
+    if (!com) {
+      el.removeAttribute('tabindex');
+      el.removeAttribute('aria-disabled');
+      el.removeAttribute('aria-pressed');
+      return;
+    }
+    el.tabIndex = spenta ? -1 : 0;
+    if (spenta) el.setAttribute('aria-disabled', 'true');
+    else el.removeAttribute('aria-disabled');
+    el.setAttribute('aria-pressed', alzata ? 'true' : 'false');
   }
 
   function creaCarta(id: IdCarta): HTMLElement {
@@ -93,6 +161,8 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
     let giu: { x: number; y: number } | null = null;
     let tenuta: ReturnType<typeof setTimeout> | null = null;
     let trascina = false;
+    /** Il dito si è mosso su una carta che non si può trascinare: non è più un tocco e non è un trascinamento. */
+    let mosso = false;
     let inLettura = false;
     const fermaTenuta = () => {
       if (tenuta !== null) {
@@ -123,6 +193,7 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
       }
       giu = { x: e.clientX, y: e.clientY };
       trascina = false;
+      mosso = false;
       inLettura = false;
       fermaTenuta();
       tenuta = setTimeout(() => {
@@ -138,12 +209,17 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
       if (!giu) return;
       const dx = e.clientX - giu.x;
       const dy = e.clientY - giu.y;
-      if (!trascina && !inLettura && Math.hypot(dx, dy) > SOGLIA_TRASCINA) {
-        trascina = true;
+      if (!trascina && !mosso && !inLettura && Math.hypot(dx, dy) > SOGLIA_TRASCINA) {
         fermaTenuta();
+        if (com && !com.trascinabili.has(id)) {
+          mosso = true;
+          return;
+        }
+        trascina = true;
         el.classList.add('trascinata');
         el.style.zIndex = '2700';
-        attiva = null;
+        // In modo comandato le carte sollevate le decide chi comanda
+        if (!com) attiva = null;
         disponi();
         ctx.suona('fruscio');
       }
@@ -153,7 +229,7 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
         el.style.transform = trasf({ x: p.x, y: p.y - 40, r: Math.max(-14, Math.min(14, dx / ctx.S / 12)), k: 0.44 });
       }
     });
-    const fine = (annulla: boolean) => {
+    const fine = (e: MouseEvent, annulla: boolean) => {
       fermaTenuta();
       if (!giu) return;
       giu = null;
@@ -162,27 +238,69 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
         chiudiLettura();
         return;
       }
-      if (trascina) {
-        // In questo pezzo non si gioca: la carta torna sempre nel ventaglio
-        el.classList.remove('trascinata');
-        disponi();
+      if (mosso) {
+        mosso = false;
         return;
       }
-      if (!annulla) {
-        attiva = attiva === id ? null : id;
+      if (trascina) {
+        trascina = false;
+        el.classList.remove('trascinata');
+        // Il punto del dito resta nelle coordinate della scena (non si riporta nella mano, come fa la carta che lo segue):
+        // la linea 640 sta sulla scena, come nella bozza
+        const comando = com;
+        const gioca = !annulla && comando !== null && comando.trascinabili.has(id) && puntatore(e).y < LINEA_GIOCO;
         disponi();
-        ctx.suona('fruscio');
+        if (gioca) {
+          opzioni.allaGiocataTrascinando?.();
+          comando.c.suTrascinata(id);
+        }
+        return;
       }
+      if (annulla) return;
+      if (com) {
+        // Il tocco non solleva da solo: lo decide chi comanda
+        if (com.toccabili.has(id)) {
+          ctx.suona('fruscio');
+          com.c.suTocco(id);
+        }
+        return;
+      }
+      attiva = attiva === id ? null : id;
+      disponi();
+      ctx.suona('fruscio');
     };
-    el.addEventListener('pointerup', () => fine(false));
-    el.addEventListener('pointercancel', () => fine(true));
+    /** Tasti e clic senza puntatore (lettore di schermo): un tocco intero, solo con una domanda e su una carta che risponde. */
+    const toccoSenzaDito = () => {
+      if (!com || !com.toccabili.has(id)) return;
+      ctx.suona('fruscio');
+      com.c.suTocco(id);
+    };
+    el.addEventListener('keydown', (e) => {
+      if (!com || (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar')) return;
+      e.preventDefault();
+      toccoSenzaDito();
+    });
+    // Il clic vero (dito, mouse) passa dal puntatore: quello senza puntatore ha detail 0
+    el.addEventListener('click', (e) => {
+      if (e.detail === 0) toccoSenzaDito();
+    });
+    el.addEventListener('pointerup', (e) => fine(e, false));
+    el.addEventListener('pointercancel', (e) => fine(e, true));
     // La pressione lunga su Android aprirebbe il menu del browser
     el.addEventListener('contextmenu', (e) => e.preventDefault());
     azzera.set(id, () => {
       fermaTenuta();
       giu = null;
       trascina = false;
+      mosso = false;
       inLettura = false;
+    });
+    annullaTrascinamento.set(id, () => {
+      if (!trascina) return;
+      fermaTenuta();
+      giu = null;
+      trascina = false;
+      el.classList.remove('trascinata');
     });
   }
 
@@ -195,6 +313,7 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
   function rimuoviCarta(id: IdCarta, el: HTMLElement) {
     azzera.get(id)?.();
     azzera.delete(id);
+    annullaTrascinamento.delete(id);
     el.remove();
     elementi.delete(id);
     if (attiva === id) attiva = null;
@@ -240,22 +359,53 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
       if (lettaDa !== null && !nuovi.has(lettaDa)) chiudiLettura();
       if (attiva !== null && !nuovi.has(attiva)) attiva = null;
       ordine = [...nuovi];
+      // Le carte si mettono in fila nel DOM (l'ordine di Tab) spostando solo quelle fuori posto: spostare la carta che ha il
+      // fuoco glielo toglierebbe. Ciò che non è una carta della mano (le copie che si dissolvono) si salta.
+      const mie = new Set<Node>(elementi.values());
+      const salta = (n: ChildNode | null): ChildNode | null => {
+        while (n && !mie.has(n)) n = n.nextSibling;
+        return n;
+      };
+      let prima = salta(contenitore.firstChild);
       for (const id of ordine) {
         let el = elementi.get(id);
         if (!el) {
           el = creaCarta(id);
           elementi.set(id, el);
+          mie.add(el);
         }
-        contenitore.appendChild(el);
+        if (el !== prima) contenitore.insertBefore(el, prima);
+        prima = salta(el.nextSibling);
       }
       disponi();
     },
-    attiva: () => attiva,
+    attiva: () => (com ? (sollevateOra()[0] ?? null) : attiva),
     abbassa() {
-      if (attiva === null) return;
+      if (com || attiva === null) return;
       attiva = null;
       disponi();
     },
+    comanda(c) {
+      // Un trascinamento in corso non sopravvive a una domanda nuova (né al ritorno al modo libero)
+      for (const annulla of annullaTrascinamento.values()) annulla();
+      if (c === null) com = null;
+      else {
+        attiva = null;
+        com = { c, toccabili: new Set(c.toccabili), trascinabili: new Set(c.trascinabili) };
+      }
+      disponi();
+    },
+    sollevateIn() {
+      const sollevate = sollevateOra();
+      if (sollevate.length === 0) return null;
+      const { y, k } = posaSollevata(0, sollevate.length);
+      const p = manoInScena({ x: 195, y, k }, ctx.KD);
+      return { x: p.x, y: p.y };
+    },
+    scoperte: () => ordine.flatMap((id) => {
+      const el = elementi.get(id);
+      return el ? [{ id, el }] : [];
+    }),
     distruggi() {
       for (const t of timer) clearTimeout(t);
       timer.clear();
@@ -263,6 +413,7 @@ export function creaMano(ctx: Contesto, lettura: Lettura): Mano {
       svuotaScoperte();
       svuotaDorsi();
       attiva = null;
+      com = null;
     },
   };
 }

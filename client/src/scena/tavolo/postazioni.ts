@@ -178,6 +178,8 @@ class Postazione {
         const m = document.createElement('div');
         m.className = 'mini';
         m.dataset.chi = f.id;
+        // Il teatro che chiede riconosce così il Guaio da illuminare
+        m.dataset.carta = id;
         m.style.cursor = 'pointer';
         m.innerHTML = cartaSVG(id);
         m.addEventListener('pointerdown', (e) => {

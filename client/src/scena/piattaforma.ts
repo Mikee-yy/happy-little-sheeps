@@ -103,6 +103,20 @@ export const piattaforma = {
     }
   },
 
+  /** Il browser dice di essere senza rete (`navigator.onLine === false`); se non lo sa, si suppone la rete presente. */
+  online(): boolean {
+    return g().navigator?.onLine !== false;
+  },
+
+  /** Ricarica la pagina (dopo un nuovo rilascio del sito); la partita su un dispositivo è già salvata nel browser. */
+  ricarica(): void {
+    try {
+      g().location?.reload?.();
+    } catch {
+      /* ignorato */
+    }
+  },
+
   /** Nuovo contesto audio, o null se il browser non lo offre. */
   audio(): AudioContext | null {
     const C = (g().AudioContext ?? g().webkitAudioContext) as (new () => AudioContext) | undefined;

@@ -5,6 +5,7 @@ import type { Ambiente } from './ambiente/indice';
 import type { OpzioniParticella, TipoParticella } from './ambiente/particelle';
 import type { Contesto } from './contesto';
 import type { PostoDisp } from './disposizioni';
+import type { PostoFoto } from './fotografia';
 import type { Agnello } from './personaggi/agnello';
 import type { Area } from './personaggi/aree';
 import type { Branco } from './personaggi/branco';
@@ -36,6 +37,11 @@ export interface Palco {
   angolo(chi: IdGiocatore): IdCarta[];
   /** Aggiunge una carta all'angolo mostrato (la fotografia successiva lo conferma). */
   aggiungiAngolo(chi: IdGiocatore, carta: IdCarta): void;
+  /**
+   * Cambia il posto mostrato di `chi` (carte del round girate, eliminata) e rimette in pari le postazioni.
+   * La fotografia successiva lo conferma; nel frattempo gli altri ordini non lo disfano.
+   */
+  ritocca(chi: IdGiocatore, modifica: (p: PostoFoto) => PostoFoto): void;
   /** Cresce a ogni ricostruzione del tavolo: chi aspettava qualcosa del tavolo di prima si ferma. */
   generazione(): number;
 }

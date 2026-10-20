@@ -1,7 +1,7 @@
 // Sessione dell'host: il suo browser è l'unica fonte di verità (brief §6). Convalida con il motore le azioni
 // degli ospiti, pubblica una vista per ogni giocatore, gestisce timer, pause, bot e rientri.
 import { azioniPossibili, inAttesaDi, nuovaPartita, SETUP, tentaApplica, vistaPer } from '../engine/src';
-import type { Azione, IdGiocatore, IdPecora, NomeFase, Stato, Vista } from '../engine/src';
+import type { Azione, Evento, IdGiocatore, IdPecora, NomeFase, Stato, Vista } from '../engine/src';
 import { semplice } from '../engine/sim/politiche';
 import { esitoTestataCasuale } from '../engine/sim/simulatore';
 import type { Archivio } from './locale';
@@ -37,6 +37,15 @@ export const TEMPI = {
   bot: 1100,
 };
 
+/** Cose che chi ospita riceve da fuori (`sync/` non importa dal client). */
+export interface OpzioniHost {
+  /**
+   * Durata normale, in ms, della recita sulla scena dei telefoni degli eventi NUOVI di una mossa (`vista` è quella del tavolo).
+   * Finestre, fasi automatiche e bot aspettano la fine della recita. Senza, 0: il comportamento di prima.
+   */
+  durataRecita?: (eventi: Evento[], vista: Vista) => number;
+}
+
 export interface GiocatoreHost {
   id: IdGiocatore;
   uid: string | null;
@@ -59,6 +68,7 @@ interface Salvataggio {
 }
 
 const PECORE = SETUP.pecore.map((p) => p.id);
+const ultimoSeq = (eventi: Evento[]): number => eventi.reduce((massimo, e) => Math.max(massimo, e.seq), -1);
 const pulisciNome = (n: unknown): string => (typeof n === 'string' ? n.trim().slice(0, NOME_MASSIMO) : '');
 const pecoraValida = (p: unknown): p is IdPecora => typeof p === 'string' && (PECORE as string[]).includes(p);
 
@@ -90,17 +100,26 @@ export class SessioneHost implements Sessione {
   private readonly idSessione = nuovoGettone();
   private sessioneConfermata = false;
   private sostituitaDaAltra = false;
+  /** Ultimo evento già considerato per la durata della recita (-1: nessuno). Gli eventi più nuovi sono "della mossa". */
+  private ultimoSeqPianificato = -1;
+  /** Quando la scena dei telefoni ha finito di recitare tutte le mosse viste finora (ora del servizio; 0: niente in coda). */
+  private fineRecita = 0;
+  /** `durataRecita` ha già lanciato un errore (lo si scrive in console una volta sola). */
+  private durataRotta = false;
 
   private constructor(
     private readonly t: Trasporto,
     private readonly archivio: Archivio,
     readonly codice: string,
     dati: { giocatori: GiocatoreHost[]; impostazioni: Impostazioni; stato: Stato | null; esclusi?: string[] },
+    private opzioni: OpzioniHost = {},
   ) {
     this.giocatori = dati.giocatori;
     this.impostazioni = dati.impostazioni;
     this.stato = dati.stato;
     this.esclusi = new Set(dati.esclusi ?? []);
+    // Riprendendo una partita, ciò che c'è già non va recitato (né aspettato) di nuovo.
+    this.ultimoSeqPianificato = dati.stato ? ultimoSeq(dati.stato.eventi) : -1;
   }
 
   /** Crea una stanza nuova con un codice libero e ci entra come primo giocatore. */
@@ -109,6 +128,7 @@ export class SessioneHost implements Sessione {
     archivio: Archivio,
     io: { nome: string; pecora: IdPecora; gettone: string },
     casuale: () => number = Math.random,
+    opzioni?: OpzioniHost,
   ): Promise<SessioneHost> {
     // La pulizia delle stanze vecchie non deve rallentare la creazione: parte e prosegue da sola.
     void SessioneHost.cancellaStanzeInattive(t);
@@ -126,13 +146,13 @@ export class SessioneHost implements Sessione {
       ],
       impostazioni: { finestraSecondi: SETUP.finestraReazioneSecondi },
       stato: null,
-    });
+    }, opzioni);
     s.avvia();
     return s;
   }
 
   /** Riprende la stanza salvata in questo browser, se l'host è ancora questo dispositivo. */
-  static async riprendi(t: Trasporto, archivio: Archivio): Promise<SessioneHost | null> {
+  static async riprendi(t: Trasporto, archivio: Archivio, opzioni?: OpzioniHost): Promise<SessioneHost | null> {
     const testo = archivio.leggi();
     if (!testo) return null;
     let dati: Salvataggio;
@@ -144,7 +164,7 @@ export class SessioneHost implements Sessione {
     if (dati.versione !== VERSIONE_SALVATAGGIO) return null;
     const meta = (await t.leggi(percorsi(dati.codice).meta)) as { host?: string } | null;
     if (!meta || meta.host !== t.uid) return null;
-    const s = new SessioneHost(t, archivio, dati.codice, dati);
+    const s = new SessioneHost(t, archivio, dati.codice, dati, opzioni);
     s.avvia();
     return s;
   }
@@ -195,6 +215,15 @@ export class SessioneHost implements Sessione {
   /** Collegato al servizio realtime? */
   online(): boolean {
     return this.connesso;
+  }
+
+  /**
+   * La durata delle recite arrivata dopo la creazione (nel client si scarica a parte, con la scena): vale dalle mosse
+   * nuove; quelle già fatte non fanno aspettare.
+   */
+  impostaDurataRecita(durataRecita: OpzioniHost['durataRecita']): void {
+    this.opzioni = { ...this.opzioni, durataRecita };
+    this.ultimoSeqPianificato = this.stato ? ultimoSeq(this.stato.eventi) : -1;
   }
 
   /** La stanza è stata ripresa da un'altra scheda (o cancellata): questa sessione si è fermata. */
@@ -535,6 +564,9 @@ export class SessioneHost implements Sessione {
     this.fermaTimer();
     const s = this.stato;
     this.prosegueAlle = null;
+    const ora = oraServizio(this.t);
+    // Prima di tutto si "consumano" gli eventi nuovi (anche senza connessione o in pausa): la loro recita conta una volta sola.
+    this.registraRecita(s, ora);
     // Senza connessione niente timer: si riprende con il tempo pieno quando torna.
     if (!this.connesso) return;
     if (!s || s.esito || this.inPausa().length > 0) {
@@ -543,7 +575,8 @@ export class SessioneHost implements Sessione {
       return;
     }
     const attesa = inAttesaDi(s);
-    const ora = oraServizio(this.t);
+    // Quando la scena dei telefoni ha finito di recitare l'ultima mossa (se è già passata, vale "ora").
+    const fineRecita = Math.max(ora, this.fineRecita);
 
     // Finestra di reazione o dei Belati di punteggio: timer configurabile, che riparte a ogni nuova dichiarazione.
     const chiave = s.finestra
@@ -554,7 +587,7 @@ export class SessioneHost implements Sessione {
     if (chiave) {
       if (chiave !== this.chiaveFinestra || this.scadenza === null) {
         this.chiaveFinestra = chiave;
-        this.scadenza = ora + this.impostazioni.finestraSecondi * 1000;
+        this.scadenza = fineRecita + this.impostazioni.finestraSecondi * 1000;
       }
       this.timerSistema = setTimeout(() => this.applica({ tipo: 'scadenza' }), Math.max(0, this.scadenza - ora));
     } else {
@@ -562,13 +595,42 @@ export class SessioneHost implements Sessione {
       this.scadenza = null;
       if (attesa.sistema && attesa.giocatori.length === 0) {
         const pausa = TEMPI.prosegui[s.fase.nome] ?? 1500;
-        this.prosegueAlle = ora + pausa;
-        this.timerSistema = setTimeout(() => this.applica({ tipo: 'prosegui' }), pausa);
+        this.prosegueAlle = fineRecita + pausa;
+        this.timerSistema = setTimeout(() => this.applica({ tipo: 'prosegui' }), this.prosegueAlle - ora);
       }
     }
 
     const bot = this.giocatori.find((g) => g.bot && attesa.giocatori.includes(g.id));
-    if (bot) this.timerBot = setTimeout(() => this.mossaBot(bot.id), TEMPI.bot);
+    if (bot) this.timerBot = setTimeout(() => this.mossaBot(bot.id), Math.max(TEMPI.bot, fineRecita - ora));
+  }
+
+  /**
+   * Dagli eventi arrivati dopo l'ultima volta calcola la durata normale della recita della mossa (solo se la durata
+   * è stata data) e la mette in coda dopo quelle ancora in corso, come fa il regista: la nuova fine è
+   * max(fine precedente, ora) + durata (una durata 0 lascia la fine precedente). Dipende solo dagli eventi.
+   */
+  private registraRecita(s: Stato | null, ora: number): void {
+    if (!s) {
+      this.ultimoSeqPianificato = -1;
+      this.fineRecita = 0;
+      return;
+    }
+    // Senza la durata data non c'è niente da aspettare: il comportamento di sempre.
+    if (!this.opzioni.durataRecita) return;
+    const tavolo = vistaPer(s, null);
+    const nuovi = tavolo.eventi.filter((e) => e.seq > this.ultimoSeqPianificato);
+    if (nuovi.length === 0) return;
+    this.ultimoSeqPianificato = ultimoSeq(nuovi);
+    // La durata viene da fuori: se si rompe conta 0 (le scadenze di sempre) e la partita va avanti, senza fermare
+    // la pubblicazione che segue (la stanza resterebbe ferma per tutti)
+    let durata = 0;
+    try {
+      durata = this.opzioni.durataRecita(nuovi, tavolo);
+    } catch (e) {
+      if (!this.durataRotta) console.error('durataRecita:', e);
+      this.durataRotta = true;
+    }
+    this.fineRecita = Math.max(this.fineRecita, ora) + (Number.isFinite(durata) ? Math.max(0, durata) : 0);
   }
 
   private mossaBot(id: IdGiocatore): void {

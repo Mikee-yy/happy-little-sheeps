@@ -41,11 +41,37 @@ export class GeneratoreSuoni {
     if (this.ctx && this.uscita) this.uscita.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
   }
 
-  /** Ferma il campanaccio periodico e spegne: per quando il teatro non c'è più. */
+  /** Ferma il campanaccio periodico, spegne e sospende il contesto audio (il vento in loop non gira più): per quando il teatro non c'è più. */
   ferma(): void {
+    this.fermaCampanaccio();
+    this.spegni();
+    this.sospendiContesto();
+  }
+
+  /** Scena nascosta (la prova mentre si leggono le Regole): contesto audio e campanaccio fermi, senza spegnere i suoni. */
+  sospendi(): void {
+    this.fermaCampanaccio();
+    this.sospendiContesto();
+  }
+
+  /** Fine della pausa: l'audio riparte solo se i suoni erano accesi (chi chiama controlla anche le Opzioni). */
+  riprendi(): void {
+    if (!this.attivo || !this.ctx) return;
+    this.ctx.resume()?.catch?.(() => {});
+    if (!this.campanaccioPeriodico) this.avviaCampanaccio();
+  }
+
+  private fermaCampanaccio(): void {
     if (this.campanaccioPeriodico) clearInterval(this.campanaccioPeriodico);
     this.campanaccioPeriodico = null;
-    this.spegni();
+  }
+
+  private sospendiContesto(): void {
+    try {
+      this.ctx?.suspend()?.catch?.(() => {});
+    } catch {
+      /* audio non disponibile */
+    }
   }
 
   private avviaCampanaccio(): void {

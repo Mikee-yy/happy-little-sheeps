@@ -18,6 +18,8 @@ export const lupo: EffettoGuaio = async (m, chi, s) => {
     100 + Math.round(by) + 5,
     `<g transform="scale(${io ? 1 : R.k * 1.3})"><g fill="${P.notte}" stroke="${P.notte}" stroke-width="6">${f}</g><g fill="${P.menta}">${f}</g><g class="occhi-lupo"><ellipse cx="-2" cy="-14" rx="4" ry="2.4" fill="${P.limone}"/><ellipse cx="10" cy="-14" rx="4" ry="2.4" fill="${P.limone}"/><rect x="-2.6" y="-16" width="1.6" height="4" rx=".8" fill="${P.notte}"/><rect x="9.4" y="-16" width="1.6" height="4" rx=".8" fill="${P.notte}"/></g></g>`,
   );
+  // Il cespuglio sta accanto al recinto: se il recinto ingrandito torna normale, lo segue
+  if (!io) s.seguiElemento(chi, c, (y) => 100 + Math.round(y) + 5);
   ctx.anima(c, [{ transform: 'translateX(-60px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 900, easing: 'ease-out', fill: 'forwards' });
   m.pulisci(() => {
     const via = () => c.remove();

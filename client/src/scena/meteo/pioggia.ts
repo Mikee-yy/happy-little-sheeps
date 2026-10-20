@@ -26,7 +26,10 @@ export const pioggia: EffettoGuaio = async (m, chi, s) => {
   m.dopo(() => {
     if (!m.vivo) return;
     const A = s.area(chi), k = (A.recinto as FormaRecinto).k;
-    pozze.push(s.pozza(A.x0 + (A.x1 - A.x0) * 0.32, (A.y0 + A.y1) / 2 + 6 * k, 20 * k, 100 + Math.round(A.y0) - 2));
+    const p = s.pozza(A.x0 + (A.x1 - A.x0) * 0.32, (A.y0 + A.y1) / 2 + 6 * k, 20 * k, 100 + Math.round(A.y0) - 2);
+    // La pozza nel recinto lo segue se torna alla forma normale
+    s.seguiElemento(chi, p.el, () => 100 + Math.round(A.y0) - 2);
+    pozze.push(p);
   }, 1500);
   await s.rannicchiaTutti(m, 5.5);
   m.ok();

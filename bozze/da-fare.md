@@ -1,6 +1,6 @@
 # Happy Little Sheeps — cose da fare
 
-Aggiornato il 15 ottobre 2026 (pezzo 1 della scena fatto, in attesa della revisione finale). Il contesto di ogni voce è in `bozze/passaggio-di-consegne.md`.
+Aggiornato il 20 ottobre 2026 (pezzi 2, 3 e 4 della scena fatti e rifiniture prima della pubblicazione fatte; in attesa del commit e della pubblicazione, su richiesta dell'utente). Il contesto di ogni voce è in `bozze/passaggio-di-consegne.md`.
 
 Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
 
@@ -62,10 +62,10 @@ Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
   - suggerimenti col pensiero della tua pecora (nuvoletta a pallini) che spiegano ogni momento;
   - non cancella una partita salvata.
 - [ ] **Portare la scena nel gioco vero** (`client/`): una regia legge gli eventi del motore e li trasforma in animazioni uguali su tutti i telefoni. *Diviso in 4 pezzi (14 ottobre). Si pubblica dopo i pezzi 1–3. Dettagli in `bozze/scena-gioco-1-progetto.md` e `bozze/passaggio-di-consegne.md`.*
-  - [x] **Pezzo 1, la scena entra nel gioco.** *Fatto il 15 ottobre: scena nella partita su un dispositivo e nella prova, con i pannelli di oggi in un cassetto; in attesa della revisione finale e dello stop di fase.*
-  - [ ] **Pezzo 2, la regia:** legge gli eventi del motore e li recita nella scena (dado, furto, Testata, Guai, Beee-NO!), con il conto alla rovescia che parte a fine animazioni.
-  - [ ] **Pezzo 3, le scelte dentro la scena:** carte, bersagli e risposte si scelgono toccando la scena, al posto dei pannelli nel cassetto.
-  - [ ] **Pezzo 4, le stanze:** la scena anche nelle partite con più dispositivi (`client/src/remoto/`), che per ora tengono il `Tavolo` di oggi.
+  - [x] **Pezzo 1, la scena entra nel gioco.** *Fatto il 15 ottobre: scena nella partita su un dispositivo e nella prova, con i pannelli di oggi in un cassetto. Salvato nel commit locale 033b38b.*
+  - [x] **Pezzo 2, la regia:** legge gli eventi del motore e li recita nella scena (dado, furto, Testata, Guai, Beee-NO!). *Fatto il 19 ottobre (progetto `bozze/scena-gioco-2-progetto.md`, piano `bozze/scena-gioco-2-piano.md`), revisione finale fatta. Il conto alla rovescia del Beee-NO! che va in pausa durante le animazioni passa al pezzo 4 (stanze).*
+  - [x] **Pezzo 3, le scelte dentro la scena:** carte, bersagli e risposte si scelgono toccando la scena, al posto dei pannelli nel cassetto. *Fatto il 20 ottobre (progetto `bozze/scena-gioco-3-progetto.md`, piano `bozze/scena-gioco-3-piano.md`); i pannelli restano come riserva se la scena non si carica. In attesa della revisione finale.*
+  - [x] **Pezzo 4, le stanze:** la scena anche nelle partite con più telefoni. *Fatto il 20 ottobre (progetto `bozze/scena-gioco-4-progetto.md`, piano `bozze/scena-gioco-4-piano.md`): scelte nella scena su ogni telefono, conto alla rovescia del Beee-NO! fermo per la durata normale dell'animazione (file `client/src/scena/regia/durate.json`) e poi in discesa, fasi automatiche e bot che aspettano le animazioni, vista proiettore con la scena. Le regole di Firebase non cambiano.*
 
   Regole già decise:
   - il pannello "Prova eventi" esiste solo nella versione di sviluppo;
@@ -75,6 +75,7 @@ Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
   - un telefono che torna da un'altra scheda deve saltare allo stato attuale invece di recitare tutto;
   - i recinti degli avversari, con 3 o 4 giocatori, sono stretti e affollati: le proporzioni vanno riviste.
   - *Discussa il 13 ottobre e per ora scartata dall'utente:* una versione ridotta (solo un dispositivo, scena come tavolo, pannelli di oggi sopra, a un indirizzo separato) da fare in 3–5 ore. Si procede invece nell'ordine normale della lista.
+- [ ] **Testata a fionda nella scena** (idea dell'utente, 19 ottobre): tirare indietro il Montone sul prato e lanciarlo verso il recinto avversario, al posto del riquadro di mira. Da valutare dopo la pubblicazione.
 - [ ] **5–6 giocatori:** limiti del motore, numeri bilanciati col simulatore, 2 pecore nuove, disposizioni sul telefono.
 - [ ] **Orizzontale** (PC e telefono girato): una nuova tabella `DISPOSIZIONI.orizzontale`. Se servirà, anche una disposizione per schermi molto bassi.
 - [ ] **Illustrazioni delle carte:** circa 36 illustrazioni originali che mancano. Il pacchetto grafico ne copre 9 su 51 tipi.
@@ -82,11 +83,17 @@ Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
 
 ## Prima della pubblicazione (dalla revisione finale del pezzo 1, 15 ottobre)
 
-- [ ] Messaggio del riquadro di errore della scena: distinguere "connessione" da altri errori; dopo un nuovo rilascio del sito offrire "Ricarica la pagina" (la partita è salvata).
-- [ ] Audio: fermare davvero il suono di fondo uscendo dalla partita e mentre la prova è nascosta (oggi si abbassa solo il volume).
-- [ ] Facoltativo: fermare l'animazione della scena sotto la schermata "Passa il dispositivo" (batteria).
-- [ ] Rendere più robusta la regola CSS che separa la mano dei pannelli da quella della scena (selettori `:not()` complessi, problemi su browser molto vecchi).
-- [ ] Durata delle prove: `meteo.test.ts` dura circa 100 s; la suite intera circa 3 minuti.
+*Rifiniture fatte il 20 ottobre (registro `.superpowers/sdd/rifiniture/`), da guardare nel giro finale nel browser: altezza della striscia con 4 giocatori e l'avviso più lungo, suono che si ferma davvero.*
+
+- [x] **Cura con conferma** (decisione dell'utente, 20 ottobre): toccando il Guaio illuminato nell'angolo non si cura subito, compare un pulsante "Cura" di conferma (oggi con una sola cura il tocco cura all'istante).
+- [x] **Striscia in alto più compatta, con una X per chiuderla** (decisione dell'utente, 20 ottobre): con 4 giocatori e due avvisi lunghi oggi copre per circa 9 px la metà alta delle targhe avversarie.
+- [x] Messaggio del riquadro di errore della scena: distinguere "connessione" da altri errori; dopo un nuovo rilascio del sito offrire "Ricarica la pagina" (la partita è salvata).
+- [x] Audio: fermare davvero il suono di fondo uscendo dalla partita e mentre la prova è nascosta (oggi si abbassa solo il volume).
+- [x] Facoltativo: fermare l'animazione della scena sotto la schermata "Passa il dispositivo" (batteria).
+- [x] Rendere più robusta la regola CSS che separa la mano dei pannelli da quella della scena (selettori `:not()` complessi, problemi su browser molto vecchi).
+- [ ] Durata delle prove: `meteo.test.ts` dura circa 100 s; la suite intera circa 3 minuti (oltre 5 con il PC carico, e allora una prova di `meteo.test.ts` può superare il limite di 5 s).
+- [x] Vedere a occhio "Ultimo round!" in una partita vera. *Visto il 20 ottobre nella partita di prova.*
+- [ ] Decidere se il tempo massimo di 25 s deve valere per la recita intera invece che per ogni battuta (revisione finale del pezzo 2, 19 ottobre; raro).
 
 ## 4. Rischi da verificare
 

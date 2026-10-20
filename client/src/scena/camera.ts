@@ -32,6 +32,16 @@ interface Tween {
 
 type Riquadro = { x0: number; y0: number; x1: number; y1: number };
 
+/** Un passo del recinto che torna alla sua forma: dove va un punto dell'area di prima, e di quanto rimpicciolisce ciò che c'è sopra. */
+export interface MappaRecinto {
+  punto(x: number, y: number): { x: number; y: number };
+  /** Rapporto tra la scala del recinto di adesso e quella del passo prima. */
+  k: number;
+}
+
+/** Chi segue il recinto: riceve ogni passo; se restituisce `false` smette di seguirlo. */
+export type SeguaceRecinto = (m: MappaRecinto) => boolean | void;
+
 export interface Camera {
   /** Si avvicina all'avversario `chi`; la promessa si risolve quando il recinto è allargato. */
   inquadra(chi: IdGiocatore): Promise<void>;
@@ -52,7 +62,16 @@ export interface Camera {
   ferma(): void;
   /** Durante la messa a fuoco nasconde anche gli elementi degli altri avversari creati dopo (allineamento calmo). */
   riapplica(): void;
+  /**
+   * Mentre il recinto di `chi` torna dalla forma ingrandita a quella normale, `fn` riceve ogni passo per spostare
+   * in proporzione ciò che il meteo ha disegnato sul recinto (cespuglio, pozze, ghiaccioli). Gli agnellini dell'area
+   * (anche quelli trattenuti dal meteo, con le loro mete) li sposta la camera.
+   */
+  seguiRecinto(chi: IdGiocatore, fn: SeguaceRecinto): void;
 }
+
+/** Quanto dura il ritorno all'inquadratura intera (camera e recinto): gli ordini lo usano per liberare la regia in tempo. */
+export const DURATA_SGANCIA_MS = 950;
 
 const morbido = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const conRitorno = (t: number) => {
@@ -166,16 +185,50 @@ export function creaCamera(palco: Palco): Camera {
     const [x0, y0, x1, y1] = A.area0;
     const aR = vicino ?? forma(R0);
     const aA = vicino ? areaDiRecinto(vicino) : { x0, y0, x1, y1 };
+    let kPrima = daR.k;
     // Con la chiave, uno zoom annullato subito non lascia il recinto a metà
     return tween(
       durata,
       (q) => {
         const e = morbido(q);
-        disegnaRecinto(ctx, A, mescola(daR, aR, e));
+        const r = mescola(daR, aR, e);
+        disegnaRecinto(ctx, A, r);
+        const prima: Riquadro = { x0: A.x0, y0: A.y0, x1: A.x1, y1: A.y1 };
         Object.assign(A, mescola(daA, aA, e));
+        // Tornando alla forma normale, ciò che sta nel recinto si stringe con lui (allargandosi, invece, gli agnellini
+        // restano dove sono e poi usano lo spazio nuovo)
+        if (verso === 'lontano') seguiPasso(chi, A, prima, r.k / (kPrima || 1));
+        kPrima = r.k;
       },
       'recinto:' + chi,
     ).then(() => spingiDentro(A));
+  }
+
+  const seguaci = new Map<IdGiocatore, Set<SeguaceRecinto>>();
+
+  /** Un passo del recinto che si stringe: agnellini (posizione, meta, mossa della regia) e seguaci in proporzione. */
+  function seguiPasso(chi: IdGiocatore, A: Area, prima: Riquadro, k: number): void {
+    const sx = prima.x1 - prima.x0 ? (A.x1 - A.x0) / (prima.x1 - prima.x0) : 1;
+    const sy = prima.y1 - prima.y0 ? (A.y1 - A.y0) / (prima.y1 - prima.y0) : 1;
+    const punto = (x: number, y: number) => ({ x: A.x0 + (x - prima.x0) * sx, y: A.y0 + (y - prima.y0) * sy });
+    for (const g of A.agnelli) {
+      // Chi corre o vola verso un'altra area segue la sua strada
+      if (g.inViaggio) continue;
+      ({ x: g.x, y: g.y } = punto(g.x, g.y));
+      ({ x: g.tx, y: g.ty } = punto(g.tx, g.ty));
+      if (g.mossa) ({ x: g.mossa.x, y: g.mossa.y } = punto(g.mossa.x, g.mossa.y));
+    }
+    const elenco = seguaci.get(chi);
+    if (!elenco) return;
+    for (const fn of [...elenco]) {
+      let resta: boolean | void = false;
+      try {
+        resta = fn({ punto, k });
+      } catch (e) {
+        console.error(e);
+      }
+      if (resta === false) elenco.delete(fn);
+    }
   }
 
   /** Gli agnellini usano lo spazio nuovo, o rientrano in quello vecchio. */
@@ -233,8 +286,8 @@ export function creaCamera(palco: Palco): Camera {
     const da = statoCamera, chi = inquadrato;
     inquadrato = null;
     statoCamera = null;
-    animaCamera(da, { cx: da.cx, cy: da.cy, k: 1, px: da.cx, py: da.cy }, 950, false);
-    const fatto = palco.area(chi) ? cambiaRecinto(chi, 'lontano', 0.95) : Promise.resolve();
+    animaCamera(da, { cx: da.cx, cy: da.cy, k: 1, px: da.cx, py: da.cy }, DURATA_SGANCIA_MS, false);
+    const fatto = palco.area(chi) ? cambiaRecinto(chi, 'lontano', DURATA_SGANCIA_MS / 1000) : Promise.resolve();
     sfuma(chi, false);
     return fatto;
   }
@@ -283,7 +336,13 @@ export function creaCamera(palco: Palco): Camera {
     riapplica() {
       if (inquadrato) sfuma(inquadrato, true);
     },
+    seguiRecinto(chi, fn) {
+      let elenco = seguaci.get(chi);
+      if (!elenco) seguaci.set(chi, (elenco = new Set()));
+      elenco.add(fn);
+    },
     ferma() {
+      seguaci.clear();
       // I tween si chiudono senza finire: il tavolo sta per essere ricostruito con recinti nuovi
       for (const tw of TWEEN.splice(0)) tw.fine();
       piattaforma.fermaAnimazioni(camera);

@@ -46,6 +46,13 @@ export const fulmine: EffettoGuaio = async (m, chi, s) => {
     belino(agnello, T.scena.belini.fulminato, true);
   } else {
     const segno = s.svgLibero(punto[0], punto[1], 101, `<ellipse rx="16" ry="5" fill="${P.notte}" opacity=".35"/>`);
+    // L'erba bruciata sta accanto al recinto: se il recinto ingrandito torna normale, segno e fumo lo seguono
+    s.seguiElemento(chi, segno);
+    s.seguiRecinto(chi, (mp) => {
+      if (!m.vivo) return false;
+      const q = mp.punto(punto[0], punto[1]);
+      punto = [q.x, q.y];
+    });
     m.pulisci(() => {
       const viaSegno = () => segno.remove();
       ctx.anima(segno, [{ opacity: 1 }, { opacity: 0 }], { duration: 1500, fill: 'forwards' }).finished.then(viaSegno, viaSegno);

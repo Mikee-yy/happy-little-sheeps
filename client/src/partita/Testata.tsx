@@ -82,11 +82,15 @@ export function Testata({ v, giocatore, azioni, invia }: { v: Vista; giocatore: 
     return () => cancelAnimationFrame(id);
   }, [inizio]);
 
+  // Un solo invio per colpo: la funzione più recente si legge al momento, così un nuovo disegno della pagina durante la
+  // carica non fa ripartire l'attesa né mandare l'esito due volte
+  const inviaOra = useRef(invia);
+  inviaOra.current = invia;
   useEffect(() => {
     if (!colpo) return;
-    const t = setTimeout(() => invia({ tipo: 'esitoTestata', giocatore, esito: colpo.esito }), 1600);
+    const t = setTimeout(() => inviaOra.current({ tipo: 'esitoTestata', giocatore, esito: colpo.esito }), 1600);
     return () => clearTimeout(t);
-  }, [colpo, giocatore, invia]);
+  }, [colpo, giocatore]);
 
   if (!f || !bersaglio) return null;
 

@@ -32,6 +32,8 @@ export class SessioneProva implements Sessione {
   private readonly annullaTimer: (id: unknown) => void;
   private timerBot: unknown = null;
   private chiusa = false;
+  /** La scena sta recitando: i bot aspettano che finisca. */
+  private inPausa = false;
 
   private constructor(o: OpzioniProva) {
     const seme = o.seme ?? SEME_PROVA;
@@ -84,11 +86,22 @@ export class SessioneProva implements Sessione {
     this.timerBot = null;
   }
 
+  /**
+   * Con `true` (la scena recita) la mossa del bot in sospeso si annulla e non se ne pianificano altre;
+   * con `false` il prossimo bot muove dopo la solita pausa. Ripetere lo stesso valore non cambia niente
+   * (una mossa già pianificata non riparte da capo).
+   */
+  pausa(attiva: boolean): void {
+    if (attiva === this.inPausa) return;
+    this.inPausa = attiva;
+    this.pianificaBot();
+  }
+
   /** Il primo bot in attesa muove dopo la pausa; l'umano e le fasi di sistema si aspettano. */
   private pianificaBot(): void {
     if (this.timerBot !== null) this.annullaTimer(this.timerBot);
     this.timerBot = null;
-    if (this.chiusa || this.stato.esito) return;
+    if (this.chiusa || this.inPausa || this.stato.esito) return;
     const bot = inAttesaDi(this.stato).giocatori.find((id) => id !== this.umano);
     if (bot) this.timerBot = this.temporizzatore(() => this.mossaBot(bot), this.pausaMs);
   }
@@ -96,7 +109,7 @@ export class SessioneProva implements Sessione {
   /** Come i bot delle stanze (sync/host.ts): Testata a caso, altrimenti la strategia "semplice". */
   private mossaBot(id: IdGiocatore): void {
     this.timerBot = null;
-    if (this.chiusa) return;
+    if (this.chiusa || this.inPausa) return;
     const azioni = azioniPossibili(this.stato, id);
     if (azioni.length === 0) return;
     const testate = azioni.filter((a) => a.tipo === 'esitoTestata');

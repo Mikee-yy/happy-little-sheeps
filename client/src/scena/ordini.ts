@@ -4,31 +4,62 @@
 // il Guaio non dà la consolazione, e i conti (mazzo, mani, scarti) li mette in pari la fotografia successiva.
 // Gli ordini che durano sono eventi della regia (bozza, riga 463). Quando il tavolo si ricostruisce (`interrompi`)
 // le attese finiscono subito, i voli si annullano e ogni ordine in corso si ferma senza toccare il tavolo nuovo.
+// Ordini del pezzo 2 (la regia): Guaio del round, annuncio, carte del round girate, fumetti, carta giocata in volo
+// (bozza, righe 1928–1945, senza le regole finte), eliminata e festa (righe 2545–2554, senza il riquadro finale).
+// I testi li dà chi chiama (da `T.scena`): qui dentro non c'è nessuna scritta.
 import { defCarta } from '../../../engine/src';
 import type { IdCarta, IdGiocatore, Luogo } from '../../../engine/src';
 import { T } from '../testi';
-import type { Camera } from './camera';
+import { TAVOLOZZA as P } from './ambiente/paesaggio';
+import { DURATA_SGANCIA_MS, type Camera } from './camera';
 import { cartaSVG, retroSVG } from './carte/carte';
 import { trasf } from './mano';
 import type { Meteo } from './meteo/indice';
 import { manoInScena } from './misure';
 import type { Palco } from './palco';
-import type { TipoReazione } from './personaggi/pecora';
+import { togliFumetti, type TipoReazione } from './personaggi/pecora';
 import { posaDado } from './tavolo/coperta';
+
+export interface OpzioniGuaio {
+  /**
+   * Tempo della scena (dall'inizio dell'ordine) dopo il quale la promessa si risolve anche se il meteo continua:
+   * la camera torna all'inquadratura intera in tempo e il meteo prosegue sullo sfondo (l'evento resta in corso).
+   */
+  liberaDopoMs?: number;
+}
 
 export interface Ordini {
   /** Sposta fino a `n` agnellini (limitato dai posti liberi e da chi c'è); restituisce quanti partono. */
   spostaAgnellini(n: number, da: Luogo, a: Luogo, modo?: 'corre' | 'vola'): number;
   /** Solo l'effetto (con lo zoom se chi non sta in basso); niente se il Guaio non ha effetto. */
   meteo(carta: IdCarta, chi: IdGiocatore): Promise<void>;
-  /** Carta in volo dal mazzo dei Guai, meteo, carta nell'angolo di chi. */
-  guaio(carta: IdCarta, chi: IdGiocatore): Promise<void>;
+  /** Carta in volo dal mazzo dei Guai, meteo, carta nell'angolo di chi; con `liberaDopoMs` si risolve prima della fine del meteo. */
+  guaio(carta: IdCarta, chi: IdGiocatore, o?: OpzioniGuaio): Promise<void>;
+  /** Il Guaio del round dal mazzo dei Guai al suo posto sulla tovaglia, girandosi (~700 ms). */
+  guaioRivelato(carta: IdCarta): Promise<void>;
+  /** Una scritta grande al centro dell'interfaccia per `ms` (predefinito 1200). */
+  annuncio(testo: string, ms?: number): Promise<void>;
+  /** Le carte coperte del round si girano e mostrano queste carte, un posto dopo l'altro (150 ms tra uno e il successivo). */
+  giraCarte(carte: Partial<Record<IdGiocatore, IdCarta[]>>): Promise<void>;
+  /** Un fumetto sopra ogni pecora indicata; si risolve dopo `ms` (predefinito 1200). */
+  fumetti(testi: Partial<Record<IdGiocatore, string>>, ms?: number): Promise<void>;
+  /** La carta giocata vola dalla postazione al centro della tovaglia (con il fumetto, se c'è), poi sugli scarti. */
+  volaCarta(daChi: IdGiocatore, carta: IdCarta, testo: string | null): Promise<void>;
+  /** La pecora sviene e resta sdraiata (targa e segnalini si aggiornano con lei). */
+  eliminata(chi: IdGiocatore): Promise<void>;
+  /** Festa delle vincitrici: saltano, saltano i loro agnellini, coriandoli e fanfara (~3000 ms). */
+  festa(vincitori: IdGiocatore[]): Promise<void>;
   fermaMeteo(): void;
   /** Lancio animato che si ferma su quella faccia (id della faccia del motore). */
   dado(faccia: string): Promise<void>;
   /** Il montone e `quanti` agnellini del bersaglio in volo verso il gregge. */
   testata(chi: IdGiocatore, bersaglio: IdGiocatore, quanti: number): Promise<void>;
   beeeNo(chi: IdGiocatore): Promise<void>;
+  /**
+   * L'annullamento nel gioco vero, dopo che la carta Beee-NO! è già volata: esplode il BEEE-NO!, la carta annullata
+   * (null per un tiro di dado) torna un momento al centro e si scuote, chi l'aveva giocata trasale.
+   */
+  annullamento(chi: IdGiocatore, annullato: IdGiocatore | null, carta: IdCarta | null): Promise<void>;
   inquadra(chi: IdGiocatore): Promise<void>;
   sgancia(): Promise<void>;
   fumetto(chi: IdGiocatore, testo: string, ms?: number): void;
@@ -52,9 +83,20 @@ interface Tappa {
 }
 
 /** Elementi degli ordini sul prato e nell'interfaccia: si tolgono quando il tavolo si ricostruisce. */
-export const ELEMENTI_ORDINI = '.volante, .montone, .linee-zoom';
+export const ELEMENTI_ORDINI = '.volante, .montone, .linee-zoom, .annuncio, .coriandolo';
 
 const CENTRO_TAVOLO = { x: 195, y: 360, k: 0.5 };
+
+/** Tempi degli ordini del pezzo 2 (tempo della scena). */
+const DURATA_GUAIO_RIVELATO_MS = 700;
+const DURATA_ANNUNCIO_MS = 1200;
+const PASSO_GIRA_CARTE_MS = 150;
+/** Mezzo giro di una carta del round (il dorso si stringe, la faccia si allarga). */
+const MEZZO_GIRO_MS = 140;
+const DURATA_FUMETTI_MS = 1200;
+const DURATA_ELIMINATA_MS = 1000;
+const DURATA_FESTA_MS = 3000;
+const CORIANDOLI = 70;
 
 export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDelTeatro {
   const { ctx } = palco;
@@ -65,16 +107,46 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
   /** L'ultima posa del dado: rotazione (già normalizzata come sulla coperta) e punto in cui è atterrato. */
   let rot = { x: 0, y: 0 };
   let salto = { x: 0, y: 0 };
+  /** Cresce a ogni `interrompi`: gli ordini in corso si fermano anche senza una ricostruzione del tavolo (distruggi). */
+  let interruzioni = 0;
 
-  /** Attesa sull'orologio della scena che finisce subito se il tavolo si ricostruisce. */
-  function attendi(ms: number): Promise<void> {
-    return new Promise((fine) => {
-      const t = ctx.orologio.dopo(() => {
+  /** Per un ordine che comincia adesso: vero finché il tavolo non si ricostruisce e gli ordini non vengono interrotti. */
+  function vivoDa(): () => boolean {
+    const gen = palco.generazione();
+    const i = interruzioni;
+    return () => gen === palco.generazione() && i === interruzioni;
+  }
+
+  /** Attesa sull'orologio della scena che finisce subito se il tavolo si ricostruisce; `annulla` la chiude prima. */
+  function attesa(ms: number): { fatto: Promise<void>; annulla(): void } {
+    let t = 0;
+    const fatto = new Promise<void>((fine) => {
+      t = ctx.orologio.dopo(() => {
         attese.delete(t);
         fine();
       }, ms);
       attese.set(t, fine);
     });
+    return {
+      fatto,
+      annulla() {
+        const fine = attese.get(t);
+        if (!fine) return;
+        ctx.orologio.annulla(t);
+        attese.delete(t);
+        fine();
+      },
+    };
+  }
+  const attendi = (ms: number): Promise<void> => attesa(ms).fatto;
+
+  /** Un timer degli ordini che `interrompi` annulla. */
+  function dopo(fn: () => void, ms: number): void {
+    const t = ctx.orologio.dopo(() => {
+      attese.delete(t);
+      fn();
+    }, ms);
+    attese.set(t, () => undefined);
   }
 
   /** Un'animazione degli ordini: la sua fine (anche annullata) come promessa che non fallisce. */
@@ -145,18 +217,47 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     );
   }
 
-  async function beeeNo(chi: IdGiocatore): Promise<void> {
-    const gen = palco.generazione();
-    const vivo = () => gen === palco.generazione();
+  async function annullamento(chi: IdGiocatore, annullato: IdGiocatore | null, carta: IdCarta | null): Promise<void> {
+    const vivo = vivoDa();
+    if (palco.posto(chi)) palco.reagisci(chi, 'salto');
+    if (annullato !== null && palco.posto(annullato)) palco.reagisci(annullato, 'scossa');
+    if (carta === null) {
+      scoppio();
+      await attendi(1100);
+      return;
+    }
+    const v = volante(carta, false);
+    const r = rand(-4, 4);
+    const centro: Tappa = { ...CENTRO_TAVOLO, r, f: 0 };
+    const scarti: Tappa = { ...cimaDi(el.scarti), r: rand(-12, 12) };
+    await vola(v, [scarti, centro], 300);
+    if (!vivo()) return void v.remove();
+    scoppio();
+    // La carta annullata si scuote
+    await vola(v, [centro, { ...centro, r: r - 9 }, { ...centro, r: r + 8 }, { ...centro, r: r - 6 }, { ...centro, r: r + 4 }, centro], 520, 'linear');
+    if (!vivo()) return void v.remove();
+    await attendi(380);
+    if (!vivo()) return void v.remove();
+    await vola(v, [centro, scarti], 420, 'cubic-bezier(.5,0,.5,1)');
+    v.remove();
+  }
+
+  /** Da dove parte una carta giocata: dalla mano di chi sta in basso, dal ventaglio (coperta) per gli avversari. */
+  function partenza(chi: IdGiocatore): Tappa | null {
     const g = palco.posto(chi);
-    if (!g) return;
+    if (!g) return null;
+    return chi === palco.inBasso() || !g.ventaglio
+      ? manoInScena({ x: 195, y: 800, k: 0.37, f: 0 }, ctx.KD)
+      : { ...camera.inScenaDaMondo(g.ventaglio[0], g.ventaglio[1] - 14), k: 0.08, f: 180 };
+  }
+
+  async function beeeNo(chi: IdGiocatore): Promise<void> {
+    const vivo = vivoDa();
+    const da = partenza(chi);
+    if (!da) return;
     palco.fumetto(chi, T.scena.fumetti.beeeNo);
     palco.reagisci(chi, 'salto');
     const v = volante('beee-no', false);
-    const da: Tappa =
-      chi === palco.inBasso() || !g.ventaglio
-        ? manoInScena({ x: 195, y: 800, k: 0.37, f: 0 }, ctx.KD)
-        : { ...camera.inScenaDaMondo(g.ventaglio[0], g.ventaglio[1] - 14), k: 0.08, f: 180 };
     const centro: Tappa = { ...CENTRO_TAVOLO, r: 5, f: 0 };
     await vola(v, [da, centro], 520);
     if (!vivo()) return void v.remove();
@@ -167,9 +268,9 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     v.remove();
   }
 
-  async function guaio(carta: IdCarta, chi: IdGiocatore): Promise<void> {
-    const gen = palco.generazione();
-    const vivo = () => gen === palco.generazione();
+  async function guaio(carta: IdCarta, chi: IdGiocatore, o: OpzioniGuaio = {}): Promise<void> {
+    const vivo = vivoDa();
+    const inizio = ctx.orologio.ms;
     const g = palco.posto(chi);
     if (!g) return;
     const io = chi === palco.inBasso();
@@ -198,7 +299,27 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     v.remove();
     if (!vivo()) return;
     palco.aggiungiAngolo(chi, carta);
-    await effetto;
+    if (o.liberaDopoMs === undefined) return effetto;
+    await liberaEntro(effetto, inizio + o.liberaDopoMs, vivo);
+  }
+
+  /**
+   * Aspetta il meteo al più fino a `entro` (tempo della scena). Se continua, la camera comincia a tornare indietro
+   * in tempo per essere all'inquadratura intera a `entro`; il meteo prosegue sullo sfondo e tiene in corso l'evento.
+   */
+  async function liberaEntro(effetto: Promise<void>, entro: number, vivo: () => boolean): Promise<void> {
+    const finito = effetto.then(() => true);
+    /** Il meteo o il tempo, quello che arriva prima: vero se è finito il meteo. */
+    const meteoOppure = async (ms: number): Promise<boolean> => {
+      const a = attesa(Math.max(0, ms));
+      const esito = await Promise.race([finito, a.fatto.then(() => false)]);
+      a.annulla();
+      return esito;
+    };
+    const ritorno = ctx.ridotto ? 0 : DURATA_SGANCIA_MS;
+    if ((await meteoOppure(entro - ritorno - ctx.orologio.ms)) || !vivo()) return;
+    if (camera.inquadrato() !== null) await camera.sgancia();
+    else await meteoOppure(entro - ctx.orologio.ms);
   }
 
   async function dado(faccia: string): Promise<void> {
@@ -249,7 +370,7 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
   }
 
   async function testata(_chi: IdGiocatore, bersaglio: IdGiocatore, quanti: number): Promise<void> {
-    const gen = palco.generazione();
+    const vivo = vivoDa();
     const a = palco.area(bersaglio);
     if (!a) return;
     const yPista = a.y1 + 2, xImpatto = a.x0 + 10;
@@ -265,7 +386,7 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
       easing: 'cubic-bezier(.5,0,.9,.6)',
       fill: 'forwards',
     });
-    if (gen !== palco.generazione()) return void m.remove();
+    if (!vivo()) return void m.remove();
     ctx.suona('tonfo');
     palco.reagisci(bersaglio, 'paura');
     void anima(el.mondo, [{ transform: 'none' }, { transform: 'translate(-5px,2px)' }, { transform: 'translate(4px,-2px)' }, { transform: 'none' }], {
@@ -280,6 +401,167 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     m.remove();
   }
 
+  /* ---------- Ordini del pezzo 2 (la regia) ---------- */
+
+  /** Dove sta il Guaio del round sulla tovaglia: un segnaposto invisibile misurato e subito tolto. */
+  function postoGuaioRound(): Tappa {
+    const s = document.createElement('div');
+    s.className = 'guaio-round';
+    s.style.visibility = 'hidden';
+    el.coperta.appendChild(s);
+    const r = inScena(s);
+    s.remove();
+    return { x: r.cx, y: r.cy, k: r.w / 250, sy: r.w ? r.h / r.w / 1.4 : 1, r: 6 };
+  }
+
+  async function guaioRivelato(carta: IdCarta): Promise<void> {
+    const vivo = vivoDa();
+    const da = cimaDi(el.mazzoGuai);
+    const a = postoGuaioRound();
+    ctx.suona('fruscio');
+    const v = volante(carta, true);
+    // Si alza dal mazzo dei Guai, si gira a metà strada e si posa al suo posto
+    const su: Tappa = { x: (da.x + a.x) / 2, y: Math.min(da.y, a.y) - 40, k: Math.max(da.k, a.k) * 1.5, r: -4, f: 90, o: 0.5 };
+    await vola(v, [{ ...da, r: 0, f: 180 }, su, { ...a, f: 0 }], DURATA_GUAIO_RIVELATO_MS);
+    v.remove();
+    if (!vivo()) return;
+    ctx.suona('pop');
+    palco.coperta.guaioRound(carta);
+  }
+
+  async function annuncio(testo: string, ms = DURATA_ANNUNCIO_MS): Promise<void> {
+    const a = document.createElement('div');
+    a.className = 'annuncio';
+    a.setAttribute('role', 'status');
+    a.textContent = testo;
+    el.ui.appendChild(a);
+    const posa = (k: number, r: number) => `translate(-50%,-50%) scale(${k}) rotate(${r}deg)`;
+    void anima(
+      a,
+      ctx.ridotto
+        ? [{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }]
+        : [
+            { transform: posa(0.3, -8), opacity: 0 },
+            { transform: posa(1.12, 2), opacity: 1, offset: 0.18 },
+            { transform: posa(1, -2), opacity: 1, offset: 0.3 },
+            { transform: posa(1, -2), opacity: 1, offset: 0.85 },
+            { transform: posa(0.9, -2), opacity: 0 },
+          ],
+      { duration: ms, easing: 'ease-out', fill: 'forwards' },
+    );
+    await attendi(ms);
+    a.remove();
+  }
+
+  const carteRoundDi = (chi: IdGiocatore): HTMLElement | undefined =>
+    [...el.mondo.querySelectorAll<HTMLElement>('.carte-round')].find((c) => c.dataset.chi === chi);
+  const eDorso = (c: Element): boolean => !!c.querySelector('use[href="#back-main"]');
+
+  /** Mezzo giro di una carta del round attorno al suo asse verticale, sopra la sua rotazione. */
+  function mezzoGiro(c: HTMLElement, chiude: boolean): Promise<void> {
+    const base = c.style.transform;
+    const intera = `${base} scaleX(1)`.trim(), piatta = `${base} scaleX(0)`.trim();
+    return anima(c, chiude ? [{ transform: intera }, { transform: piatta }] : [{ transform: piatta }, { transform: intera }], {
+      duration: ctx.ridotto ? 1 : MEZZO_GIRO_MS,
+      easing: chiude ? 'ease-in' : 'ease-out',
+    });
+  }
+
+  /** Le carte del round di `chi`: il dorso si stringe, poi al suo posto si allargano le carte scoperte. */
+  async function giraPosto(chi: IdGiocatore, carte: IdCarta[], vivo: () => boolean): Promise<void> {
+    const prima = [...(carteRoundDi(chi)?.querySelectorAll<HTMLElement>('.carta-round') ?? [])];
+    await Promise.all(prima.filter(eDorso).map((c) => mezzoGiro(c, true)));
+    if (!vivo()) return;
+    palco.ritocca(chi, (p) => ({ ...p, giocata: { coperta: false, carte: [...carte] } }));
+    ctx.suona('fruscio');
+    const nuove = [...(carteRoundDi(chi)?.querySelectorAll<HTMLElement>('.carta-round') ?? [])].filter((c) => !prima.includes(c));
+    await Promise.all(nuove.map((c) => mezzoGiro(c, false)));
+  }
+
+  async function giraCarte(carte: Partial<Record<IdGiocatore, IdCarta[]>>): Promise<void> {
+    const vivo = vivoDa();
+    // Nell'ordine dei posti, a partire da chi sta in basso
+    const chi = palco.giocatori().filter((c) => (carte[c]?.length ?? 0) > 0);
+    await Promise.all(
+      chi.map(async (c, i) => {
+        if (i > 0) await attendi(i * PASSO_GIRA_CARTE_MS);
+        if (vivo()) await giraPosto(c, carte[c]!, vivo);
+      }),
+    );
+  }
+
+  async function fumetti(testi: Partial<Record<IdGiocatore, string>>, ms = DURATA_FUMETTI_MS): Promise<void> {
+    for (const chi of palco.giocatori()) {
+      const testo = testi[chi];
+      if (testo !== undefined) palco.fumetto(chi, testo, ms);
+    }
+    await attendi(ms);
+  }
+
+  /** La carta giocata (bozza `gioca`, righe 1928–1945): al centro della tovaglia, un momento, poi sugli scarti. */
+  async function volaCarta(daChi: IdGiocatore, carta: IdCarta, testo: string | null): Promise<void> {
+    const vivo = vivoDa();
+    const da = partenza(daChi);
+    if (!da) return;
+    const v = volante(carta, false);
+    const centro: Tappa = { ...CENTRO_TAVOLO, r: rand(-4, 4), f: 0 };
+    ctx.suona('fruscio');
+    await vola(v, [da, centro], 380);
+    if (!vivo()) return void v.remove();
+    if (testo !== null) palco.fumetto(daChi, testo);
+    await attendi(650);
+    if (!vivo()) return void v.remove();
+    await vola(v, [centro, { ...cimaDi(el.scarti), r: rand(-12, 12) }], 420, 'cubic-bezier(.5,0,.5,1)');
+    v.remove();
+    // Gli scarti li mette in pari la fotografia: la carta può restare in gioco ancora per un po'
+    if (vivo()) ctx.suona('pop');
+  }
+
+  async function eliminata(chi: IdGiocatore): Promise<void> {
+    if (!palco.posto(chi)) return;
+    ctx.suona('tonfo');
+    // Il posto mostrato diventa "eliminato": la pecora sviene e resta sdraiata, e un altro ordine che rimette
+    // in pari le postazioni prima della fotografia successiva non la rialza
+    palco.ritocca(chi, (p) => ({ ...p, eliminato: true }));
+    await attendi(DURATA_ELIMINATA_MS);
+  }
+
+  /** Coriandoli che cadono su tutto lo schermo (bozza, righe 2549–2552). */
+  function coriandoli(): void {
+    const colori = [P.menta, P.lilla, P.albicocca, P.limone, P.gesso];
+    for (let i = 0; i < CORIANDOLI; i++) {
+      const c = document.createElement('i');
+      c.className = 'coriandolo';
+      c.style.cssText = `background:${colori[Math.floor(ctx.caso() * colori.length)]};left:${rand(-20, 400).toFixed(1)}px;top:-30px`;
+      el.ui.appendChild(c);
+      const via = () => c.remove();
+      void anima(
+        c,
+        [{ transform: 'translate(0,0) rotate(0)' }, { transform: `translate(${rand(-60, 60).toFixed(1)}px,${rand(700, 900).toFixed(1)}px) rotate(${rand(-720, 720).toFixed(0)}deg)` }],
+        { duration: rand(2200, 3600), delay: rand(0, 900), easing: 'cubic-bezier(.3,.1,.6,1)', fill: 'forwards' },
+      ).then(via);
+    }
+  }
+
+  /** La festa (bozza `vittoria`, righe 2545–2554), senza il riquadro finale: la classifica la mostra il gioco. */
+  async function festa(vincitori: IdGiocatore[]): Promise<void> {
+    const vivo = vivoDa();
+    const chi = palco.giocatori().filter((c) => vincitori.includes(c));
+    ctx.suona('fanfara');
+    const io = palco.inBasso();
+    if (io !== null && chi.includes(io)) ctx.vibra('vittoria');
+    for (const c of chi) {
+      palco.reagisci(c, 'festa');
+      for (const g of palco.area(c)?.agnelli ?? []) {
+        dopo(() => {
+          if (vivo() && !g.regia) g.salta(3);
+        }, rand(0, 500));
+      }
+    }
+    if (!ctx.ridotto) coriandoli();
+    await attendi(DURATA_FESTA_MS);
+  }
+
   const meteoEvento = regia.conEvento('meteo', (carta: IdCarta, chi: IdGiocatore) => meteo.avvia(carta, chi));
   const inquadraEvento = regia.conEvento('camera', (chi: IdGiocatore) => camera.inquadra(chi));
   const sganciaEvento = regia.conEvento('camera', () => camera.sgancia());
@@ -288,15 +570,25 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     spostaAgnellini: (n, da, a, modo = 'corre') => palco.branco()?.sposta(n, da, a, modo) ?? 0,
     meteo: (carta, chi) => meteoEvento(carta, chi),
     guaio: regia.conEvento('guaio', guaio),
+    guaioRivelato: regia.conEvento('guaioRivelato', guaioRivelato),
+    annuncio: regia.conEvento('annuncio', annuncio),
+    giraCarte: regia.conEvento('giraCarte', giraCarte),
+    fumetti: regia.conEvento('fumetti', fumetti),
+    volaCarta: regia.conEvento('volaCarta', volaCarta),
+    eliminata: regia.conEvento('eliminata', eliminata),
+    festa: regia.conEvento('festa', festa),
     fermaMeteo: () => meteo.ferma(),
     dado: regia.conEvento('dado', dado),
     testata: regia.conEvento('testata', testata),
     beeeNo: regia.conEvento('beeeNo', beeeNo),
+    annullamento: regia.conEvento('annullamento', annullamento),
     inquadra: (chi) => inquadraEvento(chi),
     sgancia: () => sganciaEvento(),
     fumetto: (chi, testo, ms) => palco.fumetto(chi, testo, ms),
     reagisci: (chi, tipo) => palco.reagisci(chi, tipo),
     interrompi() {
+      // Prima il segnale, poi le attese finite e i voli annullati: chi riprende vede che deve fermarsi
+      interruzioni++;
       for (const a of [...animazioni]) {
         try {
           a.cancel();
@@ -312,6 +604,9 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
       }
       rot = { x: 0, y: 0 };
       salto = { x: 0, y: 0 };
+      // Via annunci, coriandoli, carte in volo, montone e fumetti, anche quelli che finirebbero da soli più tardi
+      for (const radice of [el.ui, el.mondo]) radice.querySelectorAll(ELEMENTI_ORDINI).forEach((e) => e.remove());
+      togliFumetti(ctx);
     },
   };
 }

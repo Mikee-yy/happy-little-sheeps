@@ -2,9 +2,10 @@
 // `allinea` mette in pari la scena con una fotografia della partita (la verità è sempre il motore).
 // Bozza scena.src.html: righe 343–352 (scala), 1128–1143 (costruzione del tavolo), 1510–1547 (ciclo),
 // 2596–2635 (preparazione della partita, senza le regole finte) e 2660–2709 (tocchi e avvio).
-import type { IdCarta, IdGiocatore, Luogo } from '../../../engine/src';
+import type { IdCarta, IdGiocatore, Luogo, Vista } from '../../../engine/src';
 import { creaAmbiente, type Ambiente } from './ambiente/indice';
 import { creaCamera } from './camera';
+import { creaChiedi, NON_PRATO } from './chiedi';
 import { creaCiclo, type Ciclo } from './ciclo';
 import { creaContesto, type Contesto } from './contesto';
 import { disposizione, type Disposizione } from './disposizioni';
@@ -24,7 +25,9 @@ import { creaConsigli } from './servizi/consigli';
 import { opzioni, preparaSbloccoAudio } from './servizi/opzioni';
 import { Suono } from './servizi/suoni';
 import { creaCoperta } from './tavolo/coperta';
+import type { Domanda, Gesto, Pensiero } from './scelte/tipi';
 import { creaPostazioni, type Postazioni } from './tavolo/postazioni';
+import { creaRegista, type OpzioniRecita } from './regia/regista';
 import { aggiornaCartello, aggiornaOmbreRecinti, creaCartelloGregge, creaRecinto, togliRecinto } from './tavolo/recinti';
 
 export interface OpzioniTeatro {
@@ -55,15 +58,41 @@ export interface StatoMostrato {
   mano: IdCarta[] | null;
   /** Particelle vive sul prato (prove del modo leggero: al massimo 60). */
   particelle: number;
+  /**
+   * Dove sta ogni agnellino (per le prove): numero stabile, posizione, se è fuori dalla sua area di recinto
+   * (anche se trattenuto dal meteo) e se è in viaggio verso un'altra area.
+   */
+  posizioni: Array<{ n: number; x: number; y: number; fuoriDalRecinto: boolean; inViaggio: boolean }>;
 }
 
 export interface Teatro {
+  /**
+   * Mette in pari la scena con la fotografia, senza recitare (pagina di sviluppo, prove). Con `subito` la regia svuota
+   * anche la coda e si libera (la ricostruzione ferma le battute in corso), ma non segna gli eventi come recitati:
+   * il gioco usa `recita(foto, vista, { subito: true })`.
+   */
   allinea(f: Fotografia, modo: 'calmo' | 'subito'): void;
+  /**
+   * Recita gli eventi nuovi (seq > ultimo recitato) e poi mette in pari con `foto`. La prima chiamata, o un tavolo
+   * da ricostruire, mette in pari "subito" senza recitare. È la via del gioco. Con `{ subito: true }` (ritorno da
+   * un'altra scheda) niente recita: coda svuotata, messa in pari subito, eventi della vista segnati come recitati.
+   */
+  recita(foto: Fotografia, vista: Vista, o?: OpzioniRecita): void;
+  /** Una battuta fa ancora aspettare la partita, o ce ne sono in coda (un meteo sullo sfondo non conta). */
+  occupato(): boolean;
+  /** Avvisa ai cambi di `occupato`; restituisce la funzione che toglie l'ascoltatore. */
+  ascoltaOccupato(cb: (occupato: boolean) => void): () => void;
   /** Solo con ciclo manuale: passi da 33 ms (orologio + scena). */
   avanza(ms: number): void;
   eventoInCorso(): boolean;
   salta(): void;
   stato(): StatoMostrato;
+  /** Mostra la domanda appena la scena è libera (subito, se lo è) e la toglie mentre recita; una domanda nuova sostituisce la vecchia. I gesti arrivano a `suGesto`. */
+  chiedi(d: Domanda, suGesto: (g: Gesto) => void): void;
+  /** Toglie la domanda (e libera la mano). */
+  smettiDiChiedere(): void;
+  /** La nuvoletta del pensiero della pecora in basso (null la toglie); anche lei aspetta la scena libera. */
+  pensa(p: Pensiero | null): void;
   /** Rimette i suggerimenti dall'inizio e toglie il segno dei visti (menu Opzioni, "Rivedi i suggerimenti"). */
   rivediSuggerimenti(): void;
   /**
@@ -74,7 +103,7 @@ export interface Teatro {
   /** Ciclo automatico: `true` ferma i fotogrammi senza distruggere niente (scena nascosta), `false` li fa ripartire. */
   sospendi(sospeso: boolean): void;
   distruggi(): void;
-  /** Le animazioni che la regia della partita chiede: meteo, Guai, dado, Testata, Beee-NO!, zoom. */
+  /** Le animazioni che la regia della partita chiede: meteo, Guai, dado, Testata, Beee-NO!, zoom, rivelazione, fumetti, festa… */
   readonly ordini: Ordini;
   /** Il contesto condiviso dai moduli: per i moduli della scena (sviluppo) e per le prove. */
   readonly ctx: Contesto;
@@ -97,7 +126,8 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
   const consigli = creaConsigli({ elemento: el.consiglio });
   consigli.applicaGiaVisti();
   const lettura = creaLettura(ctx, { alApertura: () => consigli.nascondi(2) });
-  const mano = creaMano(ctx, lettura);
+  // Il terzo consiglio ("trascina") si supera con la prima carta giocata trascinandola
+  const mano = creaMano(ctx, lettura, { allaGiocataTrascinando: () => consigli.nascondi(3) });
   const coperta = creaCoperta(ctx);
   ctx.pulizie.push(
     () => consigli.ferma(),
@@ -120,6 +150,9 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
   /** Cresce a ogni ricostruzione: gli ordini in corso sul tavolo di prima si fermano. */
   let generazione = 0;
   const fantasmi = new Set<Element>();
+  /** Un numero stabile per agnellino, per `stato().posizioni`. */
+  const numeri = new WeakMap<object, number>();
+  let prossimoNumero = 0;
 
   // Scala della scena (bozza, righe 343–348): senza misure (jsdom, radice nascosta) resta com'è
   function adatta(): void {
@@ -135,6 +168,8 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
   const suResize = (): void => {
     adatta();
     ambiente?.adattaTela();
+    // La mano e i pulsanti crescono di KD: zone e pulsanti della domanda si rimettono a posto
+    chiediUi.riposiziona();
   };
 
   // Il palco: ciò che camera, meteo e ordini leggono del tavolo di adesso
@@ -163,11 +198,15 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
     reagisci: (chi, tipo) => postazioni?.pecore.get(chi)?.reagisci(tipo),
     angolo: (chi) => [...(postoFoto(chi)?.angolo ?? [])],
     aggiungiAngolo(chi, carta) {
+      // L'angolo mostrato ha una carta in più; la fotografia successiva lo conferma
+      if (postoFoto(chi)?.angolo.includes(carta)) return;
+      palco.ritocca(chi, (q) => ({ ...q, angolo: [...q.angolo, carta] }));
+    },
+    ritocca(chi, modifica) {
       const f = ultima;
-      const p = postoFoto(chi);
-      if (!f || !p || p.angolo.includes(carta)) return;
-      // L'angolo mostrato ha una carta in più; la fotografia successiva lo conferma (aggiorna è idempotente)
-      ultima = { ...f, posti: f.posti.map((q) => (q.id === chi ? { ...q, angolo: [...q.angolo, carta] } : q)) };
+      if (!f || !postoFoto(chi)) return;
+      // Il posto mostrato cambia in `ultima`: un altro ordine che rimette in pari le postazioni non lo disfa (aggiorna è idempotente)
+      ultima = { ...f, posti: f.posti.map((q) => (q.id === chi ? modifica(q) : q)) };
       postazioni?.aggiorna(ultima);
       camera.riapplica();
     },
@@ -176,6 +215,39 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
   const camera = creaCamera(palco);
   const meteo = creaMeteo(palco, camera);
   const ordini = creaOrdini(palco, camera, meteo);
+  const regista = creaRegista({
+    ctx,
+    ordini,
+    allinea: (f, modo) => allineaScena(f, modo),
+    daRicostruire: (f) => chiaveDi(f) !== assetto || !branco || !postazioni,
+  });
+
+  // Le scelte nella scena: la domanda e il pensiero aspettano la scena libera (pezzo 2) e si tolgono mentre recita
+  const chiediUi = creaChiedi(ctx, palco, mano, camera, {
+    nomeDi: (chi) => postoFoto(chi)?.nome ?? chi,
+    // Mano coperta (passaggio del telefono, scena di un altro): nessuna carta è toccabile anche se la domanda le elenca
+    manoScoperta: () => ultima?.mano != null,
+    // Il primo consiglio ("Tocca una carta per sollevarla") se ne va quando la domanda solleva una carta
+    allaSollevata: () => consigli.nascondi(1),
+    // Tenere premuta una carta grande, quella al centro o un Guaio dell'angolo la fa leggere
+    lettura,
+  });
+  let domandaMem: { d: Domanda; suGesto: (g: Gesto) => void } | null = null;
+  let pensieroMem: Pensiero | null = null;
+  const mostraDomanda = (): void => {
+    if (domandaMem && !regista.occupato()) chiediUi.mostra(domandaMem.d, domandaMem.suGesto);
+  };
+  // Registrato subito dopo il regista: gli altri ascoltatori trovano la domanda già tolta (o rimessa)
+  regista.ascoltaOccupato((occupato) => {
+    if (distrutto) return;
+    if (occupato) {
+      chiediUi.togli();
+      chiediUi.pensa(null);
+    } else {
+      mostraDomanda();
+      chiediUi.pensa(pensieroMem);
+    }
+  });
 
   /** Un passo della scena (bozza, righe 1536–1546). */
   function passoScena(dt: number, ora: number): void {
@@ -200,9 +272,11 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
     modo: o.ciclo ?? 'automatico',
     passoScena,
     dopoFotogramma: () => aggiornaFumetti(ctx, zoom),
-    // Un fotogramma rotto può aver lasciato la scena a metà: si rimette in pari subito con l'ultima fotografia
+    // Un fotogramma rotto può aver lasciato la scena a metà: si rimette in pari subito con la fotografia più recente,
+    // quella che il regista avrebbe mostrato a fine recita (se ce n'è una in corso), altrimenti l'ultima mostrata
     onErrore: () => {
-      if (ultima && !distrutto) ricostruisci(ultima, assetto);
+      const f = regista.fotoRecente() ?? ultima;
+      if (f && !distrutto) allineaScena(f, 'subito');
     },
   });
 
@@ -210,7 +284,13 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
   const sveglia = (): void => ctx.risparmio.tocco(ciclo.ora());
   const toccoSalto = (e: Event): void => {
     const t = e.target as Element | null;
-    if (!ctx.regia.eventoInCorso() || t?.closest?.(INTERFACCIA) || mano.attiva() !== null) return;
+    if (!ctx.regia.eventoInCorso() || t?.closest?.(INTERFACCIA)) return;
+    if (chiediUi.visibile()) {
+      // Con una domanda il tocco sul prato salta anche un evento ancora in corso sullo sfondo (meteo dopo i 5 s), oltre a
+      // mandare "prato" (che abbassa le carte): una carta alzata non lo impedisce. Zone, pulsanti, dado, mano e nuvoletta
+      // non saltano (sono della domanda).
+      if (t?.closest?.(NON_PRATO)) return;
+    } else if (mano.attiva() !== null) return;
     if (!t?.closest?.(TOVAGLIA)) ctx.regia.salta();
   };
   const toccoScena = (): void => mano.abbassa();
@@ -255,6 +335,9 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
       copia.classList.remove('attiva', 'spenta', 'trascinata');
       copia.removeAttribute('role');
       copia.removeAttribute('aria-label');
+      copia.removeAttribute('tabindex');
+      copia.removeAttribute('aria-pressed');
+      copia.removeAttribute('aria-disabled');
       copia.setAttribute('aria-hidden', 'true');
       copia.style.pointerEvents = 'none';
       el.mano.appendChild(copia);
@@ -340,29 +423,73 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
 
   const vivo = (): boolean => !distrutto;
 
+  /** Chi sta dove: se cambia (primo allineamento, numero di giocatori, chi sta in basso) il tavolo si ricostruisce. */
+  const chiaveDi = (f: Fotografia): string => f.posti.map((p) => `${p.id}:${p.pecora}`).join('|');
+
+  function allineaScena(f: Fotografia, modo: 'calmo' | 'subito'): void {
+    const chiave = chiaveDi(f);
+    if (chiave !== assetto || modo === 'subito' || !branco || !postazioni) {
+      // Stesso tavolo e `subito`: come la ricostruzione, ambiente e flora restano (non cambia la disposizione)
+      ricostruisci(f, chiave);
+      ultima = f;
+      // Zone e pulsanti della domanda sui posti nuovi (le pecore e i recinti di prima non ci sono più)
+      chiediUi.riposiziona();
+      // Ricostruito il tavolo, il regista non ha più niente da recitare (coda svuotata, libero). È l'ultima cosa:
+      // un ascoltatore che all'avviso "libero" chiama `recita` trova la scena già in pari
+      regista.svuota();
+      return;
+    } else {
+      postiOvile = f.postiOvile;
+      branco.allinea(contiDi(f));
+      postazioni.aggiorna(f);
+      camera.riapplica();
+      coperta.aggiorna(f);
+      mostraMano(f, false);
+      ambiente?.impostaOra(f.ora);
+    }
+    ultima = f;
+    // La mano può essere cambiata (scoperta, coperta, carte nuove): la domanda la comanda di nuovo se serve
+    chiediUi.riposiziona();
+  }
+
   const teatro: Teatro = {
     ctx,
     ordini,
     allinea(f, modo) {
-      if (!vivo()) return;
-      // Chi sta dove: se cambia (primo allineamento, numero di giocatori, chi sta in basso) si ricostruisce subito
-      const chiave = f.posti.map((p) => `${p.id}:${p.pecora}`).join('|');
-      if (chiave !== assetto || modo === 'subito' || !branco || !postazioni) {
-        // Stesso tavolo e `subito`: come la ricostruzione, ambiente e flora restano (non cambia la disposizione)
-        ricostruisci(f, chiave);
-      } else {
-        postiOvile = f.postiOvile;
-        branco.allinea(contiDi(f));
-        postazioni.aggiorna(f);
-        camera.riapplica();
-        coperta.aggiorna(f);
-        mostraMano(f, false);
-        ambiente?.impostaOra(f.ora);
-      }
-      ultima = f;
+      if (vivo()) allineaScena(f, modo);
     },
+    recita(f, v, opz) {
+      if (!vivo()) return;
+      // La mano è interfaccia privata, non scena da recitare: si aggiorna subito, anche se il resto della fotografia
+      // aspetta la fine della recita. Coperta (anti-sbirciata) senza dissolvenze; scoperta, la carta giocata esce
+      // mentre la sua copia vola e le carte pescate entrano
+      if (ultima && chiaveDi(f) === assetto && String(f.mano) !== String(ultima.mano)) {
+        ultima = { ...ultima, mano: f.mano };
+        mostraMano(ultima, f.mano === null);
+        chiediUi.riposiziona();
+      }
+      regista.recita(f, v, opz);
+    },
+    occupato: () => vivo() && regista.occupato(),
+    ascoltaOccupato: (cb) => regista.ascoltaOccupato(cb),
     avanza(ms) {
       if (vivo()) ciclo.avanza(ms);
+    },
+    chiedi(d, suGesto) {
+      if (!vivo()) return;
+      // Si ricorda sempre; si mostra solo a scena libera (altrimenti ci pensa l'ascoltatore di "occupato")
+      domandaMem = { d, suGesto };
+      mostraDomanda();
+    },
+    smettiDiChiedere() {
+      if (!vivo()) return;
+      domandaMem = null;
+      chiediUi.togli();
+    },
+    pensa(p) {
+      if (!vivo()) return;
+      pensieroMem = p;
+      if (p === null || !regista.occupato()) chiediUi.pensa(p);
     },
     eventoInCorso: () => vivo() && ctx.regia.eventoInCorso(),
     salta() {
@@ -375,17 +502,26 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
       if (vivo()) suResize();
     },
     sospendi(sospeso) {
-      if (vivo()) ciclo.sospendi(sospeso);
+      if (!vivo()) return;
+      ciclo.sospendi(sospeso);
+      // Anche l'audio si ferma con la scena nascosta; riparte solo se i suoni sono accesi nelle Opzioni
+      if (sospeso) Suono.sospendi();
+      else if (opzioni().suoni) Suono.riprendi();
     },
     stato() {
       const agnellini = {} as StatoMostrato['agnellini'];
       for (const [luogo, c] of branco?.conti() ?? []) agnellini[luogo] = c;
       let inRegia = 0;
       let fuori = 0;
+      const posizioni: StatoMostrato['posizioni'] = [];
       for (const g of branco?.agnelli ?? []) {
+        const fuoriArea = !!g.a.recinto && (g.x < g.a.x0 - 1 || g.x > g.a.x1 + 1 || g.y < g.a.y0 - 1 || g.y > g.a.y1 + 1);
         if (g.regia) inRegia++;
         // Fuori dalla sua area (bozza, prove.js riga 140): solo chi è libero e sta in un recinto
-        else if (g.a.recinto && (g.x < g.a.x0 - 1 || g.x > g.a.x1 + 1 || g.y < g.a.y0 - 1 || g.y > g.a.y1 + 1)) fuori++;
+        else if (fuoriArea) fuori++;
+        let n = numeri.get(g);
+        if (n === undefined) numeri.set(g, (n = prossimoNumero++));
+        posizioni.push({ n, x: g.x, y: g.y, fuoriDalRecinto: fuoriArea && !g.inViaggio, inViaggio: g.inViaggio });
       }
       const angoli: StatoMostrato['angoli'] = {};
       for (const p of ultima?.posti ?? []) angoli[p.id] = [...p.angolo];
@@ -403,10 +539,17 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
         angoli,
         mano: ultima?.mano ? [...ultima.mano] : null,
         particelle: ambiente?.particelle.length ?? 0,
+        posizioni,
       };
     },
     distruggi() {
       if (distrutto) return;
+      // Prima la domanda: il regista, distruggendosi, avvisa "libero" e non deve rimostrarla
+      domandaMem = null;
+      pensieroMem = null;
+      chiediUi.distruggi();
+      // Prima il regista: avvisa "libero" e non riprende la recita quando gli ordini si fermano
+      regista.distruggi();
       distrutto = true;
       ciclo.ferma();
       meteo.ferma();

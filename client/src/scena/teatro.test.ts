@@ -6,6 +6,8 @@ import type { IdGiocatore, Stato } from '../../../engine/src';
 import { casoConSeme } from './aiuti-prova';
 import { fotografia, type Fotografia } from './fotografia';
 import { piattaforma } from './piattaforma';
+import { opzioni } from './servizi/opzioni';
+import { Suono } from './servizi/suoni';
 import { creaTeatro, type Teatro } from './teatro';
 
 const GIOCATORI = [
@@ -453,5 +455,35 @@ describe('teatro: un fotogramma rotto', () => {
     raf.corri(160);
     expect(errori).toHaveBeenCalledTimes(1);
     expect(raf.richiesto()).toBe(true);
+  });
+});
+
+describe('teatro: audio', () => {
+  it('sospendi(true) sospende anche l\'audio; sospendi(false) lo riprende solo con i suoni accesi nelle Opzioni', async () => {
+    const sospendi = vi.spyOn(Suono, 'sospendi').mockImplementation(() => undefined);
+    const riprendi = vi.spyOn(Suono, 'riprendi').mockImplementation(() => undefined);
+    vi.spyOn(Suono, 'ferma').mockImplementation(() => undefined);
+    const prima = opzioni().suoni;
+    const t = (teatro = creaTeatro(radice, { ambiente: false, caso: casoConSeme(3) }));
+    t.sospendi(true);
+    expect(sospendi).toHaveBeenCalledTimes(1);
+    opzioni().suoni = false;
+    t.sospendi(false);
+    expect(riprendi).not.toHaveBeenCalled();
+    t.sospendi(true);
+    opzioni().suoni = true;
+    t.sospendi(false);
+    expect(riprendi).toHaveBeenCalledTimes(1);
+    opzioni().suoni = prima;
+  });
+
+  it('distruggi ferma l\'audio; dopo, sospendi non lo tocca più', async () => {
+    const ferma = vi.spyOn(Suono, 'ferma').mockImplementation(() => undefined);
+    const sospendi = vi.spyOn(Suono, 'sospendi').mockImplementation(() => undefined);
+    const t = creaTeatro(radice, { ambiente: false, caso: casoConSeme(3) });
+    t.distruggi();
+    expect(ferma).toHaveBeenCalledTimes(1);
+    t.sospendi(true);
+    expect(sospendi).not.toHaveBeenCalled();
   });
 });
