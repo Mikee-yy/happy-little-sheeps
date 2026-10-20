@@ -1,6 +1,10 @@
 /* Stile dell'interfaccia: token in design/design-tokens.css, regole in design/guida-stile.md.
    Un solo tratto Notte, pastelli piatti, ombre piene, Vermiglio solo per il pericolo. */
 
+:root {
+  color-scheme: only light;
+}
+
 *,
 *::before,
 *::after {

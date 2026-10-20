@@ -4,7 +4,7 @@
   /* Nomi brevi della bozza, presi dai token del progetto (design/design-tokens.css) */
   --notte: var(--colore-inchiostro); --gesso: var(--colore-carta); --nebbia: var(--colore-sfondo); --menta: var(--colore-menta); --lilla: var(--colore-lilla);
   --albicocca: var(--colore-albicocca); --limone: var(--colore-limone); --fango: var(--colore-fango); --celeste: var(--colore-celeste); --ombra-pulsante: var(--colore-ombra-pulsante);
-  color-scheme: light;
+  color-scheme: only light;
   position: relative; width: 100%; height: 100%;
 }
 @property --cielo { syntax: '<color>'; inherits: true; initial-value: #B5D6F2; }

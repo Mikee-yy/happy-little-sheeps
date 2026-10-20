@@ -277,7 +277,7 @@ Progetto `bozze/scena-gioco-3-progetto.md`, piano `bozze/scena-gioco-3-piano.md`
 
 Registro `.superpowers/sdd/rifiniture/`. "Cura" con conferma (toccando il Guaio dell'angolo compare "Cura <Guaio>"); striscia in alto più compatta (avvisi con "!" su righe proprie, a 4 giocatori non copre le targhe) con una X che la nasconde per quella domanda; messaggio se la scena non si carica (senza rete / "il gioco è stato aggiornato, ricarica la pagina"); suono di fondo fermato davvero (contesto audio sospeso); scena ferma sotto "Passa il dispositivo"; classi esplicite `.mano-pannello` e `.consiglio-riquadro` per i pannelli.
 
-## Scena nel gioco, pezzo 4: le stanze (20 ottobre, fatto e revisionato, in attesa del commit e della pubblicazione)
+## Scena nel gioco, pezzo 4: le stanze (20 ottobre, fatto, revisionato e pubblicato: commit bf3ffb0)
 
 Progetto `bozze/scena-gioco-4-progetto.md`, piano `bozze/scena-gioco-4-piano.md`, registro `.superpowers/sdd/scena-gioco-4-piano/progress.md` (fuori da git). Niente commit.
 

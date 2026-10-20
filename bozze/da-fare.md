@@ -1,6 +1,6 @@
 # Happy Little Sheeps — cose da fare
 
-Aggiornato il 20 ottobre 2026 (pezzi 2, 3 e 4 della scena fatti e rifiniture prima della pubblicazione fatte; in attesa del commit e della pubblicazione, su richiesta dell'utente). Il contesto di ogni voce è in `bozze/passaggio-di-consegne.md`.
+Aggiornato il 20 ottobre 2026 (scena 2,5D in tutto il gioco: pezzi 1–4 e rifiniture nel commit bf3ffb0, inviato a GitHub il 20 ottobre). Il contesto di ogni voce è in `bozze/passaggio-di-consegne.md`.
 
 Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
 
@@ -61,7 +61,7 @@ Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
   - mazzo preparato nel motore, perché nei primi round succedano le cose importanti (Guaio, dado, furto, Beee-NO!);
   - suggerimenti col pensiero della tua pecora (nuvoletta a pallini) che spiegano ogni momento;
   - non cancella una partita salvata.
-- [ ] **Portare la scena nel gioco vero** (`client/`): una regia legge gli eventi del motore e li trasforma in animazioni uguali su tutti i telefoni. *Diviso in 4 pezzi (14 ottobre). Si pubblica dopo i pezzi 1–3. Dettagli in `bozze/scena-gioco-1-progetto.md` e `bozze/passaggio-di-consegne.md`.*
+- [x] **Portare la scena nel gioco vero** (`client/`): una regia legge gli eventi del motore e li trasforma in animazioni uguali su tutti i telefoni. *Diviso in 4 pezzi (14 ottobre). Si pubblica dopo i pezzi 1–3. Dettagli in `bozze/scena-gioco-1-progetto.md` e `bozze/passaggio-di-consegne.md`.*
   - [x] **Pezzo 1, la scena entra nel gioco.** *Fatto il 15 ottobre: scena nella partita su un dispositivo e nella prova, con i pannelli di oggi in un cassetto. Salvato nel commit locale 033b38b.*
   - [x] **Pezzo 2, la regia:** legge gli eventi del motore e li recita nella scena (dado, furto, Testata, Guai, Beee-NO!). *Fatto il 19 ottobre (progetto `bozze/scena-gioco-2-progetto.md`, piano `bozze/scena-gioco-2-piano.md`), revisione finale fatta. Il conto alla rovescia del Beee-NO! che va in pausa durante le animazioni passa al pezzo 4 (stanze).*
   - [x] **Pezzo 3, le scelte dentro la scena:** carte, bersagli e risposte si scelgono toccando la scena, al posto dei pannelli nel cassetto. *Fatto il 20 ottobre (progetto `bozze/scena-gioco-3-progetto.md`, piano `bozze/scena-gioco-3-piano.md`); i pannelli restano come riserva se la scena non si carica. In attesa della revisione finale.*
@@ -99,4 +99,5 @@ Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
 
 - [ ] **iPhone e Safari:** effetto 3D di tovaglia e dado, vibrazione assente (previsto). *L'utente non ha un iPhone (15 ottobre): da provare con qualcun altro dopo la pubblicazione.*
 - [ ] **Telefoni Android economici:** fluidità della scena e scatto del modo leggero. *L'utente non ne ha uno (15 ottobre): da provare con qualcun altro dopo la pubblicazione.*
+- [ ] **Samsung Internet con la modalità notte** (segnalato dall'utente il 20 ottobre: i colori della partita cambiano e il gioco diventa poco visibile). Il 20 ottobre il sito dichiara "solo colori chiari" (`color-scheme: only light`), che le versioni recenti di Samsung Internet dovrebbero rispettare; da verificare sul telefono dell'utente. Se non basta: Impostazioni → Labs → "Usa il tema scuro del sito web" (consiglio ufficiale di Samsung), ed eventualmente un avviso per i giocatori.
 - [x] **Rete aziendale:** Google Fonts, GitHub Pages o Firebase bloccati. Se succede, servono alternative gratuite. *Confermato dall'utente il 13 ottobre: funziona.*
