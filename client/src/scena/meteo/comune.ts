@@ -510,7 +510,8 @@ export function creaMeteo(palco: Palco, camera: Camera, effetti: Readonly<Record
       if (amb && extra > 0.4) {
         // Il vento forte spinge gli agnellini liberi e fa volare via ciuffi di lana
         for (const g of palco.agnelli()) {
-          if (!g.regia && (g.stato === 'fermo' || g.stato === 'bruca' || g.stato === 'cammina')) g.x = Math.min(g.a.x1, g.x + extra * dt * 7 * palco.profondita(g.y));
+          // Gli alzati per il furto restano fermi sopra la staccionata
+          if (!g.regia && !g.sollevato && (g.stato === 'fermo' || g.stato === 'bruca' || g.stato === 'cammina')) g.x = Math.min(g.a.x1, g.x + extra * dt * 7 * palco.profondita(g.y));
         }
         const tutte = palco.giocatori();
         if (tutte.length && ctx.caso() < dt * 3 * extra) {

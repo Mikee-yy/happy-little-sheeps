@@ -14,6 +14,8 @@ export const MASSIMO_BATTUTE_IN_CODA = 8;
 /**
  * Tempo massimo di una battuta, in tempo vero (`setTimeout`): quando il browser non disegna, l'orologio della scena
  * si ferma, e la partita non deve restare ad aspettare. È l'unica eccezione alla regola del tempo della scena.
+ * Vale per la recita intera: una battuta scaduta vuol dire che la scena non disegna, e le battute dopo non si
+ * recitano (la scena va in pari a fine recita), così la partita non aspetta mai più di questo.
  */
 export const TEMPO_MASSIMO_BATTUTA_MS = 25_000;
 /** Ogni quanto si guarda se gli agnellini di una battuta sono arrivati (tempo della scena, timer decorativo). */
@@ -87,11 +89,11 @@ export function creaRegista(d: DipendenzeRegista): Regista {
     chiudiBattuta = null;
   }
 
-  /** La promessa della battuta, il tempo massimo o la fine anticipata: quello che arriva prima. */
-  function conTempoMassimo(p: Promise<void>): Promise<void> {
-    return new Promise<void>((fine) => {
+  /** La promessa della battuta, il tempo massimo o la fine anticipata: quello che arriva prima. Vero se è scaduta. */
+  function conTempoMassimo(p: Promise<void>): Promise<boolean> {
+    return new Promise<boolean>((fine) => {
       let chiusa = false;
-      const chiudi = (): void => {
+      const chiudi = (scaduta = false): void => {
         if (chiusa) return;
         chiusa = true;
         clearTimeout(timer);
@@ -100,12 +102,12 @@ export function creaRegista(d: DipendenzeRegista): Regista {
           timerVero = null;
           chiudiBattuta = null;
         }
-        fine();
+        fine(scaduta);
       };
-      const timer = setTimeout(chiudi, TEMPO_MASSIMO_BATTUTA_MS);
+      const timer = setTimeout(() => chiudi(true), TEMPO_MASSIMO_BATTUTA_MS);
       timerVero = timer;
       chiudiBattuta = chiudi;
-      p.then(chiudi, (e: unknown) => {
+      p.then(() => chiudi(), (e: unknown) => {
         console.error(e);
         chiudi();
       });
@@ -180,8 +182,10 @@ export function creaRegista(d: DipendenzeRegista): Regista {
         p.catch((e: unknown) => console.error(e));
         p = Promise.resolve();
       }
-      await conTempoMassimo(p);
+      const scaduta = await conTempoMassimo(p);
       if (mio !== giro || distrutto) return;
+      // La scena non disegna: niente altre battute, si va in pari
+      if (scaduta) coda.length = 0;
     }
     inScena = false;
     try {

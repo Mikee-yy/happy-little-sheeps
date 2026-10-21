@@ -176,3 +176,63 @@ describe('scena caricata a parte', () => {
     expect(ricevute.at(-1)).toMatchObject({ domanda, suGesto, pensiero, onPronto });
   });
 });
+
+describe('il proiettore riprova da solo (riprovaDopoMs)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+  const passa = (ms: number) =>
+    act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+
+  it('senza rete riprova ogni volta, con lo stesso avviso montato (non lo riannuncia), finché la scena arriva', async () => {
+    vi.spyOn(piattaforma, 'online').mockReturnValue(false);
+    const caricatore = vi
+      .fn<() => Promise<ModuloScena>>()
+      .mockRejectedValueOnce(new Error('rete'))
+      .mockRejectedValueOnce(new Error('rete'))
+      .mockRejectedValueOnce(new Error('rete'))
+      .mockResolvedValue(moduloFinto);
+    usaCaricatoreDiProva(caricatore);
+    render(<ScenaCaricata foto={FOTO} vista={VISTA} riprovaDopoMs={5000} />);
+    await aspetta();
+    const avviso = document.querySelector('.scena-non-caricata');
+    expect(avviso?.getAttribute('role')).toBe('alert');
+    await passa(5000);
+    expect(caricatore).toHaveBeenCalledTimes(2);
+    expect(document.querySelector('.scena-non-caricata'), 'lo stesso avviso, non uno nuovo').toBe(avviso);
+    await passa(5000);
+    expect(caricatore).toHaveBeenCalledTimes(3);
+    expect(document.querySelector('.scena-non-caricata')).toBe(avviso);
+    await passa(5000);
+    expect(caricatore).toHaveBeenCalledTimes(4);
+    expect(document.querySelector('.scena-finta')).not.toBeNull();
+    expect(document.querySelector('.scena-non-caricata')).toBeNull();
+  });
+
+  it('con la rete il pacchetto non c\'è più (sito aggiornato): niente tentativi da soli, resta "Ricarica la pagina"', async () => {
+    vi.spyOn(piattaforma, 'online').mockReturnValue(true);
+    const caricatore = vi.fn<() => Promise<ModuloScena>>().mockRejectedValue(new Error('pacchetto sparito'));
+    usaCaricatoreDiProva(caricatore);
+    render(<ScenaCaricata foto={FOTO} vista={VISTA} riprovaDopoMs={5000} />);
+    await aspetta();
+    await passa(30_000);
+    expect(caricatore).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.scena-non-caricata')?.textContent).toContain(T.scena.caricamento.aggiornato);
+  });
+
+  it('se tornata la rete il pacchetto ancora non arriva, è un aggiornamento: l\'avviso lo dice e i tentativi da soli finiscono', async () => {
+    const online = vi.spyOn(piattaforma, 'online').mockReturnValue(false);
+    const caricatore = vi.fn<() => Promise<ModuloScena>>().mockRejectedValue(new Error('x'));
+    usaCaricatoreDiProva(caricatore);
+    render(<ScenaCaricata foto={FOTO} vista={VISTA} riprovaDopoMs={5000} />);
+    await aspetta();
+    expect(document.querySelector('.scena-non-caricata')?.textContent).toContain(T.scena.caricamento.fallito);
+    online.mockReturnValue(true);
+    await passa(5000);
+    expect(caricatore).toHaveBeenCalledTimes(2);
+    expect(document.querySelector('.scena-non-caricata')?.textContent).toContain(T.scena.caricamento.aggiornato);
+    await passa(30_000);
+    expect(caricatore).toHaveBeenCalledTimes(2);
+  });
+});

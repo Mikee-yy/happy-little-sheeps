@@ -134,11 +134,16 @@ export function Scena({ foto, vista, nascosta = false, sospesa = false, rifTeatr
   }, [chiave, nascosta]);
 
   // Sotto "Passa il dispositivo" il ciclo e l'audio si fermano. Dopo la recita (effetto sopra): se la fotografia appena
-  // data fa recitare la scena, la recita deve poter finire e non si ferma niente. Se la scena è nascosta ci pensa la nascosta.
+  // data fa recitare la scena, la recita deve poter finire e non si ferma niente. Se la scena è nascosta ci pensa la nascosta
+  // (che comanda sempre): `m.sospesa` torna falso, così al ritorno visibile la sospensione si riapplica da capo.
   useLayoutEffect(() => {
     const m = montato.current;
     if (!m) return;
-    const ferma = sospesa && !nascosta && !m.teatro.occupato();
+    if (nascosta) {
+      m.sospesa = false;
+      return;
+    }
+    const ferma = sospesa && !m.teatro.occupato();
     if (ferma === m.sospesa) return;
     m.sospesa = ferma;
     m.teatro.sospendi(ferma);

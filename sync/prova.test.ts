@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // Partita di prova: i bot giocano da soli, l'umano no; niente salvataggio.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { inAttesaDi } from '../engine/src';
+import { azioniPossibili, inAttesaDi } from '../engine/src';
+import { semplice } from '../engine/sim/politiche';
 import { SessioneProva } from './prova';
 
 beforeEach(() => {
@@ -126,6 +127,52 @@ describe('SessioneProva.pausa ripetuta', () => {
     s.pausa(false);
     vi.advanceTimersByTime(400);
     expect(eventi(s, 'ha_scelto')).toHaveLength(1);
+    s.chiudi();
+  });
+});
+
+describe('SessioneProva: un bot che sbaglia non ferma la partita', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('se la strategia propone una mossa che non è tra le azioni, il bot ne gioca un\'altra valida', () => {
+    vi.spyOn(semplice, 'scegli').mockImplementation((_s, g) => ({ tipo: 'scegliTrovata', giocatore: g, carte: ['non-esiste#9'] }));
+    const s = SessioneProva.nuova({ seme: 3, pausaMs: 1000 });
+    prosegui(s);
+    vi.advanceTimersByTime(3000);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(2);
+    s.chiudi();
+  });
+
+  it('se la strategia si rompe (eccezione), il bot ne gioca un\'altra valida e la partita prosegue', () => {
+    vi.spyOn(semplice, 'scegli').mockImplementation(() => {
+      throw new Error('strategia rotta');
+    });
+    const s = SessioneProva.nuova({ seme: 3, pausaMs: 1000 });
+    prosegui(s);
+    vi.advanceTimersByTime(3000);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(2);
+    s.chiudi();
+  });
+
+  it('se la mossa scelta viene rifiutata dal motore, il bot prova un\'altra azione senza fermarsi', () => {
+    const rifiutata = vi.spyOn(semplice, 'scegli');
+    const s = SessioneProva.nuova({ seme: 3, pausaMs: 1000 });
+    rifiutata.mockImplementation(() => ({ tipo: 'scegliTrovata', giocatore: 'g1', carte: [] }));
+    prosegui(s);
+    vi.advanceTimersByTime(3000);
+    expect(eventi(s, 'ha_scelto')).toHaveLength(2);
+    s.chiudi();
+  });
+
+  it("se la strategia propone una mossa valida ma di un altro (l'umano), il bot non la gioca: gioca una delle sue", () => {
+    // La mossa dell'umano è accettata dal motore (si sceglie tutti insieme): non deve passare per buona
+    vi.spyOn(semplice, 'scegli').mockImplementation((st) => azioniPossibili(st, 'g1').find((a) => a.tipo === 'scegliTrovata')!);
+    const s = SessioneProva.nuova({ seme: 3, pausaMs: 1000 });
+    prosegui(s);
+    vi.advanceTimersByTime(3000);
+    const chi = eventi(s, 'ha_scelto').map((e) => (e.tipo === 'ha_scelto' ? e.giocatore : ''));
+    expect(chi).not.toContain('g1');
+    expect(chi).toHaveLength(2);
     s.chiudi();
   });
 });

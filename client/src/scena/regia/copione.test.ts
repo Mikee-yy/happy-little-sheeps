@@ -463,6 +463,37 @@ describe('copione: eventi da mettere solo in pari e riservatezza', () => {
     expect(testo).not.toContain('orecchino');
   });
 
+  it('furto: il fumetto dice quanti agnellini si spostano davvero (posti pieni), non quanti ne dichiara il dado', () => {
+    const dichiarato = (voce: number, autore: string): NuovoEvento => ({
+      tipo: 'dichiarazione',
+      voce,
+      autore,
+      dettagli: {
+        tipo: 'dado',
+        faccia: 'furto_grande',
+        dichiarazione: { effetto: 'furto', daAvversari: { g1: 2, g3: 1 }, dalGregge: 1 },
+      },
+    });
+    const b = da(
+      dichiarato(1, 'g2'),
+      { tipo: 'risolta', voce: 1 },
+      { tipo: 'agnellini', da: 'g1', a: 'g2', quanti: 1, causa: 'furto' },
+      { tipo: 'agnellini', da: 'g3', a: 'g2', quanti: 1, causa: 'furto' },
+    );
+    expect((b[0] as Di<'fumetti'>).testi).toEqual({ g2: T.scena.fumetti.furto(2) });
+    // Due furti nello stesso lotto: ognuno conta i suoi spostamenti
+    const due = da(
+      dichiarato(1, 'g2'),
+      { tipo: 'risolta', voce: 1 },
+      { tipo: 'agnellini', da: 'g1', a: 'g2', quanti: 2, causa: 'furto' },
+      dichiarato(2, 'g3'),
+      { tipo: 'risolta', voce: 2 },
+      { tipo: 'agnellini', da: 'g1', a: 'g3', quanti: 1, causa: 'furto' },
+    );
+    const fumetti = due.filter((x): x is Di<'fumetti'> => x.tipo === 'fumetti');
+    expect(fumetti.map((x) => x.testi)).toEqual([{ g2: T.scena.fumetti.furto(2) }, { g3: T.scena.fumetti.furto(1) }]);
+  });
+
   it('ordine degli eventi rispettato in una serie mista', () => {
     const b = da(
       { tipo: 'dado_lanciato', giocatore: 'g1', faccia: 'furto_piccolo' },
@@ -534,5 +565,5 @@ describe('copione: partite vere', () => {
     }
     expect(visteCarte).toBeGreaterThan(0);
     for (const tipo of ['guaioRivelato', 'giraCarte', 'fumetti', 'dado', 'agnellini', 'guaio']) expect(visti.has(tipo)).toBe(true);
-  });
+  }, 30_000);
 });

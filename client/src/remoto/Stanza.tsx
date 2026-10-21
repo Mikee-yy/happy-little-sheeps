@@ -499,6 +499,12 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
   // Situazione e sblocco di questo disegno, letti da `invia` al momento dell'invio
   const attuale = useRef({ situazione, sblocca });
   attuale.current = { situazione, sblocca };
+  /** Come `inviata`, ma letta subito (anche da un timer già partito): è il segno "mossa inviata" che blocca ogni altro invio. */
+  const inviataOra = useRef<{ situazione: string; sblocca: number } | null>(null);
+  const mossaInAttesa = () => {
+    const i = inviataOra.current;
+    return i !== null && i.situazione === attuale.current.situazione && i.sblocca === attuale.current.sblocca;
+  };
   /**
    * Manda la mossa; restituisce se è partita (per gli ospiti l'esito vero arriva dopo: un rifiuto, o la vista nuova).
    * Stabile tra un disegno e l'altro: la Testata e il dado della riserva la attendono in un effetto, e una funzione nuova
@@ -508,7 +514,10 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
     (a: Azione): boolean => {
       const r = sessione.invia(a);
       setErrore(r.ok ? null : T.errori.azione(r.messaggio));
-      if (r.ok && sessione instanceof SessioneOspite) setInviata({ ...attuale.current });
+      if (r.ok && sessione instanceof SessioneOspite) {
+        inviataOra.current = { ...attuale.current };
+        setInviata({ ...attuale.current });
+      }
       return r.ok;
     },
     [sessione],
@@ -519,7 +528,10 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
   const chiaveFinestra = `${v.round}-${v.fase.nome}-${v.finestra?.voce ?? ''}-${v.pila.length}-${v.eventi[v.eventi.length - 1]?.seq ?? 0}`;
   useEffect(() => {
     if (!passaDaSolo || !soloPassa) return;
-    const t = setTimeout(() => invia(azioni[0]!), 400);
+    // Passa dallo stesso segno "mossa inviata" del tocco: se una mossa è già in attesa di chi ospita non parte
+    const t = setTimeout(() => {
+      if (!mossaInAttesa()) invia(azioni[0]!);
+    }, 400);
     return () => clearTimeout(t);
     // Una volta per finestra: la chiave cambia a ogni nuova dichiarazione.
   }, [passaDaSolo, soloPassa, chiaveFinestra]);
@@ -542,7 +554,7 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
   if (fine && classifica) {
     return (
       <FinePartita
-        v={v}
+        v={tavolo}
         onHome={p.onEsci}
         onRigioca={host ? () => host.tornaInSala() : undefined}
         testoRigioca={T.stanza.rivincita}
@@ -670,8 +682,9 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
         invia={invia}
         errore={messaggio}
         togliErrore={togliErrore}
+        suCambioDomanda={() => setErrore(null)}
         onMenu={() => setMenu(true)}
-        sopraStriscia={conto}
+        inStriscia={conto}
         strisciaSenzaDomanda={striscia}
         riserva={riserva}
         riservaATuttaAltezza={aTuttaAltezza}
@@ -775,6 +788,9 @@ export function Stanza(p: { sessione: SessioneStanza; iscrizione: Iscrizione; on
   return <PartitaRemota sessione={sessione} io={io} onEsci={p.onEsci} onRegole={p.onRegole} />;
 }
 
+/** Il proiettore non ha chi tocca "Riprova" (è sotto il tavolo di prima): se la scena non arriva ritenta da solo. */
+const RIPROVA_PROIETTORE_MS = 5000;
+
 /**
  * Vista tavolo senza mani, da proiettare (brief §5): la scena che recita tutte le mosse, senza mano, senza domande e senza
  * conto alla rovescia; in basso la pecora del primo giocatore; in alto la cronaca. Se la scena non c'è (si scarica, o non
@@ -789,7 +805,7 @@ export function VistaTavolo({ sessione, onEsci }: { sessione: SessioneTavolo; on
   const foto = fotografia(v, v.giocatori[0]!.id, null);
   return (
     <div className="partita con-scena tavolo-proiettore">
-      <ScenaCaricata foto={foto} vista={v} onPronto={setScenaPronta} />
+      <ScenaCaricata foto={foto} vista={v} onPronto={setScenaPronta} riprovaDopoMs={RIPROVA_PROIETTORE_MS} />
       <div className="testata-scena">
         <Intestazione v={v} onMenu={onEsci} />
         <Cronaca v={v} quanti={5} />

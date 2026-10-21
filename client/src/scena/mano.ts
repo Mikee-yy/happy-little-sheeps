@@ -35,7 +35,9 @@ export interface Mano {
   attiva(): IdCarta | null;
   /** Rimette nel ventaglio la carta sollevata (un tocco sulla scena, bozza riga 2669). In modo comandato non fa niente: le carte sollevate le dice chi comanda. */
   abbassa(): void;
-  /** Con una domanda la mano non decide da sola: i tocchi vanno a `suTocco`, le carte sollevate le dice chi comanda. null: modo libero di oggi. Annulla un trascinamento in corso. */
+  /** Con una domanda la mano non decide da sola: i tocchi vanno a `suTocco`, le carte sollevate le dice chi comanda. null: modo libero di oggi. Annulla un trascinamento in corso.
+   * Va passato un oggetto nuovo a ogni cambio (non modificare in place quello già dato): `toccabili` e `trascinabili` si
+   * copiano in insiemi solo qui, mentre `sollevate` si rilegge dall'oggetto a ogni ridisegno. */
   comanda(c: ComandoMano | null): void;
   /** Dove stanno le carte sollevate (coordinate della scena, il centro del gruppo): per il pulsante "Gioca". null se nessuna. */
   sollevateIn(): { x: number; y: number } | null;
@@ -110,7 +112,7 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
       const posto = sollevate.indexOf(id);
       const alzata = com ? posto >= 0 : attiva === id;
       const spenta = com ? posto < 0 && !com.toccabili.has(id) : !!attiva && attiva !== id;
-      perTastiera(el, alzata, spenta);
+      perTastiera(el, alzata, id);
       if (el.classList.contains('trascinata')) return;
       let p = posizioneMano(i, n);
       if (com) {
@@ -131,18 +133,19 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
   }
 
   /**
-   * Con una domanda le carte che rispondono (toccabili o sollevate) si raggiungono con Tab e dicono se sono sollevate;
-   * le spente no. Nel modo libero niente tastiera, come prima della domanda.
+   * Con una domanda le carte che rispondono (toccabili) si raggiungono con Tab e dicono se sono sollevate; le altre no,
+   * nemmeno se sono sollevate: non rispondono a nessun tocco. Nel modo libero niente tastiera, come prima della domanda.
    */
-  function perTastiera(el: HTMLElement, alzata: boolean, spenta: boolean) {
+  function perTastiera(el: HTMLElement, alzata: boolean, id: IdCarta) {
     if (!com) {
       el.removeAttribute('tabindex');
       el.removeAttribute('aria-disabled');
       el.removeAttribute('aria-pressed');
       return;
     }
-    el.tabIndex = spenta ? -1 : 0;
-    if (spenta) el.setAttribute('aria-disabled', 'true');
+    const risponde = com.toccabili.has(id);
+    el.tabIndex = risponde ? 0 : -1;
+    if (!risponde) el.setAttribute('aria-disabled', 'true');
     else el.removeAttribute('aria-disabled');
     el.setAttribute('aria-pressed', alzata ? 'true' : 'false');
   }
@@ -278,6 +281,8 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
     el.addEventListener('keydown', (e) => {
       if (!com || (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar')) return;
       e.preventDefault();
+      // Tenuto premuto il tasto si ripete: un solo tocco
+      if (e.repeat) return;
       toccoSenzaDito();
     });
     // Il clic vero (dito, mouse) passa dal puntatore: quello senza puntatore ha detail 0

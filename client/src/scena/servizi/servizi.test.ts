@@ -340,7 +340,7 @@ describe('consigli', () => {
   it('rivediSuggerimenti toglie la chiave e mostra il primo consiglio', async () => {
     const m = await carica();
     const { elemento, c } = preparati(m);
-    localStorage.setItem('hls-consigli-visti', '1');
+    localStorage.setItem('hls-consigli-visti', '3');
     expect(c.giaVisti()).toBe(true);
     c.rivediSuggerimenti();
     expect(localStorage.getItem('hls-consigli-visti')).toBeNull();
@@ -349,7 +349,7 @@ describe('consigli', () => {
     expect(elemento.style.opacity).toBe('1');
   });
 
-  it('passo dopo passo: il secondo consiglio compare, poi il terzo, che sparisce e la chiave vale 1', async () => {
+  it('passo dopo passo: il secondo consiglio compare, poi il terzo, che sparisce e la chiave vale 3', async () => {
     const m = await carica();
     const { elemento, c } = preparati(m);
     c.rivediSuggerimenti();
@@ -370,7 +370,7 @@ describe('consigli', () => {
     expect(localStorage.getItem('hls-consigli-visti')).toBeNull();
     vi.advanceTimersByTime(7500);
     expect(elemento.style.opacity).toBe('0');
-    expect(localStorage.getItem('hls-consigli-visti')).toBe('1');
+    expect(localStorage.getItem('hls-consigli-visti')).toBe('3');
   });
 
   it('il terzo consiglio si supera con la prima carta giocata trascinando (nascondi(3))', async () => {
@@ -382,14 +382,14 @@ describe('consigli', () => {
     expect(elemento.textContent).toBe(T.scena.consigli.trascina);
     c.nascondi(3);
     expect(elemento.style.opacity).toBe('0');
-    expect(localStorage.getItem('hls-consigli-visti')).toBe('1');
+    expect(localStorage.getItem('hls-consigli-visti')).toBe('3');
   });
 
-  it('nascondi(3) subito: tutti visti, chiave 1; non va indietro', async () => {
+  it('nascondi(3) subito: tutti visti, chiave 3; non va indietro', async () => {
     const m = await carica();
     const { c } = preparati(m);
     c.nascondi(3);
-    expect(localStorage.getItem('hls-consigli-visti')).toBe('1');
+    expect(localStorage.getItem('hls-consigli-visti')).toBe('3');
     c.nascondi(1);
     expect(c.passo).toBe(3);
   });
@@ -402,7 +402,86 @@ describe('consigli', () => {
     c.nascondi(1);
     expect(c.passo).toBe(0);
     bloccato = false;
-    localStorage.setItem('hls-consigli-visti', '1');
+    localStorage.setItem('hls-consigli-visti', '3');
+    c.applicaGiaVisti();
+    expect(c.passo).toBe(m.consigli.CONSIGLI.length);
+    expect(elemento.style.opacity).toBe('0');
+  });
+
+  describe('chi aveva già visto i due consigli di prima (chiave "1")', () => {
+    it('vede una volta sola il terzo, "Trascina una carta sulla tovaglia"; superato, la chiave dice che ha visto tutto', async () => {
+      const m = await carica();
+      const { elemento, c } = preparati(m);
+      localStorage.setItem('hls-consigli-visti', '1');
+      c.applicaGiaVisti();
+      c.allaPrimaTrascinabile();
+      expect(elemento.textContent).toBe(T.scena.consigli.trascina);
+      expect(elemento.style.opacity).toBe('1');
+      expect(c.passo).toBe(2);
+      // Il primo gesto che supera i due vecchi (la lettura) non lo spegne, il trascinamento sì
+      c.nascondi(2);
+      expect(elemento.style.opacity).toBe('1');
+      c.nascondi(3);
+      expect(elemento.style.opacity).toBe('0');
+      expect(localStorage.getItem('hls-consigli-visti')).toBe('3');
+      // La volta dopo non compare più
+      const dopo = preparati(m);
+      dopo.c.applicaGiaVisti();
+      expect(dopo.c.passo).toBe(m.consigli.CONSIGLI.length);
+      expect(dopo.elemento.style.opacity).toBe('0');
+    });
+
+    it('il terzo non resta per sempre: sparisce da solo come gli altri, e anche allora la chiave vale 3', async () => {
+      const m = await carica();
+      const { elemento, c } = preparati(m);
+      localStorage.setItem('hls-consigli-visti', '1');
+      c.applicaGiaVisti();
+      c.allaPrimaTrascinabile();
+      vi.advanceTimersByTime(7500);
+      expect(elemento.style.opacity).toBe('0');
+      expect(localStorage.getItem('hls-consigli-visti')).toBe('3');
+    });
+
+    it('il terzo aspetta la prima domanda con carte da trascinare: prima resta nascosto e il suo tempo non corre', async () => {
+      const m = await carica();
+      const { elemento, c } = preparati(m);
+      localStorage.setItem('hls-consigli-visti', '1');
+      c.applicaGiaVisti();
+      // Il Guaio d'apertura e le altre domande senza carte da trascinare: niente consiglio, niente tempo che scade
+      expect(elemento.style.opacity).toBe('0');
+      vi.advanceTimersByTime(10_000);
+      expect(localStorage.getItem('hls-consigli-visti')).toBe('1');
+      expect(c.passo).toBe(2);
+      // Arriva la prima carta trascinabile: compare e da lì parte il suo tempo
+      c.allaPrimaTrascinabile();
+      expect(elemento.textContent).toBe(T.scena.consigli.trascina);
+      expect(elemento.style.opacity).toBe('1');
+      vi.advanceTimersByTime(6000);
+      // Le domande dopo non lo rimettono né ne allungano il tempo
+      c.allaPrimaTrascinabile();
+      vi.advanceTimersByTime(1500);
+      expect(elemento.style.opacity).toBe('0');
+      expect(localStorage.getItem('hls-consigli-visti')).toBe('3');
+      c.allaPrimaTrascinabile();
+      vi.advanceTimersByTime(1000);
+      expect(elemento.style.opacity).toBe('0');
+    });
+
+    it('senza chiave vecchia la prima carta trascinabile non cambia niente', async () => {
+      const m = await carica();
+      const { elemento, c } = preparati(m);
+      elemento.textContent = T.scena.consigli.solleva;
+      c.applicaGiaVisti();
+      c.allaPrimaTrascinabile();
+      expect(elemento.textContent).toBe(T.scena.consigli.solleva);
+      expect(c.passo).toBe(0);
+    });
+  });
+
+  it('chi li ha visti tutti e tre non rivede niente', async () => {
+    const m = await carica();
+    const { elemento, c } = preparati(m);
+    localStorage.setItem('hls-consigli-visti', '3');
     c.applicaGiaVisti();
     expect(c.passo).toBe(m.consigli.CONSIGLI.length);
     expect(elemento.style.opacity).toBe('0');

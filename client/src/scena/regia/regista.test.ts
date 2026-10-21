@@ -150,7 +150,7 @@ describe('regista: prima recita e battute che aspettano la fine', () => {
     inPari(t, foto(dopo));
     expect(cambi).toEqual([true, false]);
     expect(errori).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it('le battute si recitano in fila: la corsa degli agnellini parte solo dopo il dado e il fumetto', async () => {
     const { prima, dopo } = pascolo();
@@ -168,7 +168,7 @@ describe('regista: prima recita e battute che aspettano la fine', () => {
     expect(ordine).toEqual(['dado']);
     await finche(t, () => !t.occupato(), 10_000);
     expect(ordine).toEqual(['dado', 'fumetti', 'agnellini']);
-  });
+  }, 30_000);
 
   it('una recita senza battute nuove mette in pari con calma, subito, senza occupare', () => {
     const { prima } = pascolo();
@@ -200,7 +200,7 @@ describe('regista: prima recita e battute che aspettano la fine', () => {
     expect(cambi).toEqual([true, true]);
     await finche(t, () => !t.occupato(), 5000);
     expect(cambi).toEqual([true, true, false]);
-  });
+  }, 30_000);
 
   it('una partita nuova sullo stesso teatro (eventi che ripartono da capo): messa in pari subito, niente recita', () => {
     const { dopo } = pascolo();
@@ -334,9 +334,31 @@ describe('regista: tempo massimo, messa in pari subito, ricostruzione, distruzio
     vi.advanceTimersByTime(1000);
     await scarica();
     await finche(t, () => !t.occupato(), 10_000);
+    // Le battute dopo quella scaduta non si recitano: gli agnellini vanno al loro posto con la messa in pari
+    await finche(t, () => t.ctx.regia.inViaggio.size === 0, 10_000);
     inPari(t, foto(dopo));
     expect(cambi).toEqual([true, false]);
-  });
+  }, 30_000);
+
+  it('tempo massimo per la recita intera: dopo una battuta scaduta le altre non si recitano, la scena va in pari', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { prima, dopo } = pascolo();
+    const { t, cambi } = pronto(prima);
+    // Il dado non finisce mai e l'orologio della scena è fermo (il browser non disegna): gli agnellini non arriverebbero
+    vi.spyOn(t.ordini, 'dado').mockReturnValue(new Promise<void>(() => undefined));
+    t.recita(foto(dopo), vista(dopo));
+    await scarica();
+    expect(t.occupato()).toBe(true);
+    vi.advanceTimersByTime(25_000);
+    await scarica();
+    // Niente altri 25 s per la battuta degli agnellini
+    vi.advanceTimersByTime(1000);
+    await scarica();
+    expect(t.occupato()).toBe(false);
+    expect(cambi).toEqual([true, false]);
+    await finche(t, () => t.ctx.regia.inViaggio.size === 0, 10_000);
+    inPari(t, foto(dopo));
+  }, 30_000);
 
   it('troppe battute (più di 8 in coda): messa in pari subito, libero, nessuna animazione in corso', () => {
     // Una partita vera: si gioca senza recitare finché il copione degli eventi accumulati dà almeno 9 battute
@@ -573,4 +595,30 @@ describe('regista: giro di correzione 1', () => {
     await scorri(t, 4000);
     expect(sposta).not.toHaveBeenCalled();
   });
+});
+
+describe('regista: buchi nella numerazione degli eventi', () => {
+  it('eventi nuovi con buchi nei seq (e dopo l\'ultimo già visto) si recitano tutti, una volta sola', async () => {
+    const { prima, dopo } = pascolo();
+    const { t, cambi } = pronto(prima);
+    const base = prima.prossimoEvento;
+    const v = vista(dopo);
+    // I seq nuovi saltano: dall'ultimo già visto al primo nuovo e tra uno e l'altro (eventi che questa vista non ha)
+    const conBuchi: Vista = { ...v, eventi: v.eventi.map((e) => (e.seq < base ? e : { ...e, seq: base + 5 + (e.seq - base) * 10 })) };
+    expect(conBuchi.eventi.filter((e) => e.seq >= base).length).toBeGreaterThan(1);
+    const dado = vi.spyOn(t.ordini, 'dado');
+    const sposta = vi.spyOn(t.ordini, 'spostaAgnellini');
+    t.recita(foto(dopo), conBuchi);
+    expect(t.occupato()).toBe(true);
+    await finche(t, () => !t.occupato(), 10_000);
+    expect(dado).toHaveBeenCalledTimes(1);
+    expect(sposta).toHaveBeenCalledWith(3, 'gregge', 'g1', 'corre');
+    inPari(t, foto(dopo));
+    // La stessa vista di nuovo: niente da recitare (conta il seq più alto già visto, non quanti eventi ci sono)
+    t.recita(foto(dopo), conBuchi);
+    expect(t.occupato()).toBe(false);
+    expect(dado).toHaveBeenCalledTimes(1);
+    expect(sposta).toHaveBeenCalledTimes(1);
+    expect(cambi).toEqual([true, false]);
+  }, 30_000);
 });

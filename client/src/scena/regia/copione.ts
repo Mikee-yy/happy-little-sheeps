@@ -71,6 +71,25 @@ function chiHaDeviato(eventi: Evento[], v: Vista, seq: number, chi: IdGiocatore)
   return null;
 }
 
+/**
+ * Gli agnellini che il furto dichiarato in `eventi[i]` sposta davvero (con i posti pieni sono meno di quelli dichiarati):
+ * gli eventi `agnellini` di causa furto verso il ladro, nello stesso lotto, prima della dichiarazione successiva.
+ * `null` se non ce ne sono (la dichiarazione è ancora in pila, o è stata annullata): vale allora ciò che dichiara il dado.
+ * Di solito è così: il furto si dichiara e si risolve in azioni diverse (in mezzo c'è la finestra delle reazioni), quindi
+ * in lotti diversi, e il fumetto (che va detto alla dichiarazione, prima che si sappia com'è finita) dice il dichiarato.
+ * Il conto vero vale solo quando dichiarazione e spostamenti arrivano insieme: un telefono che recupera più mosse in una
+ * volta, o la scena che riprende dopo essere rimasta indietro.
+ */
+function furtoEffettivo(eventi: Evento[], i: number): number | null {
+  const ladro = (eventi[i] as Extract<Evento, { tipo: 'dichiarazione' }>).autore;
+  let spostati: number | null = null;
+  for (let j = i + 1; j < eventi.length && eventi[j]!.tipo !== 'dichiarazione'; j++) {
+    const f = eventi[j]!;
+    if (f.tipo === 'agnellini' && f.causa === 'furto' && f.a === ladro) spostati = (spostati ?? 0) + f.quanti;
+  }
+  return spostati;
+}
+
 export function copione(eventi: Evento[], vista: Vista): Battuta[] {
   const battute: Battuta[] = [];
 
@@ -122,7 +141,7 @@ export function copione(eventi: Evento[], vista: Vista): Battuta[] {
             dich.effetto === 'pascolo'
               ? T.scena.fumetti.pascolo(dich.quantita)
               : dich.effetto === 'furto'
-                ? T.scena.fumetti.furto(Object.values(dich.daAvversari).reduce((t, q) => t + q, 0) + dich.dalGregge)
+                ? T.scena.fumetti.furto(furtoEffettivo(eventi, i) ?? Object.values(dich.daAvversari).reduce((t, q) => t + q, 0) + dich.dalGregge)
                 : T.scena.fumetti.testata;
           battute.push({ tipo: 'fumetti', testi: { [e.autore]: testo }, attesa: BREVE });
         } else {
@@ -153,7 +172,7 @@ export function copione(eventi: Evento[], vista: Vista): Battuta[] {
             if (f.tipo !== 'agnellini' || f.causa !== 'furto' || f.a !== e.a) break;
             if (f.quanti > 0) spostamenti.push({ da: f.da, a: f.a, quanti: f.quanti });
           }
-          battute.push({ tipo: 'agnellini', spostamenti, ladro: e.a === 'gregge' ? null : e.a, modo: 'corre', attesa: FINE });
+          battute.push({ tipo: 'agnellini', spostamenti, ladro: e.a, modo: 'corre', attesa: FINE });
           i = j - 1;
         } else if (e.causa === 'testata') {
           // Di norma lo racconta la battuta della Testata, che segue subito

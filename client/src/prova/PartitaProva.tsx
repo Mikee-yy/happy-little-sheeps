@@ -1,6 +1,6 @@
 // Partita di prova: tu contro Bea e Leo, con la guida che spiega ogni momento la prima volta che capita.
 // I consigli e il riquadro finale sono il pensiero della propria pecora (la nuvoletta nella scena).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SessioneProva } from '../../../sync/prova';
 import { Partita, useAggiornamenti } from '../partita/Partita';
 import type { Pensiero } from '../scena/scelte/tipi';
@@ -19,6 +19,12 @@ export function PartitaProva({ onHome, onRegole, nascosta }: { onHome: () => voi
     sessione.avvia();
     return () => sessione.chiudi();
   }, [sessione]);
+  // I bot aspettano se la scena recita e anche mentre la prova è nascosta (Regole): una scena nascosta si libera da sola,
+  // ma intanto un consiglio legato a un momento passerebbe senza essere visto
+  const scenaOccupata = useRef(false);
+  useEffect(() => {
+    sessione.pausa(scenaOccupata.current || !!nascosta);
+  }, [sessione, nascosta]);
 
   const umano = sessione.umano;
   const v = sessione.vista(umano);
@@ -50,7 +56,10 @@ export function PartitaProva({ onHome, onRegole, nascosta }: { onHome: () => voi
       senzaAzioni={fine}
       nascosta={nascosta}
       // Mentre la scena recita i bot aspettano: le mosse non si accavallano a quelle ancora in scena
-      onScenaOccupata={(occupata) => sessione.pausa(occupata)}
+      onScenaOccupata={(occupata) => {
+        scenaOccupata.current = occupata;
+        sessione.pausa(occupata || !!nascosta);
+      }}
       onHome={onHome}
       onRegole={onRegole}
       onRigioca={() => {

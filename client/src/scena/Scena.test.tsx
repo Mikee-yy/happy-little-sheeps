@@ -267,6 +267,23 @@ describe('Scena', () => {
     expect(coda.size).toBe(1);
   });
 
+  it('nascosta comanda su sospesa anche quando sospesa c\'era già: nascondere la scena sospesa non la fa ripartire', () => {
+    const coda = rafFinto();
+    const f = foto();
+    const r = render(<Scena foto={f} vista={VISTA} sospesa />);
+    expect(coda.size).toBe(0);
+    r.rerender(<Scena foto={f} vista={VISTA} nascosta sospesa />);
+    expect(spia.sospendi.at(-1)).toBe(true);
+    expect(coda.size).toBe(0);
+    // Mostrata di nuovo ma ancora sospesa: il ciclo resta fermo; tolta la sospensione riparte
+    r.rerender(<Scena foto={f} vista={VISTA} sospesa />);
+    expect(spia.sospendi.at(-1)).toBe(true);
+    expect(coda.size).toBe(0);
+    r.rerender(<Scena foto={f} vista={VISTA} />);
+    expect(spia.sospendi.at(-1)).toBe(false);
+    expect(coda.size).toBe(1);
+  });
+
   it('la scala si rifà quando la radice cambia misura (ResizeObserver) e quando la scena torna visibile', () => {
     rafFinto();
     const osservatori: { cb: () => void; el: Element[]; via: boolean }[] = [];

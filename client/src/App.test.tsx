@@ -426,6 +426,37 @@ describe('Le scelte nella scena', () => {
     expect(document.querySelector('.passaggio')).not.toBeNull();
   });
 
+  it("l'errore del motore si annuncia come avviso (role alert) e sparisce quando cambia la domanda (scelto chi risponde, Annulla)", async () => {
+    await iniziaConNomi();
+    let trovata = false;
+    let partite = 1;
+    for (let i = 0; i < 4000 && !trovata; i++) {
+      const d = domandaOra();
+      if (d && attivo(d, 'nessuno') && d.pecore.length > 0 && !document.querySelector('.passaggio')) {
+        trovata = true;
+        const rifiuta = vi.spyOn(SessioneLocale.prototype, 'invia').mockReturnValue({ ok: false, codice: 'prova', messaggio: 'non adesso' });
+        await premi('nessuno');
+        rifiuta.mockRestore();
+        const errore = document.querySelector('.testata-scena .scritta-scena .errore')!;
+        expect(errore.textContent).toBe(T.errori.azione('non adesso'));
+        expect(errore.getAttribute('role')).toBe('alert');
+        // Si sceglie chi risponde: la domanda è un'altra, l'errore di prima non c'entra più
+        await gesto({ tipo: 'pecora', chi: d.pecore[0]! });
+        await clic(pulsante('Sono '));
+        expect(attivo(domandaOra()!, 'annulla')).toBe(true);
+        expect(document.querySelector('.errore')).toBeNull();
+        await premi('annulla');
+        expect(document.querySelector('.errore')).toBeNull();
+        break;
+      }
+      if (!(await passo())) {
+        if (partite++ >= 5) break;
+        await clic(pulsante('Rigioca'));
+      }
+    }
+    expect(trovata).toBe(true);
+  }, 120_000);
+
   describe('la X della scritta in alto', () => {
     const chiudi = () => document.querySelector<HTMLButtonElement>(`.testata-scena button[aria-label="${T.scena.scelte.chiudiScritta}"]`);
 
@@ -472,6 +503,18 @@ describe('Le scelte nella scena', () => {
       expect(scrittaOra()).toContain(d.scritta);
       expect(chiudi()).not.toBeNull();
     }, 120_000);
+
+    it('chiusa la scritta con la X il fuoco passa al pulsante del menu (non si perde)', async () => {
+      await iniziaConNomi();
+      await premi('continua');
+      await clic(pulsante('Sono '));
+      const x = chiudi()!;
+      x.focus();
+      expect(document.activeElement).toBe(x);
+      await clic(x);
+      expect(document.querySelector('.scritta-scena')).toBeNull();
+      expect(document.activeElement).toBe(document.querySelector('.testata-scena .pulsante-menu'));
+    });
 
     it("un errore del motore riapre la striscia; la X lo toglie di nuovo e l'errore non resta appeso", async () => {
       await iniziaConNomi();
@@ -1063,6 +1106,20 @@ describe('La scena recita: la partita aspetta', () => {
     const alRitorno = ultimoSeq();
     await aspetta(2500);
     expect(ultimoSeq()).toBeGreaterThan(alRitorno);
+  });
+
+  it('nella prova, mentre si leggono le Regole i bot restano fermi; tornando riprendono', async () => {
+    await provaConScenaOccupata();
+    await clic(document.querySelector('.pulsante-menu'));
+    await clic(pulsante('Regole'));
+    scena.occupaDopoRecita = false;
+    const invia = vi.spyOn(SessioneProva.prototype, 'invia');
+    // La scena nascosta si libera da sola, ma i bot non devono muovere lo stesso
+    await aspetta(6000);
+    expect(invia).not.toHaveBeenCalled();
+    await clic(pulsante('Indietro'));
+    await aspetta(2500);
+    expect(invia).toHaveBeenCalled();
   });
 
   it('nella prova, uscendo alla Home mentre la scena recita e rientrando in una prova nuova, i bot muovono', async () => {

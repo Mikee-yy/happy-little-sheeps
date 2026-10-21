@@ -128,11 +128,25 @@ export const piattaforma = {
     }
   },
 
-  /** Aspetta i caratteri del sito, ma al più `ms` (poi prosegue comunque). */
+  /** La pagina non si vede (altra scheda, schermo spento). Senza `document` si suppone visibile. */
+  paginaNascosta(): boolean {
+    return g().document?.hidden === true;
+  },
+
+  /** Aspetta i caratteri del sito, ma al più `ms` (poi prosegue comunque). Il timer non resta in giro se i caratteri arrivano prima. */
   caratteriPronti(ms: number): Promise<void> {
     const f = g().document?.fonts as FontFaceSet | undefined;
     if (!f?.ready) return Promise.resolve();
-    return Promise.race([f.ready.then(() => undefined, () => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
+    return new Promise<void>((fine) => {
+      const timer = setTimeout(fine, ms);
+      f.ready.then(
+        () => undefined,
+        () => undefined,
+      ).then(() => {
+        clearTimeout(timer);
+        fine();
+      });
+    });
   },
 
   /** Larghezza del testo con quel font (es. "700 16px sans-serif"); senza canvas: 0,55 × dimensione × caratteri. */

@@ -261,7 +261,7 @@ Progetto `bozze/scena-gioco-2-progetto.md`, piano `bozze/scena-gioco-2-piano.md`
 - **Verificato nel browser (19 ottobre, 390×844):** partite intere a 2, 3 e 4 e la prova fino alla fine, senza errori in console; zoom sul Lupo di Bea con ritorno a 5,0 s e pannello a 5,1 s; tocco sul prato che libera il pannello in meno di un secondo; Beee-NO!, festa e classifica. "Ultimo round!" non è capitato (partite finite con l'Ovile pieno): è coperto dalle prove automatiche.
 - **Corretto durante le prove nel browser:** dopo un meteo il pannello tornava a quasi 8 s perché la partita aspettava anche l'agnellino di consolazione; ora l'agnellino corre mentre si gioca.
 - **Corretto dopo la revisione finale (19 ottobre):** il Beee-NO! non vola più due volte; all'annullamento esplode la scritta, la carta annullata torna un momento al centro e si scuote, e chi l'aveva giocata trasale. "Ultimo round!" compare all'inizio del vero ultimo round, anche se il mazzo finisce a metà di un round. Durante le animazioni la propria mano scoperta si aggiorna subito: la carta giocata esce dal ventaglio e quelle pescate entrano.
-- **Lasciato com'è (da decidere se serve):** il tempo massimo di 25 s vale per ogni battuta, non per la recita intera; se il browser smette di disegnare senza segnalare la finestra coperta, il pannello può tardare di più.
+- **Tempo massimo per la recita intera (21 ottobre):** se una battuta arriva ai 25 s, le battute dopo non si recitano e la scena va in pari; la partita non aspetta mai più di 25 s.
 
 ## Scena nel gioco, pezzo 3: le scelte dentro la scena (20 ottobre, fatto e revisionato)
 

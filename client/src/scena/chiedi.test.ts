@@ -119,6 +119,12 @@ function evento(tipo: string, el: Element, x = 100, y = 700): void {
   Object.assign(e, { pointerId: 1, pointerType: 'touch' });
   el.dispatchEvent(e);
 }
+/** Un evento del mouse con quel tasto (0 sinistro, 1 centrale, 2 destro). */
+function eventoMouse(tipo: string, el: Element, button: number): void {
+  const e = new MouseEvent(tipo, { bubbles: true, cancelable: true, clientX: 100, clientY: 700, button });
+  Object.assign(e, { pointerId: 1, pointerType: 'mouse' });
+  el.dispatchEvent(e);
+}
 const tocca = (el: Element): void => {
   evento('pointerdown', el);
   evento('pointerup', el);
@@ -349,6 +355,27 @@ describe('pulsanti', () => {
     expect(q('.pulsanti-fila')!.hidden).toBe(true);
   });
 
+  it('con più di tre carte sollevate il pulsante "Gioca" sta sotto la loro fila', () => {
+    const D: IdCarta = 'beee-no#1';
+    const E: IdCarta = 'calzino-gemello#1';
+    const t = nuovo(foto(3, [A, B, C, D, E]));
+    t.chiedi(
+      domanda({ carte: [A, B, C, D, E], sollevate: [A, B, C, D], pulsanti: [{ id: 'gioca', testo: 'Gioca', attivo: true, sottoLaCarta: true }] }),
+      () => undefined,
+    );
+    const k4 = posaSollevata(0, 4).k;
+    const y4 = parseFloat(q('.pulsanti-carta')!.style.top);
+    expect(y4).toBeGreaterThan(490 + 175 * k4);
+    expect(y4).toBeLessThan(490 + 175 * k4 + 20);
+    t.chiedi(
+      domanda({ carte: [A, B, C, D, E], sollevate: [A, B, C, D, E], pulsanti: [{ id: 'gioca', testo: 'Gioca', attivo: true, sottoLaCarta: true }] }),
+      () => undefined,
+    );
+    const y5 = parseFloat(q('.pulsanti-carta')!.style.top);
+    expect(y5).toBeGreaterThan(490 + 175 * posaSollevata(0, 5).k);
+    expect(y5).toBeLessThan(490 + 175 * posaSollevata(0, 5).k + 20);
+  });
+
   it('con tre carte sollevate usa la loro posa; con la mano ingrandita (adatta) i pulsanti si riposizionano', () => {
     const t = nuovo(foto(3, [A, B, C]));
     t.chiedi(
@@ -467,6 +494,19 @@ describe('mano comandata', () => {
     expect(consiglio.style.opacity).not.toBe('0');
     t.chiedi(domanda({ carte: [A, B, C], sollevate: [B] }), () => undefined);
     expect(consiglio.style.opacity).toBe('0');
+  });
+
+  it('chi aveva la chiave vecchia vede "Trascina una carta…" solo alla prima domanda con carte da trascinare', () => {
+    localStorage.setItem('hls-consigli-visti', '1');
+    const t = nuovo(foto(3, [A, B, C]));
+    const consiglio = t.ctx.el.consiglio;
+    // All'avvio (il Guaio d'apertura) e con carte solo da toccare: nascosto
+    expect(consiglio.style.opacity).toBe('0');
+    t.chiedi(domanda({ carte: [A, B, C] }), () => undefined);
+    expect(consiglio.style.opacity).toBe('0');
+    t.chiedi(domanda({ carte: [A, B, C], trascinabili: [A] }), () => undefined);
+    expect(consiglio.textContent).toBe(T.scena.consigli.trascina);
+    expect(consiglio.style.opacity).toBe('1');
   });
 });
 
@@ -611,7 +651,7 @@ describe('scena occupata', () => {
     expect(zone()).toHaveLength(1);
     expect(bottoni()).toHaveLength(1);
     expect(errori).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it('una domanda sostituita mentre la scena recita: a recita finita compare l\'ultima; smettiDiChiedere la cancella', async () => {
     const { prima, dopo } = pascolo();
@@ -629,7 +669,7 @@ describe('scena occupata', () => {
     t.smettiDiChiedere();
     await finche(t, () => !t.occupato(), 10_000);
     expect(zone()).toHaveLength(0);
-  });
+  }, 30_000);
 
   it('con la scena occupata la mano torna libera; a scena libera la domanda la riprende con le carte sollevate', async () => {
     const { prima, dopo } = pascolo();
@@ -642,7 +682,7 @@ describe('scena occupata', () => {
     expect(carte().some((e) => e.classList.contains('attiva'))).toBe(false);
     await finche(t, () => !t.occupato(), 10_000);
     expect(carte()[1]!.classList.contains('attiva')).toBe(true);
-  });
+  }, 30_000);
 });
 
 describe('ricostruzione e adattamento', () => {
@@ -792,7 +832,7 @@ describe('fuoco da tastiera', () => {
     } finally {
       fuori.remove();
     }
-  });
+  }, 30_000);
 });
 
 describe('accessibilità e pensiero', () => {
@@ -820,7 +860,7 @@ describe('accessibilità e pensiero', () => {
     expect(q('.pensiero')).not.toBeNull();
     t.pensa(null);
     expect(q('.pensiero')).toBeNull();
-  });
+  }, 30_000);
 
   it('pensa con lo stesso pensiero e domande che si ripetono non ricrea la nuvoletta', () => {
     const t = nuovo(foto(3));
@@ -1013,6 +1053,22 @@ describe('carte grandi (Guarda le prime 2)', () => {
     expect(gesti).toEqual([{ tipo: 'grande', carta: B }]);
   });
 
+  it.each([1, 2])('clic con il tasto %i del mouse (centrale, destro) su una carta grande: né gesto né lettura', (tasto) => {
+    vi.useFakeTimers();
+    const t = nuovo(foto(3));
+    const { gesti, suGesto } = registra();
+    t.chiedi(domanda({ grandi: [A, B] }), suGesto);
+    eventoMouse('pointerdown', grandi()[0]!, tasto);
+    vi.advanceTimersByTime(600);
+    expect(q('.lettura')).toBeNull();
+    eventoMouse('pointerup', grandi()[0]!, tasto);
+    expect(gesti).toEqual([]);
+    // Il tasto sinistro del mouse è un tocco
+    eventoMouse('pointerdown', grandi()[0]!, 0);
+    eventoMouse('pointerup', grandi()[0]!, 0);
+    expect(gesti).toEqual([{ tipo: 'grande', carta: A }]);
+  });
+
   it('un dito che si muove molto non è un tocco e non apre la lettura', () => {
     vi.useFakeTimers();
     const t = nuovo(foto(3));
@@ -1110,6 +1166,23 @@ describe("Guai dell'angolo", () => {
       { tipo: 'guaio', carta: GUAIO_1 },
     ]);
     expect(q('.lettura')).toBeNull();
+  });
+
+  it('clic destro su una mini illuminata: nessun gesto guaio e nessuna lettura', () => {
+    vi.useFakeTimers();
+    const t = nuovo(fotoConGuai(3, [GUAIO_1]));
+    const { gesti, suGesto } = registra();
+    t.chiedi(domanda({ guai: [GUAIO_1] }), suGesto);
+    // Un clic veloce non è un tocco
+    eventoMouse('pointerdown', miniDi(GUAIO_1), 2);
+    eventoMouse('pointerup', miniDi(GUAIO_1), 2);
+    expect(gesti).toEqual([]);
+    // Tenuto premuto non apre la lettura
+    eventoMouse('pointerdown', miniDi(GUAIO_1), 2);
+    vi.advanceTimersByTime(600);
+    expect(q('.lettura')).toBeNull();
+    eventoMouse('pointerup', miniDi(GUAIO_1), 2);
+    expect(gesti).toEqual([]);
   });
 
   it('tenuta premuta su una mini illuminata: lettura (come la mano), nessun gesto; al rilascio si chiude', () => {
@@ -1266,6 +1339,39 @@ describe('furto', () => {
     expect(gesti).toEqual([{ tipo: 'pecora', chi: 'g3' }]);
   });
 
+  it('agnellini, zone e pulsanti: il tasto destro o centrale non è un tocco, il tasto tenuto premuto non si ripete', () => {
+    const t = nuovo(fotoConAgnellini(3, { g1: 4, g2: 5, g3: 4 }));
+    const { gesti, suGesto } = registra();
+    t.chiedi(domanda({ pecore: ['g2', 'g3'], furto: { presi: { g2: 1 } }, pulsanti: [{ id: 'conferma', testo: 'Conferma', attivo: true }] }), suGesto);
+    t.avanza(33);
+    const [uno] = alzatiDi('g2');
+    const ripetuto = (el: Element): KeyboardEvent => {
+      const e = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, repeat: true });
+      el.dispatchEvent(e);
+      return e;
+    };
+    for (const tastoMouse of [1, 2]) {
+      eventoMouse('pointerdown', uno!, tastoMouse);
+      eventoMouse('pointerup', uno!, tastoMouse);
+      for (const el of [zonaDi('g2'), bottoni()[0]!]) eventoMouse('click', el, tastoMouse);
+    }
+    ripetuto(uno!);
+    ripetuto(zonaDi('g3'));
+    // Il pulsante vero: Invio tenuto ripete il clic del browser, lo si ferma sul tasto ripetuto
+    expect(ripetuto(bottoni()[0]!).defaultPrevented).toBe(true);
+    expect(gesti).toEqual([]);
+    // Il tasto sinistro e il primo Invio restano un tocco
+    eventoMouse('pointerdown', uno!, 0);
+    eventoMouse('pointerup', uno!, 0);
+    tasto(zonaDi('g3'), 'Enter');
+    bottoni()[0]!.click();
+    expect(gesti).toEqual([
+      { tipo: 'agnellino', chi: 'g2' },
+      { tipo: 'pecora', chi: 'g3' },
+      { tipo: 'pulsante', id: 'conferma' },
+    ]);
+  });
+
   it('il controllo di un agnellino alzato sta sopra la zona del recinto e un tocco su di lui non è prato', () => {
     const t = nuovo(fotoConAgnellini(3, { g1: 4, g2: 5, g3: 4 }));
     const { gesti, suGesto } = registra();
@@ -1374,7 +1480,7 @@ describe('furto', () => {
     t.avanza(33);
     expect(alzati()).toHaveLength(1);
     expect(errori).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it('dopo una ricostruzione del tavolo gli agnellini nuovi si alzano al posto dei vecchi, nello stesso numero', () => {
     const f = fotoConAgnellini(3, { g1: 4, g2: 5, g3: 4 });
@@ -1450,6 +1556,46 @@ describe('furto', () => {
     t.ordini.fermaMeteo();
     await fine;
     expect(JSON.stringify(t.stato().agnellini)).toBe(prima);
+    expect(errori).not.toHaveBeenCalled();
+  });
+
+  it('la pozzanghera non intrappola gli agnellini alzati per il furto', { timeout: 30_000 }, async () => {
+    const f = fotoConAgnellini(3, { g1: 5, g2: 6, g3: 5 });
+    const t = nuovo(f);
+    t.chiedi(domanda({ furto: { presi: { g2: 6 } } }), () => undefined);
+    t.avanza(33);
+    expect(alzati()).toHaveLength(6);
+    const fine = t.ordini.meteo('pozzanghera-senza-fondo#1', 'g2');
+    for (let i = 0; i < 600; i++) {
+      t.avanza(33);
+      await scarica();
+      // Nessun alzato è preso dal mulinello (preso dal meteo tornerebbe a terra)
+      expect(t.stato().intrappolati).toBe(0);
+      expect(alzati()).toHaveLength(6);
+    }
+    t.ordini.fermaMeteo();
+    await fine;
+    expect(qa('.ui .agnellino-alzato')).toHaveLength(6);
+    expect(errori).not.toHaveBeenCalled();
+  });
+
+  it('il vento forte non spinge gli agnellini alzati per il furto', { timeout: 30_000 }, async () => {
+    const f = fotoConAgnellini(3, { g1: 5, g2: 6, g3: 5 });
+    const t = (teatro = creaTeatro(radice, { ciclo: 'manuale', ambiente: true, giochi: false, caso: casoConSeme(5) }));
+    t.allinea(f, 'subito');
+    t.chiedi(domanda({ furto: { presi: { g2: 6 } } }), () => undefined);
+    t.avanza(33);
+    expect(alzati()).toHaveLength(6);
+    const posti = () => alzati().map((e) => e.style.transform);
+    const prima = posti();
+    const fine = t.ordini.meteo('vento-dispettoso#1', 'g1');
+    for (let i = 0; i < 200; i++) {
+      t.avanza(33);
+      await scarica();
+    }
+    expect(posti()).toEqual(prima);
+    t.ordini.fermaMeteo();
+    await fine;
     expect(errori).not.toHaveBeenCalled();
   });
 

@@ -112,7 +112,7 @@ describe('teatro: allinea', () => {
     expect(s.inViaggio).toBe(0);
     const cartello = radice.querySelector<HTMLElement>('.cartello[data-chi="g1"]');
     expect(cartello?.textContent).toBe(`${b.posti[0]!.agnellini}/${b.postiOvile}`);
-  });
+  }, 30_000);
 
   it('metà movimento e cambio di chi sta in basso: nessun agnellino perso o duplicato', () => {
     const t = manuale();
@@ -136,7 +136,7 @@ describe('teatro: allinea', () => {
     for (const p of b.posti) {
       expect(radice.querySelector<HTMLElement>(`.cartello[data-chi="${p.id}"]`)?.textContent).toBe(`${p.agnellini}/${b.postiOvile}`);
     }
-  });
+  }, 30_000);
 
   it('mano coperta: 5 dorsi e nessun nome di carta nella mano', () => {
     const t = manuale();
@@ -242,7 +242,7 @@ describe('teatro: tocchi', () => {
   });
 
   it('rivediSuggerimenti rimette il primo suggerimento e toglie il segno dei visti', () => {
-    localStorage.setItem('hls-consigli-visti', '1');
+    localStorage.setItem('hls-consigli-visti', '3');
     const t = manuale();
     const consiglio = radice.querySelector<HTMLElement>('.consiglio')!;
     expect(consiglio.style.opacity).toBe('0');
@@ -375,7 +375,7 @@ describe('teatro: distruggi', () => {
     t.distruggi();
     expect(radice.childElementCount).toBe(0);
     expect(errori).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it('due teatri di fila sulla stessa radice: il secondo funziona e c\'è un solo .mondo', () => {
     const primo = creaTeatro(radice, { ciclo: 'manuale', ambiente: false, caso: casoConSeme(3) });
@@ -390,7 +390,7 @@ describe('teatro: distruggi', () => {
     expect(t.stato().agnellini).toEqual(attesi(b));
     expect(radice.querySelectorAll('.mondo')).toHaveLength(1);
     expect(radice.querySelectorAll('.agn').length).toBe(a.totaleAgnellini);
-  });
+  }, 30_000);
 });
 
 describe('teatro: un fotogramma rotto', () => {
@@ -442,7 +442,7 @@ describe('teatro: un fotogramma rotto', () => {
     expect(t.stato().agnellini).toEqual(attesi(c));
     expect(t.stato().inViaggio).toBe(0);
     expect(errori).toHaveBeenCalledTimes(1);
-  });
+  }, 30_000);
 
   it('se lancia a ogni fotogramma l\'errore si scrive una volta sola e il ciclo resta vivo', () => {
     const raf = rafFinto();

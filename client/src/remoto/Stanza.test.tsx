@@ -20,6 +20,7 @@ import type { TrasportoMemoria } from '../../../sync/trasporto-memoria';
 import { App } from '../App';
 import { Sprite } from '../grafica';
 import { caricaScena, scenaRichiesta, usaCaricatoreDiProva } from '../partita/caricaScena';
+import { piattaforma } from '../scena/piattaforma';
 import { durataRecita } from '../scena/regia/durate';
 import type { Fotografia } from '../scena/fotografia';
 import type { Domanda, Gesto, IdPulsante } from '../scena/scelte/tipi';
@@ -67,6 +68,8 @@ const scena = vi.hoisted(() => {
     chieste: [] as Chiesta[],
     /** Controllo fatto a ogni `chiedi`, nel momento stesso. */
     alChiedere: null as ((c: Chiesta) => void) | null,
+    /** Controllo fatto a ogni fotografia data a un teatro (recita o allinea), nel momento stesso. */
+    allaFoto: null as ((telefono: string | null, foto: Fotografia) => void) | null,
   };
 });
 const telefonoDi = (el: HTMLElement) => el.closest('[data-telefono]')?.getAttribute('data-telefono') ?? null;
@@ -81,6 +84,7 @@ vi.mock('../scena/teatro', () => ({
     const registra = (foto: Fotografia) => {
       t.foto = foto;
       scena.foto.push({ telefono: telefonoDi(radice), foto });
+      scena.allaFoto?.(telefonoDi(radice), foto);
     };
     return {
       allinea(foto: Fotografia) {
@@ -153,7 +157,9 @@ beforeEach(() => {
   scena.foto.length = 0;
   scena.chieste.length = 0;
   scena.alChiedere = null;
+  scena.allaFoto = null;
   scena.occupaDopoRecita = false;
+  violazioni.length = 0;
   rete.trasporto = null;
 });
 afterEach(() => {
@@ -184,6 +190,8 @@ interface Telefono {
   id: IdGiocatore;
   sessione: SessioneHost | SessioneOspite;
   radice: HTMLElement;
+  /** Smonta la pagina di questo telefono (per simulare una ricarica). */
+  smonta?: () => void;
 }
 
 interface Tavolata {
@@ -241,7 +249,8 @@ function montaTelefoni(tv: Tavolata): Telefono[] {
     t.radice.setAttribute('data-telefono', t.id);
     document.body.appendChild(t.radice);
     const [ruolo, nome, gettone] = ([['host', 'Ada', 'a'], ['ospite', 'Bea', 'b'], ['ospite', 'Cleo', 'c']] as const)[i]!;
-    render(<Stanza sessione={t.sessione} iscrizione={isc(ruolo, nome, gettone)} onEsci={() => {}} onRegole={() => {}} />, { container: t.radice });
+    const { unmount } = render(<Stanza sessione={t.sessione} iscrizione={isc(ruolo, nome, gettone)} onEsci={() => {}} onRegole={() => {}} />, { container: t.radice });
+    t.smonta = unmount;
   }
   return telefoni;
 }
@@ -324,9 +333,23 @@ async function passoTelefono(tv: Tavolata, t: Telefono): Promise<boolean> {
   return true;
 }
 
+/**
+ * Violazioni trovate dai controlli qui sotto. I controlli girano dentro il teatro finto, cioè negli effetti della scena:
+ * un `expect` che lancia lì finirebbe nel confine della scena (il telefono passa alla riserva) senza far fallire la
+ * prova. Per questo si annotano e si guarda alla fine che non ce ne siano.
+ */
+const violazioni: string[] = [];
+function annota(controllo: () => void): void {
+  try {
+    controllo();
+  } catch (e) {
+    violazioni.push(e instanceof Error ? e.message : String(e));
+  }
+}
+
 /** Punto di revisione 1: a ogni domanda, sul telefono solo la propria mano, mai il cassetto, mai a scena occupata. */
 function controllaOgniDomanda(tv: Tavolata, telefoni: Telefono[]) {
-  scena.alChiedere = (c) => {
+  scena.alChiedere = (c) => annota(() => {
     const t = telefoni.find((x) => x.id === c.telefono);
     expect(t, 'ogni teatro sta in un telefono').toBeDefined();
     expect(c.cassetto, c.d.scritta).toBe(false);
@@ -338,7 +361,23 @@ function controllaOgniDomanda(tv: Tavolata, telefoni: Telefono[]) {
     // Nessuna carta della mano di un altro giocatore, né nella fotografia né tra le carte toccabili
     const altrui = new Set(telefoni.filter((x) => x.id !== t!.id).flatMap((x) => manoDi(tv, x.id)));
     for (const carta of [...(c.foto?.mano ?? []), ...c.d.carte, ...c.d.sollevate]) expect(altrui.has(carta), carta).toBe(false);
-  };
+  });
+}
+
+/**
+ * Anti-sbirciata su OGNI fotografia data a un teatro: in basso c'è il giocatore del telefono, e la mano è esattamente la sua
+ * (letta dalla sua vista nel momento stesso), mai una carta di un altro.
+ */
+function controllaOgniFoto(tv: Tavolata, telefoni: Telefono[]) {
+  scena.allaFoto = (telefono, foto) => annota(() => {
+    const t = telefoni.find((x) => x.id === telefono);
+    expect(t, 'ogni teatro sta in un telefono').toBeDefined();
+    expect(foto.posti[0]?.id).toBe(t!.id);
+    const mia = t!.sessione.vista(t!.id).giocatori.find((g) => g.id === t!.id)?.mano ?? [];
+    expect([...(foto.mano ?? [])].sort()).toEqual([...mia].sort());
+    const altrui = new Set(telefoni.filter((x) => x.id !== t!.id).flatMap((x) => manoDi(tv, x.id)));
+    for (const carta of foto.mano ?? []) expect(altrui.has(carta), carta).toBe(false);
+  });
 }
 
 /** Stato costruito: Ada (g1, host) lancia il dado; Bea ha un Beee-NO!; con `cleoNo` anche Cleo. */
@@ -445,6 +484,7 @@ describe('Tre telefoni nella scena', () => {
     expect(pulsanteIn(telefoni[1]!.radice, 'Inizia')).toBeUndefined();
 
     controllaOgniDomanda(tv, telefoni);
+    controllaOgniFoto(tv, telefoni);
     let spettacolo = false;
     const osserva = new MutationObserver(() => {
       if (document.querySelector('.spettacolo')) spettacolo = true;
@@ -489,6 +529,66 @@ describe('Tre telefoni nella scena', () => {
       expect(f.foto.posti[0]?.id).toBe(f.telefono);
       expect(f.foto.mano).not.toBeNull();
     }
+    expect(violazioni).toEqual([]);
+  }, 180_000);
+});
+
+describe('Un ospite che ricarica la pagina', () => {
+  it('dopo il rientro ogni fotografia del suo telefono ha solo la sua mano, e gli altri telefoni non vedono mai la sua', async () => {
+    const tv = await tavolata();
+    const telefoni = montaTelefoni(tv);
+    await aspetta();
+    controllaOgniDomanda(tv, telefoni);
+    controllaOgniFoto(tv, telefoni);
+    scena.occupaDopoRecita = true;
+    await clic(pulsanteIn(telefoni[0]!.radice, 'Inizia la partita'));
+    await aspetta();
+    const gioca = async (giri: number) => {
+      for (let giro = 1; giro <= giri && !tv.host.vista(null).esito; giro++) {
+        await act(async () => scena.libera());
+        let mosso = false;
+        for (const t of [...telefoni.slice(giro % 3), ...telefoni.slice(0, giro % 3)]) {
+          // La scena resta su in ogni telefono: niente riserva, niente pannelli
+          expect(t.radice.querySelector('.scena-non-caricata'), t.id).toBeNull();
+          expect(t.radice.querySelector('.area-azione'), t.id).toBeNull();
+          if (await passoTelefono(tv, t)) {
+            mosso = true;
+            await aspetta();
+            break;
+          }
+        }
+        if (!mosso) await aspetta(7000);
+      }
+    };
+    await gioca(40);
+
+    // Bea ricarica: la vecchia pagina sparisce, quella nuova rientra con la stessa identità e ritrova la sua mano
+    const vecchia = telefoni[1]!;
+    const fotoPrima = scena.foto.length;
+    vecchia.smonta!();
+    tv.bea.chiudi();
+    await aspetta();
+    const iscrizione: Iscrizione = { codice: tv.host.codice, ruolo: 'ospite', idGiocatore: 'g2', nome: 'Bea', pecora: 'brontolana', gettone: 'b' };
+    const nuova = await SessioneOspite.rientra(tv.rete.dispositivo('u2'), iscrizione);
+    await aspetta();
+    // La pagina nuova ha un contenitore nuovo
+    vecchia.radice.remove();
+    const radice = document.createElement('div');
+    radice.setAttribute('data-telefono', 'g2');
+    document.body.appendChild(radice);
+    const { unmount } = render(<Stanza sessione={nuova} iscrizione={iscrizione} onEsci={() => {}} onRegole={() => {}} />, { container: radice });
+    telefoni[1] = { id: 'g2', sessione: nuova, radice, smonta: unmount };
+    await aspetta();
+    expect(scena.foto.slice(fotoPrima).some((f) => f.telefono === 'g2')).toBe(true);
+    expect(manoDi(tv, 'g2').length).toBeGreaterThan(0);
+
+    // Si continua a giocare con il telefono rientrato: ogni fotografia e ogni domanda restano controllate
+    const prima = scena.foto.length;
+    await gioca(40);
+    expect(scena.foto.length).toBeGreaterThan(prima);
+    for (const f of scena.foto.slice(fotoPrima)) expect(f.foto.posti[0]?.id).toBe(f.telefono);
+    expect(scena.foto.slice(fotoPrima).filter((f) => f.telefono === 'g2').every((f) => f.foto.mano !== null)).toBe(true);
+    expect(violazioni).toEqual([]);
   }, 180_000);
 });
 
@@ -685,6 +785,51 @@ describe('Rifiuto di chi ospita e mossa in attesa', () => {
     await gesto(bea, { tipo: 'carta', carta: seconda! });
     await premi(bea, 'gioca');
     expect(mandate).toHaveBeenCalledTimes(2);
+  });
+});
+
+/** Stato costruito: Belati di punteggio aperti; solo Ada ha un Belato, Bea e Cleo possono solo passare. */
+function statoAlPunteggioSoloPassa(): Stato {
+  const s = prosegui(
+    scenario({
+      giocatori: [
+        { id: 'g1', nome: 'Ada', pecora: 'ricciolo' },
+        { id: 'g2', nome: 'Bea', pecora: 'brontolana' },
+        { id: 'g3', nome: 'Cleo', pecora: 'sospirella' },
+      ],
+      guaio: 'tosatura-a-sorpresa',
+      mani: { g1: ['carriola', 'belato-di-gruppo'], g2: ['balla-di-fieno'], g3: ['coperta-di-lana'] },
+    }),
+  );
+  return avanza(scegli(s, { g1: ['carriola'], g2: ['balla-di-fieno'], g3: ['coperta-di-lana'] }));
+}
+
+describe('"Passa sempre se non ho niente da giocare"', () => {
+  async function beaSoloPassa() {
+    localStorage.setItem('hls-passa-da-solo', '1');
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    await conStato(tv, statoAlPunteggioSoloPassa());
+    const telefoni = montaTelefoni(tv);
+    await aspetta(50);
+    return { tv, bea: telefoni[1]! };
+  }
+
+  it('il passa automatico parte da solo dopo 400 ms (una sola mossa)', async () => {
+    const { tv } = await beaSoloPassa();
+    const mandate = vi.spyOn(tv.tBea, 'aggiungi').mockImplementation(() => new Promise(() => {}));
+    await aspetta(1000);
+    expect(mandate).toHaveBeenCalledTimes(1);
+  });
+
+  it('un tocco manuale prima dei 400 ms: il passa automatico non parte una seconda volta', async () => {
+    const { tv, bea } = await beaSoloPassa();
+    const mandate = vi.spyOn(tv.tBea, 'aggiungi').mockImplementation(() => new Promise(() => {}));
+    await premi(bea, 'passo');
+    expect(mandate).toHaveBeenCalledTimes(1);
+    await aspetta(1000);
+    expect(mandate).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1014,6 +1159,27 @@ describe('Vista proiettore', () => {
       expect(scena.vivi.size).toBe(0);
       expect(radice.querySelector('.tavolo')).not.toBeNull();
       expect(radice.querySelector('.intestazione')).not.toBeNull();
+    } finally {
+      usaCaricatoreDiProva(null);
+      await caricaScena();
+    }
+  });
+
+  it('se la scena non si carica per la rete il proiettore riprova da solo (il "Riprova" resta sotto il tavolo di prima)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Senza rete: dopo un aggiornamento del sito (con la rete) non si riprova da soli, vedi ScenaCaricata.test.tsx
+    vi.spyOn(piattaforma, 'online').mockReturnValue(false);
+    let tentativi = 0;
+    usaCaricatoreDiProva(() => (tentativi++ === 0 ? Promise.reject(new Error('Failed to fetch dynamically imported module')) : import('../scena/Scena')));
+    try {
+      const { radice } = await proiettore();
+      expect(scena.vivi.size).toBe(0);
+      expect(radice.querySelector('.tavolo')).not.toBeNull();
+      await aspetta(6000);
+      expect(tentativi).toBeGreaterThan(1);
+      expect(scena.vivi.size).toBe(1);
+      // La scena è arrivata: il tavolo di prima se ne va
+      expect(radice.querySelector('.tavolo')).toBeNull();
     } finally {
       usaCaricatoreDiProva(null);
       await caricaScena();

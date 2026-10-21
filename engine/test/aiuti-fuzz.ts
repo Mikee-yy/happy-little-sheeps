@@ -1,4 +1,5 @@
-// Partite casuali complete guidate da azioniPossibili: invarianti, terminazione, determinismo, purezza.
+// Aiuti comuni delle partite casuali complete (fuzz): invarianti, controlli di fine partita e la prova per numero di giocatori,
+// che sta in file separati (uno per numero di giocatori) così i tre pezzi lunghi girano su fili diversi.
 import { describe, expect, it } from 'vitest';
 import type { Azione, IdCarta, IdPecora, ModoVittoria, Stato } from '../src';
 import {
@@ -178,35 +179,45 @@ function controllaFine(s: Stato): void {
   expect(() => applica(s, { tipo: 'prosegui' })).toThrow();
 }
 
-describe.each([2, 3, 4])('partite casuali a %i giocatori', (numero) => {
-  it(
-    `${PARTITE_PER_NUMERO} partite terminano con esito valido e invarianti rispettati`,
-    () => {
-      const modi: Record<ModoVittoria, number> = { ovile_pieno: 0, ultima_pecora: 0, mazzo_finito: 0 };
-      for (let k = 0; k < PARTITE_PER_NUMERO; k++) {
-        const seme = 1000 * numero + k * 7 + 1;
-        // Le prime partite provano ogni azione elencata a ogni passo; le altre a campione.
-        const completa = k < 10;
-        const { stato } = giocaPartita(numero, seme, { verificaTutteOgni: completa ? 1 : 4, campione: completa ? 1 : 40 });
-        controllaFine(stato);
-        modi[stato.esito!.modo] += 1;
-      }
-      expect(modi.ovile_pieno + modi.ultima_pecora + modi.mazzo_finito).toBe(PARTITE_PER_NUMERO);
-    },
-    TEMPO_MASSIMO_MS,
-  );
+/**
+ * Le prove di partite casuali per un numero di giocatori (stesse prove di quando erano un unico `describe.each`).
+ * `da` e `fino` (escluso) scelgono le partite del primo test: i file più lunghi le dividono in due intervalli;
+ * la prova di determinismo gira solo con `conDeterminismo`.
+ */
+export function provaFuzzPerGiocatori(numero: 2 | 3 | 4, da = 0, fino = PARTITE_PER_NUMERO, conDeterminismo = true): void {
+  const suffisso = da === 0 && fino === PARTITE_PER_NUMERO ? '' : ` (semi ${da}–${fino - 1})`;
+  describe(`partite casuali a ${numero} giocatori`, () => {
+    it(
+      `${PARTITE_PER_NUMERO} partite terminano con esito valido e invarianti rispettati${suffisso}`,
+      () => {
+        const modi: Record<ModoVittoria, number> = { ovile_pieno: 0, ultima_pecora: 0, mazzo_finito: 0 };
+        for (let k = da; k < fino; k++) {
+          const seme = 1000 * numero + k * 7 + 1;
+          // Le prime partite provano ogni azione elencata a ogni passo; le altre a campione.
+          const completa = k < 10;
+          const { stato } = giocaPartita(numero, seme, { verificaTutteOgni: completa ? 1 : 4, campione: completa ? 1 : 40 });
+          controllaFine(stato);
+          modi[stato.esito!.modo] += 1;
+        }
+        expect(modi.ovile_pieno + modi.ultima_pecora + modi.mazzo_finito).toBe(fino - da);
+      },
+      TEMPO_MASSIMO_MS,
+    );
 
-  it(
-    'stesso seme e stesse scelte danno lo stesso stato finale',
-    () => {
-      for (let k = 0; k < 4; k++) {
-        const seme = 77_000 + numero * 13 + k;
-        const a = giocaPartita(numero, seme, { verificaTutteOgni: 0, campione: 1_000_000 });
-        const b = giocaPartita(numero, seme, { verificaTutteOgni: 0, campione: 1_000_000 });
-        expect(b.passi).toBe(a.passi);
-        expect(JSON.stringify(b.stato)).toBe(JSON.stringify(a.stato));
-      }
-    },
-    TEMPO_MASSIMO_MS,
-  );
-});
+    if (conDeterminismo) {
+      it(
+        'stesso seme e stesse scelte danno lo stesso stato finale',
+        () => {
+          for (let k = 0; k < 4; k++) {
+            const seme = 77_000 + numero * 13 + k;
+            const a = giocaPartita(numero, seme, { verificaTutteOgni: 0, campione: 1_000_000 });
+            const b = giocaPartita(numero, seme, { verificaTutteOgni: 0, campione: 1_000_000 });
+            expect(b.passi).toBe(a.passi);
+            expect(JSON.stringify(b.stato)).toBe(JSON.stringify(a.stato));
+          }
+        },
+        TEMPO_MASSIMO_MS,
+      );
+    }
+  });
+}

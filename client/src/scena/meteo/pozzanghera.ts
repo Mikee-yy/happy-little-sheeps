@@ -106,7 +106,8 @@ export const pozzanghera: EffettoGuaio = async (m, chi, s) => {
   };
   const trappola = m.ogni(() => {
     for (const g of s.palco.agnelli()) {
-      if (g.intrappolato || g.stato === 'vola') continue;
+      // Chi è alzato per il furto resta dov'è: non è un candidato
+      if (g.intrappolato || g.sollevato || g.stato === 'vola') continue;
       const dx = (g.x - X) / (30 * sc), dy = (g.y - Y) / (10 * sc);
       if (dx * dx + dy * dy < 1) intrappola(g);
     }

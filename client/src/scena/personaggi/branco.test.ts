@@ -170,6 +170,8 @@ describe('Branco', () => {
             n,
             politica,
             seme,
+            // Qui contano solo gli agnellini: niente copia dell'elenco degli eventi a ogni mossa
+            senzaEventi: true,
             inizio(v) {
               branco.costruisci(creaAree(disp, v.giocatori.map((g) => g.id), v.config.postiOvile), obiettivo(v));
             },

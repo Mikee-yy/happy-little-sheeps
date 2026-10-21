@@ -78,7 +78,7 @@ function automatica(m: Momento, chiave: string, fase: NomeFase): Domanda {
 function chiRisponde(m: Momento, chiave: string, contesto: 'reazione' | 'punteggio', candidati: IdGiocatore[]): Domanda {
   const cima = m.vista.pila[m.vista.pila.length - 1];
   const domanda = contesto === 'reazione' ? T.scena.scelte.chiRisponde : T.scena.scelte.chiPunteggio;
-  const d = vuota(chiave, cima ? `${descriviVoce(m.vista, cima)} · ${domanda}` : domanda);
+  const d = vuota(chiave, cima ? T.scena.scelte.conDettaglio(descriviVoce(m.vista, cima), domanda) : domanda);
   d.pecore = [...candidati];
   d.pulsanti = [{ id: 'nessuno', testo: T.azioni.nessuno, attivo: m.sistema.some((a) => a.tipo === 'scadenza') }];
   return d;
@@ -95,16 +95,25 @@ interface DatiFurto {
   massimo: (id: IdGiocatore) => number;
 }
 
+/** Calcolati una volta per elenco di mosse: la domanda e il gesto (che la ricalcola) leggono lo stesso risultato. */
+const furtiCalcolati = new WeakMap<Azione[], DatiFurto | null>();
+
+/** I dati del furto del momento, o null se non c'è un furto da dividere. */
 function datiFurto(m: Momento): DatiFurto | null {
+  const noto = furtiCalcolati.get(m.azioni);
+  if (noto !== undefined) return noto;
   const furti = filtra(m.azioni, 'dichiaraDado').filter((a) => a.furto);
-  if (furti.length === 0) return null;
-  const avversari = [...new Set(furti.flatMap((a) => Object.keys(a.furto ?? {})))];
-  return {
-    furti,
-    avversari,
-    totale: somma(furti[0]!.furto!),
-    massimo: (id) => Math.max(...furti.map((a) => a.furto![id] ?? 0)),
-  };
+  let dati: DatiFurto | null = null;
+  if (furti.length > 0) {
+    dati = {
+      furti,
+      avversari: [...new Set(furti.flatMap((a) => Object.keys(a.furto ?? {})))],
+      totale: somma(furti[0]!.furto!),
+      massimo: (id) => Math.max(...furti.map((a) => a.furto![id] ?? 0)),
+    };
+  }
+  furtiCalcolati.set(m.azioni, dati);
+  return dati;
 }
 
 /** La mossa permessa che divide il furto esattamente come i presi, se c'è. */
@@ -156,9 +165,12 @@ function lancio(m: Momento, chiave: string, giocatore: IdGiocatore): Domanda {
   return d;
 }
 
-function testataBersaglio(m: Momento, chiave: string): Domanda {
+/** I bersagli permessi della Testata; senza nessuno (non tocca a chi guarda) non c'è niente da chiedere: null. */
+function testataBersaglio(m: Momento, chiave: string): Domanda | null {
+  const bersagli = [...new Set(filtra(m.azioni, 'dichiaraDado').flatMap((a) => (a.bersaglio !== undefined ? [a.bersaglio] : [])))];
+  if (bersagli.length === 0) return null;
   const d = vuota(chiave, T.dado.testataTitolo);
-  d.pecore = [...new Set(filtra(m.azioni, 'dichiaraDado').flatMap((a) => (a.bersaglio !== undefined ? [a.bersaglio] : [])))];
+  d.pecore = bersagli;
   return d;
 }
 

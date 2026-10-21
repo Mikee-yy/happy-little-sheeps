@@ -1,6 +1,6 @@
 # Happy Little Sheeps — cose da fare
 
-Aggiornato il 20 ottobre 2026 (scena 2,5D in tutto il gioco: pezzi 1–4 e rifiniture nel commit bf3ffb0, inviato a GitHub il 20 ottobre). Il contesto di ogni voce è in `bozze/passaggio-di-consegne.md`.
+Aggiornato il 21 ottobre 2026 (piccole cose rimandate fatte e pubblicate; scena 2,5D in tutto il gioco: pezzi 1–4 e rifiniture nel commit bf3ffb0, inviato a GitHub il 20 ottobre). Il contesto di ogni voce è in `bozze/passaggio-di-consegne.md`.
 
 Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
 
@@ -37,8 +37,8 @@ Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
 ### Problemi minori della revisione della partita di prova (14 ottobre)
 
 - [x] Il consiglio 3 sul tratto della pecora, se chiuso solo nel round dopo, può dire "+1" con un Guaio in cui Nerina ha −1. Correggerlo vuol dire cambiare un testo approvato: decide l'utente. *Applicato il 14 ottobre: "Nerina se la cava con i Predatori: con loro ha +1. Con il Meteo invece ha −1."*
-- [ ] Protezione in più: se una mossa di un bot non avesse azioni o fallisse, ripianificare la mossa (mai successo in 300 partite simulate).
-- [ ] Mentre si leggono le Regole a metà prova i bot continuano finché non tocca a te, e un consiglio legato a un momento si può perdere.
+- [x] Protezione in più: se una mossa di un bot non avesse azioni o fallisse, ripianificare la mossa (mai successo in 300 partite simulate). *Fatto il 21 ottobre.*
+- [x] Mentre si leggono le Regole a metà prova i bot continuano finché non tocca a te, e un consiglio legato a un momento si può perdere. *Fatto il 21 ottobre: con le Regole aperte i bot aspettano.*
 
 ## 2. Decisioni che spettano all'utente
 
@@ -75,6 +75,7 @@ Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
   - un telefono che torna da un'altra scheda deve saltare allo stato attuale invece di recitare tutto;
   - i recinti degli avversari, con 3 o 4 giocatori, sono stretti e affollati: le proporzioni vanno riviste.
   - *Discussa il 13 ottobre e per ora scartata dall'utente:* una versione ridotta (solo un dispositivo, scena come tavolo, pannelli di oggi sopra, a un indirizzo separato) da fare in 3–5 ore. Si procede invece nell'ordine normale della lista.
+- [ ] **Eliminazione con 4 Guai invece di 3** (richiesta dell'utente, 20 ottobre). Oggi in `engine/data/setup.json` (`eliminazione.normale`) si esce con 3 Guai uguali o 3 di tipi diversi; con 2 giocatori con 4 uguali o 2 per tipo. Da decidere con l'utente: se passano a 4 tutte e due le regole e se cambia anche la partita a 2. Poi: rapporto del simulatore per vedere l'effetto su durata e vincitori, avvisi "all'eliminazione" e testi delle Regole, prove del motore e della partita di prova.
 - [ ] **Testata a fionda nella scena** (idea dell'utente, 19 ottobre): tirare indietro il Montone sul prato e lanciarlo verso il recinto avversario, al posto del riquadro di mira. Da valutare dopo la pubblicazione.
 - [ ] **5–6 giocatori:** limiti del motore, numeri bilanciati col simulatore, 2 pecore nuove, disposizioni sul telefono.
 - [ ] **Orizzontale** (PC e telefono girato): una nuova tabella `DISPOSIZIONI.orizzontale`. Se servirà, anche una disposizione per schermi molto bassi.
@@ -91,9 +92,25 @@ Spunta le voci man mano (`- [x]`). Le voci nuove vanno nella sezione giusta.
 - [x] Audio: fermare davvero il suono di fondo uscendo dalla partita e mentre la prova è nascosta (oggi si abbassa solo il volume).
 - [x] Facoltativo: fermare l'animazione della scena sotto la schermata "Passa il dispositivo" (batteria).
 - [x] Rendere più robusta la regola CSS che separa la mano dei pannelli da quella della scena (selettori `:not()` complessi, problemi su browser molto vecchi).
-- [ ] Durata delle prove: `meteo.test.ts` dura circa 100 s; la suite intera circa 3 minuti (oltre 5 con il PC carico, e allora una prova di `meteo.test.ts` può superare il limite di 5 s).
+- [x] Durata delle prove: `meteo.test.ts` dura circa 100 s; la suite intera circa 3 minuti (oltre 5 con il PC carico, e allora una prova di `meteo.test.ts` può superare il limite di 5 s). *21 ottobre: prove del meteo e del conto divise in più file, prove lente con 30 s di tempo massimo; la suite passa da circa 258 a 200 secondi.*
+- [x] Per scendere ancora: dividere in più file le due prove più lunghe del motore (`revisione-segreti-purezza.test.ts`, circa 128 s, e `fuzz.test.ts`, circa 98 s) e le prove del meteo più lente (`meteo-guai-3/4`). Solo organizzazione delle prove: il motore non cambia. *Via libera dell'utente il 21 ottobre.*
 - [x] Vedere a occhio "Ultimo round!" in una partita vera. *Visto il 20 ottobre nella partita di prova.*
-- [ ] Decidere se il tempo massimo di 25 s deve valere per la recita intera invece che per ogni battuta (revisione finale del pezzo 2, 19 ottobre; raro).
+- [x] Decidere se il tempo massimo di 25 s deve valere per la recita intera invece che per ogni battuta (revisione finale del pezzo 2, 19 ottobre; raro). *21 ottobre: vale per la recita intera. Se una battuta arriva al tempo massimo (la scena non disegna), le battute dopo non si recitano e la scena va in pari: la partita non aspetta mai più di 25 s.*
+
+### Piccole cose rimandate (fatte il 21 ottobre, registro `.superpowers/sdd/piccole-cose/`)
+
+Fatte: pausa dei bot con le Regole aperte, riserva per le mosse dei bot, "passa" da solo che non si manda due volte, proiettore che riprova da solo ogni 5 s, conto alla rovescia che non blocca i tocchi, errore che sparisce alla domanda successiva, fumetto del furto con gli agnellini spostati davvero, tastiera (tasto tenuto premuto, Tab, ritorno al menu dopo la X), tasto destro e centrale ignorati sulla mano, agnellini sollevati esclusi da pozzanghera e vento, terzo consiglio della scena anche a chi aveva visto i primi due, pulizie del codice, prove più veloci e nuove prove. Dalla revisione finale: nelle stanze un aggiornamento qualsiasi (un telefono che si ricollega) non fa più slittare l'avanzamento automatico delle fasi né la mossa dei bot; i controlli "nessuno vede le carte degli altri" nelle prove delle stanze non possono più passare inosservati.
+
+Piccoli difetti della revisione finale, corretti anche loro il 21 ottobre (il fumetto del furto è rimasto com'è: usare il numero vero vorrebbe dire un secondo fumetto corretto dopo, cioè un cambio di progetto):
+
+- [x] L'errore del motore resta visibile per un fotogramma alla domanda successiva.
+- [x] Il terzo consiglio ("Trascina una carta…") può comparire durante il Guaio iniziale, quando non si può ancora trascinare: meglio mostrarlo alla prima domanda con carte da trascinare.
+- [x] Nella partita di prova, la mossa di riserva di un bot non controlla che sia proprio del bot.
+- [x] Sulle pecore, sugli agnellini e sui pulsanti della scena il tasto destro o centrale conta come tocco, e tenere premuto Invio sulla pecora nel furto solleva più agnellini.
+- [x] Il proiettore riprova ogni 5 s per sempre, anche dopo un aggiornamento del sito; ogni tentativo ripete l'avviso ai lettori di schermo.
+- [x] Il fumetto del furto quasi sempre usa il numero dichiarato (la dichiarazione e lo spostamento arrivano in momenti diversi): nessun peggioramento.
+- [x] Testo `T.azioni.fatto` non più usato.
+- [x] Prove: nessuna prova sui buchi nella numerazione degli eventi; le partite delle prove delle scelte riusano lo stesso momento tra un gesto e l'altro; piccole pulizie di forma.
 
 ## 4. Rischi da verificare
 

@@ -88,6 +88,34 @@ describe('Mano', () => {
     expect(mano.attiva()).toBeNull();
   });
 
+  it('pointercancel dopo la tenuta chiude la lettura e non lascia la carta alzata', () => {
+    mano.mostra(['sasso-comodo#1', 'beee-no#1'], 0);
+    const c = carte()[1]!;
+    evento('pointerdown', c, 100, 700);
+    vi.advanceTimersByTime(500);
+    expect(lettura.aperta()).toBe(true);
+    evento('pointercancel', c, 100, 700);
+    expect(lettura.aperta()).toBe(false);
+    expect(mano.attiva()).toBeNull();
+    // Il gesto è finito: né un rilascio dopo né il tempo che passa riaprono o sollevano niente
+    evento('pointerup', c, 100, 700);
+    vi.advanceTimersByTime(1000);
+    expect(lettura.aperta()).toBe(false);
+    expect(mano.attiva()).toBeNull();
+  });
+
+  it('pointercancel prima dello scadere della tenuta: la lettura non si apre più e la carta non si solleva', () => {
+    mano.mostra(['sasso-comodo#1', 'beee-no#1'], 0);
+    const c = carte()[1]!;
+    evento('pointerdown', c, 100, 700);
+    vi.advanceTimersByTime(200);
+    evento('pointercancel', c, 100, 700);
+    vi.advanceTimersByTime(1000);
+    expect(lettura.aperta()).toBe(false);
+    expect(mano.attiva()).toBeNull();
+    expect(c.classList.contains('attiva')).toBe(false);
+  });
+
   it('un trascinamento di 60 px seguito dal rilascio lascia la mano con le stesse 2 carte', () => {
     mano.mostra(['sasso-comodo#1', 'beee-no#1'], 0);
     const prima = carte();
@@ -390,6 +418,25 @@ describe('Mano comandata', () => {
     expect(el.classList.contains('trascinata')).toBe(false);
   });
 
+  it('più di tre carte sollevate: in fila sulla stessa linea, più strette man mano che crescono, tutte dentro la scena', () => {
+    const D: IdCarta = 'balla-di-fieno#1';
+    const E: IdCarta = 'carriola#1';
+    mano.mostra([A, B, C, D, E], 0);
+    for (const sollevate of [[A, B, C, D], [A, B, C, D, E]]) {
+      mano.comanda(comando({ sollevate, toccabili: sollevate }));
+      const n = sollevate.length;
+      const passo = Math.min(110, 220 / (n - 1));
+      sollevate.forEach((id, i) => {
+        expect(carta(id).style.transform).toBe(trasf({ x: 195 + (i - (n - 1) / 2) * passo, y: 490, r: 0, k: 0.42 }));
+        expect(carta(id).classList.contains('attiva')).toBe(true);
+      });
+      expect(mano.sollevateIn()).toEqual({ x: 195, y: 490 });
+    }
+    // Prima e ultima delle cinque stanno a ±110 dal centro
+    expect(carta(A).style.transform).toBe(trasf({ x: 195 - 110, y: 490, r: 0, k: 0.42 }));
+    expect(carta(E).style.transform).toBe(trasf({ x: 195 + 110, y: 490, r: 0, k: 0.42 }));
+  });
+
   it('sollevateIn dice dove stanno le carte sollevate, nelle coordinate della scena', () => {
     expect(mano.sollevateIn()).toBeNull();
     mano.comanda(comando({ sollevate: [B] }));
@@ -432,8 +479,8 @@ describe('Mano comandata', () => {
   });
 
   describe('tastiera e lettori di schermo', () => {
-    const tasto = (el: Element, key: string) => {
-      const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    const tasto = (el: Element, key: string, ripetuto = false) => {
+      const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, repeat: ripetuto });
       el.dispatchEvent(e);
       return e;
     };
@@ -445,8 +492,8 @@ describe('Mano comandata', () => {
       return () => r.remove();
     }
 
-    it('con una domanda Tab raggiunge le carte toccabili e quelle sollevate; le spente no (aria-disabled), le sollevate premute', () => {
-      mano.comanda(comando({ toccabili: [A], sollevate: [B] }));
+    it('con una domanda Tab raggiunge le carte toccabili (anche se sollevate); le spente no (aria-disabled), le sollevate premute', () => {
+      mano.comanda(comando({ toccabili: [A, B], sollevate: [B] }));
       expect(carta(A).tabIndex).toBe(0);
       expect(carta(B).tabIndex).toBe(0);
       expect(carta(C).tabIndex).toBe(-1);
@@ -476,6 +523,23 @@ describe('Mano comandata', () => {
       carta(C).dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
       tasto(carta(A), 'a');
       expect(c.toccate).toEqual([A, B, A]);
+    });
+
+    it('Invio tenuto premuto (tasto ripetuto) non ripete il tocco', () => {
+      const c = comando({ toccabili: [A] });
+      mano.comanda(c);
+      tasto(carta(A), 'Enter');
+      tasto(carta(A), 'Enter', true);
+      tasto(carta(A), 'Enter', true);
+      expect(c.toccate).toEqual([A]);
+    });
+
+    it('una carta sollevata ma non toccabile non si raggiunge con Tab (spenta per la tastiera)', () => {
+      mano.comanda(comando({ toccabili: [A], sollevate: [B] }));
+      expect(carta(B).getAttribute('aria-pressed')).toBe('true');
+      expect(carta(B).tabIndex).toBe(-1);
+      expect(carta(B).getAttribute('aria-disabled')).toBe('true');
+      expect(carta(A).tabIndex).toBe(0);
     });
 
     it('nel modo libero i tasti non fanno niente', () => {
@@ -517,5 +581,30 @@ describe('Mano comandata', () => {
     expect(eventi).toEqual(['avviso', 'giocata']);
     trascina(carta(B), 700);
     expect(eventi).toEqual(['avviso', 'giocata']);
+  });
+
+  it('il terzo consiglio non si spegne se il trascinamento non gioca: modo libero, carta non trascinabile, sotto la linea, annullato', () => {
+    mano.distruggi();
+    const avvisi: string[] = [];
+    mano = creaMano(ctx, lettura, { allaGiocataTrascinando: () => avvisi.push('avviso') });
+    mano.mostra([A, B, C], 0);
+    // Modo libero: il trascinamento torna nel ventaglio e non gioca
+    trascina(carta(A), 600);
+    expect(avvisi).toEqual([]);
+    // Con una domanda: carta non trascinabile, rilasciata sotto la linea, pointercancel
+    const c = comando({ trascinabili: [B] });
+    mano.comanda(c);
+    trascina(carta(A), 600);
+    trascina(carta(B), 700);
+    evento('pointerdown', carta(B), 100, 700);
+    evento('pointermove', carta(B), 100, 650);
+    evento('pointermove', carta(B), 100, 600);
+    evento('pointercancel', carta(B), 100, 600);
+    expect(avvisi).toEqual([]);
+    expect(c.trascinate).toEqual([]);
+    // Il trascinamento che gioca davvero lo avvisa, una volta
+    trascina(carta(B), 600);
+    expect(avvisi).toEqual(['avviso']);
+    expect(c.trascinate).toEqual([B]);
   });
 });

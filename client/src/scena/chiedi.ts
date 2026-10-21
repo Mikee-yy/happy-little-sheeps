@@ -28,6 +28,8 @@ export interface OpzioniChiedi {
   manoScoperta?: () => boolean;
   /** Una carta risulta sollevata dalla domanda (il consiglio "tocca una carta" non serve più). */
   allaSollevata?: () => void;
+  /** La domanda ha carte da trascinare, con la mano scoperta (il consiglio "trascina" può comparire). */
+  allaTrascinabile?: () => void;
   /** La lettura delle carte: la tenuta su una carta grande, sulla carta al centro o su un Guaio dell'angolo la apre. Senza, niente lettura. */
   lettura?: Lettura;
 }
@@ -149,15 +151,24 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
   ui.append(sotto, fila);
 
   const manda = (g: Gesto): void => corrente?.suGesto(g);
-  /** Tocco vero (il dito scende e sale sull'elemento), clic senza puntatore (lettore di schermo, prove) e tasti; un tocco dà un gesto solo. */
+  /** Invio o Spazio, la prima volta: tenuto premuto il tasto si ripete, ma è un tocco solo (come per le carte della mano). */
+  const tastoDiTocco = (e: KeyboardEvent): boolean => {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return false;
+    e.preventDefault();
+    return !e.repeat;
+  };
+  /**
+   * Tocco vero (il dito scende e sale sull'elemento), clic senza puntatore (lettore di schermo, prove) e tasti; un tocco dà
+   * un gesto solo. Il tasto destro o centrale del mouse non è un tocco.
+   */
   const conTocco = (el: HTMLElement, gesto: () => Gesto | null): void => {
     let giu = false;
     const vai = (): void => {
       const g = gesto();
       if (g) manda(g);
     };
-    el.addEventListener('pointerdown', () => {
-      giu = true;
+    el.addEventListener('pointerdown', (e) => {
+      giu = !(e as MouseEvent).button;
     });
     el.addEventListener('pointercancel', () => {
       giu = false;
@@ -171,21 +182,20 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
       if (e.detail === 0) vai();
     });
     el.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-      e.preventDefault();
-      vai();
+      if (tastoDiTocco(e)) vai();
     });
   };
+  /** Clic (solo il tasto sinistro) e tasti, senza ripetizioni. */
   const conTastiera = (el: HTMLElement, gesto: () => Gesto | null): void => {
     const vai = (): void => {
       const g = gesto();
       if (g) manda(g);
     };
-    el.addEventListener('click', vai);
+    el.addEventListener('click', (e) => {
+      if (!e.button) vai();
+    });
     el.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
-      e.preventDefault();
-      vai();
+      if (tastoDiTocco(e)) vai();
     });
   };
 
@@ -245,6 +255,8 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
   }
   function iniziaPressione(carta: IdCarta, suTocco: (() => void) | null, e: Event): void {
     finePressione(true);
+    // Il clic destro o centrale del mouse non è un tocco (il tasto del dito è sempre 0)
+    if ((e as MouseEvent).button) return;
     const m = e as MouseEvent;
     const p: Pressione = { suTocco, timer: null, inLettura: false, mosso: false, x: m.clientX ?? 0, y: m.clientY ?? 0 };
     p.timer = setTimeout(() => {
@@ -325,7 +337,13 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
   function creaBottone(id: IdPulsante): HTMLButtonElement {
     const b = document.createElement('button');
     b.type = 'button';
-    b.addEventListener('click', () => manda({ tipo: 'pulsante', id }));
+    b.addEventListener('click', (e) => {
+      if (!e.button) manda({ tipo: 'pulsante', id });
+    });
+    // Invio tenuto premuto ripete il clic del pulsante: lo si ferma sul tasto ripetuto
+    b.addEventListener('keydown', (e) => {
+      if (e.repeat && (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar')) e.preventDefault();
+    });
     return b;
   }
 
@@ -433,6 +451,7 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
       suTrascinata: (carta) => manda({ tipo: 'trascinata', carta }),
     });
     if (c.sollevate.length > 0 && mano.attiva() !== null) opz.allaSollevata?.();
+    if (c.trascinabili.length > 0) opz.allaTrascinabile?.();
   }
 
   // ---------- Carte grandi (Guarda le prime 2) e carta al centro ----------

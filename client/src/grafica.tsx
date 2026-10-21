@@ -66,10 +66,6 @@ export const Dado3D = ({ size = 120, className }: { size?: number; className?: s
   <Simbolo id="dado-3d" viewBox="0 0 160 170" size={size} className={className} />
 );
 
-export const Montone = ({ size = 220, className }: { size?: number; className?: string }) => (
-  <Simbolo id="montone" viewBox="0 0 220 160" size={size} className={className} />
-);
-
 export const Retro = ({ guai = false, size = 44 }: { guai?: boolean; size?: number }) => (
   <Simbolo id={guai ? 'back-guai' : 'back-main'} viewBox="0 0 250 350" style={{ width: size, height: (size * 7) / 5 }} />
 );

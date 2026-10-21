@@ -7,11 +7,13 @@ import { describe, expect, it } from 'vitest';
 import { puntoArena } from './Testata';
 
 const css = readFileSync(resolve(process.cwd(), 'client/src/stile.css'), 'utf8');
-/** Il corpo della regola con quel selettore (esatto). */
+/** Il corpo della regola con quel selettore (esatto, anche se in un elenco di selettori separati da virgola). */
 const regola = (selettore: string): string => {
-  const i = css.indexOf(`${selettore} {`);
-  if (i < 0) return '';
-  return css.slice(i, css.indexOf('}', i));
+  const senzaCommenti = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const [, elenco, corpo] of senzaCommenti.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+    if (elenco!.split(',').some((s) => s.trim() === selettore)) return corpo!;
+  }
+  return '';
 };
 
 describe('Testata a tutto schermo', () => {

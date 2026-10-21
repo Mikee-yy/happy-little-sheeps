@@ -43,6 +43,11 @@ export function riprovaScena(): void {
   pigra = creaPigra();
 }
 
+/** Arrivata la scena dopo un tentativo fallito: un componente pigro nuovo, che usa lo scaricamento già riuscito. */
+export function rinnovaPigra(): void {
+  pigra = creaPigra();
+}
+
 /** Solo per le prove: sostituisce l'import dinamico e ricomincia da capo. */
 export function usaCaricatoreDiProva(f: (() => Promise<ModuloScena>) | null): void {
   importa = f ?? (() => import('../scena/Scena'));

@@ -167,7 +167,6 @@ export const T = {
     nonScartare: 'Non scarto nulla',
     scarta: 'Scarta',
     tieni: 'Tieni',
-    fatto: 'Fatto',
   },
 
   scelta: {
@@ -362,6 +361,8 @@ export const T = {
     },
     /** Le scelte dentro la scena: scritta in alto e pulsanti (gli altri pulsanti riusano `T.azioni`). */
     scelte: {
+      /** La scritta in alto con un dettaglio di seguito (la carta in gioco, il Guaio scelto…). */
+      conDettaglio: (principale: string, dettaglio: string) => `${principale} · ${dettaglio}`,
       chiRisponde: 'Qualcuno risponde? Tocca la tua pecora',
       chiPunteggio: 'Qualcuno gioca un Belato? Tocca la tua pecora',
       rubaAncora: (n: number) => (n > 0 ? `Ruba ancora ${n}` : 'Tocca Conferma'),
@@ -370,7 +371,6 @@ export const T = {
       giocaCarta: 'Gioca',
       scarta: (n: number) => `Scarta (${n})`,
       passo: 'Passo',
-      fatto: 'Fatto',
       /** Il pulsante di conferma sotto un Guaio scelto con una sola cura (il nome del Guaio). */
       cura: (guaio: string) => `Cura ${guaio}`,
       /** La X nella striscia in alto: nasconde il suggerimento della domanda di adesso. */

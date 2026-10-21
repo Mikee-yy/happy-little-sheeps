@@ -52,7 +52,11 @@ export function Scritta({
           ))}
         </p>
       )}
-      {errore && <p className="errore">{errore}</p>}
+      {errore && (
+        <p className="errore" role="alert">
+          {errore}
+        </p>
+      )}
     </div>
   );
 }
@@ -75,6 +79,8 @@ export interface PropsGiocoInScena {
   errore: string | null;
   /** La X della scritta toglie anche l'errore. */
   togliErrore: () => void;
+  /** Cambiata la domanda: chi lo usa toglie l'errore del motore della domanda di prima (non i rifiuti di chi ospita). */
+  suCambioDomanda?: () => void;
   /** "Chi risponde?": il giocatore scelto toccandone la pecora (solo sul dispositivo condiviso). */
   onRisponde?: (chi: IdGiocatore) => void;
   /** "Annulla" torna a "Chi risponde?" (solo sul dispositivo condiviso). */
@@ -83,8 +89,8 @@ export interface PropsGiocoInScena {
   onMenu: () => void;
   /** Il pensiero della pecora in basso, nella nuvoletta (null mentre la scena recita o qualcosa la copre). */
   pensiero?: Pensiero | null;
-  /** Nella striscia, sotto la scritta o la cronaca: per esempio il conto alla rovescia delle stanze. */
-  sopraStriscia?: React.ReactNode;
+  /** In fondo alla striscia, sotto la scritta o la cronaca: per esempio il conto alla rovescia delle stanze. */
+  inStriscia?: React.ReactNode;
   /** Nella striscia al posto della cronaca quando non c'è una domanda (per esempio "Aspetta…" nelle stanze). */
   strisciaSenzaDomanda?: React.ReactNode;
   /**
@@ -139,7 +145,8 @@ export function GiocoInScena(p: PropsGiocoInScena) {
   const risposta = useRef<string | null>(null);
   const testata = useRef<HTMLDivElement>(null);
   const [spazioAlto, setSpazioAlto] = useState(SPAZIO_ALTO_RISERVA);
-  const coperta = p.copertura != null;
+  // Coperto solo da un contenuto vero: `null`, `undefined` e `false` (come in `{cond && <Copertura/>}`) non coprono
+  const coperta = p.copertura != null && p.copertura !== false;
 
   // Il suggerimento dei gesti della scena va subito sotto la striscia in cima: se ne misura il fondo (cambia con la cronaca)
   useLayoutEffect(() => {
@@ -156,6 +163,16 @@ export function GiocoInScena(p: PropsGiocoInScena) {
   const chiaveMomento = momento ? chiaveDi(momento) : null;
   // Le chiavi si ripetono tra i round: la X vale solo finché la domanda è la stessa, alla prossima la scritta torna da sola
   if (scrittaChiusaPer !== null && scrittaChiusaPer !== chiaveMomento) setScrittaChiusaPer(null);
+  // L'errore del motore riguarda la domanda a cui si rispondeva: cambiata la domanda (scelto chi risponde, Annulla, la mossa
+  // successiva) non resta appeso. La prima volta non c'è niente da togliere. Effetto di layout: chi lo usa si ridisegna
+  // prima che il browser dipinga, così l'errore vecchio non si vede mai con la domanda nuova.
+  const chiavePrecedente = useRef(chiaveMomento);
+  useLayoutEffect(() => {
+    if (chiavePrecedente.current === chiaveMomento) return;
+    chiavePrecedente.current = chiaveMomento;
+    p.suCambioDomanda?.();
+    // suCambioDomanda è di chi usa il componente e cambia a ogni disegno: conta solo il cambio di domanda
+  }, [chiaveMomento]);
   // Cambiate le mosse permesse (o lo schermo) la scelta a metà riparte vuota (punto di revisione 3); così anche cambiato
   // lo sblocco (mossa rifiutata dopo essere partita)
   const sceltaOra =
@@ -232,6 +249,8 @@ export function GiocoInScena(p: PropsGiocoInScena) {
               errore={p.errore}
               giocatore={attivo}
               onChiudi={() => {
+                // La X sparisce con la scritta: il fuoco della tastiera passa al menu, non si perde
+                testata.current?.querySelector<HTMLElement>('.pulsante-menu')?.focus();
                 setScrittaChiusaPer(chiaveMomento);
                 p.togliErrore();
               }}
@@ -240,7 +259,7 @@ export function GiocoInScena(p: PropsGiocoInScena) {
         ) : (
           (p.strisciaSenzaDomanda ?? <Cronaca v={tavolo} />)
         )}
-        {p.sopraStriscia}
+        {p.inStriscia}
       </div>
       {/* Il colpo della Testata: il riquadro di mira di sempre, sopra la scena e sotto la striscia */}
       {domanda?.testata && momento && schermo?.tipo === 'pubblica' && (

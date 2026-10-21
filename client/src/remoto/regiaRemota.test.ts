@@ -238,6 +238,31 @@ describe('momentoRemoto', () => {
     expect(d.pulsanti.find((p) => p.id === 'annulla')?.attivo ?? false).toBe(false);
   });
 
+  it('una domanda privata porta solo la mano del telefono, una pubblica nessuna mano', () => {
+    // Privata: la scelta di g2 (ognuno ha una mano) e il punteggio di g3 (mani diverse da quella di chi guarda)
+    const scelta = prosegui(scenario({ guaio: NEUTRO, mani: { g1: ['carriola'], g2: ['balla-di-fieno'], g3: ['sasso-comodo'] } }));
+    for (const [stato, io] of [
+      [scelta, 'g2'],
+      [alPunteggio(), 'g3'],
+    ] as const) {
+      const r = dellaStanza(stato, io);
+      expect(r.momento?.schermo.tipo).toBe('privata');
+      const mani = Object.fromEntries(r.momento!.vista.giocatori.map((g) => [g.id, g.mano]));
+      expect(mani[io], "la mano del telefono c'è").not.toBeNull();
+      expect(mani[io]!.length).toBeGreaterThan(0);
+      for (const [id, mano] of Object.entries(mani)) if (id !== io) expect(mano, 'la mano di ' + id).toBeNull();
+    }
+    // Pubblica: dado, dichiarazione e Testata non portano nessuna mano, nemmeno quella di chi gioca
+    const lanciata = applica(conFaccia(alDado(), 'testata'), { tipo: 'lanciaDado', giocatore: 'g1' });
+    const dichiara = azioniPossibili(lanciata, 'g1').find((a) => a.tipo === 'dichiaraDado' && a.bersaglio !== undefined)!;
+    const testata = nessunaReazione(applica(lanciata, dichiara));
+    for (const stato of [alDado(), lanciata, testata]) {
+      const r = dellaStanza(stato, 'g1');
+      expect(r.momento?.schermo.tipo).toBe('pubblica');
+      expect(r.momento!.vista.giocatori.every((g) => g.mano === null)).toBe(true);
+    }
+  });
+
   it('attesa, automatica e fine: nessun momento (in stanza avanza chi ospita)', () => {
     const s = alDado();
     const a = dellaStanza(s, 'g2');
@@ -256,6 +281,21 @@ describe('scrittaAttesa', () => {
     const r = dellaStanza(s, 'g1');
     expect(r.sc).toEqual({ tipo: 'attesa', di: ['g2', 'g3'], finestra: true });
     expect(scrittaAttesa(r.sc, r.tavolo)).toBe(T.stanza.attesaReazioni);
+  });
+
+  it('Belati di punteggio: chi ha passato aspetta con il testo delle reazioni, il primo a passare e anche il secondo', () => {
+    let s = alPunteggio();
+    s = applica(s, { tipo: 'passa', giocatore: 'g3' });
+    for (const io of ['g3'] as const) {
+      const r = dellaStanza(s, io);
+      expect(r.sc).toEqual({ tipo: 'attesa', di: ['g1', 'g2'], finestra: true });
+      expect(scrittaAttesa(r.sc, r.tavolo)).toBe(T.stanza.attesaReazioni);
+    }
+    // Anche chi non è l'ultimo a passare: la finestra dei Belati è la stessa per tutti
+    s = applica(s, { tipo: 'passa', giocatore: 'g1' });
+    const g1 = dellaStanza(s, 'g1');
+    expect(g1.sc).toMatchObject({ tipo: 'attesa', finestra: true });
+    expect(scrittaAttesa(g1.sc, g1.tavolo)).toBe(T.stanza.attesaReazioni);
   });
 
   it('scelta e Belato finale: "Gli altri stanno scegliendo…"', () => {

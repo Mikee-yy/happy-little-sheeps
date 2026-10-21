@@ -54,7 +54,7 @@ function domandaScelta(m: Momento, chiave: string, s: Scelta, giocatore: IdGioca
   const sollevate = valide(s, carte);
   const haGemelle = opzioni.some((o) => o.length === 2);
   const titolo = finale ? T.belatoFinale.titolo(nome(m.vista, giocatore)) : T.scelta.titolo(nome(m.vista, giocatore));
-  const d = vuota(chiave, haGemelle ? `${titolo} · ${T.scelta.gemelleInsieme}` : titolo);
+  const d = vuota(chiave, haGemelle ? T.scena.scelte.conDettaglio(titolo, T.scelta.gemelleInsieme) : titolo);
   d.avvisi = finale ? [] : avvisiDi(m.vista, giocatore);
   d.carte = carte;
   d.sollevate = sollevate;
@@ -93,11 +93,17 @@ function avanzaScelta(m: Momento, s: Scelta, g: Gesto, d: Domanda, finale: boole
 
 // ─── Effetto della Trovata ───────────────────────────────────────────────────
 
+/** Le mosse dell'effetto: quelle che lo attivano, quelle con un bersaglio (cioè se serve mirare) e la rinuncia. */
+function mosseEffetto(m: Momento) {
+  const attiva = filtra(m.azioni, 'attivaEffetto');
+  const conBersaglio = attiva.filter((a) => a.bersaglio !== undefined);
+  const rinuncia = filtra(m.azioni, 'rinunciaEffetto')[0];
+  return { attiva, conBersaglio, rinuncia };
+}
+
 function domandaEffetto(m: Momento, chiave: string, s: Scelta, giocatore: IdGiocatore): Domanda {
   const voce = voceEffetto(m.vista);
-  const attiva = filtra(m.azioni, 'attivaEffetto');
-  const rinuncia = filtra(m.azioni, 'rinunciaEffetto')[0];
-  const conBersaglio = attiva.filter((a) => a.bersaglio !== undefined);
+  const { attiva, conBersaglio, rinuncia } = mosseEffetto(m);
   const mira = voce !== undefined && conBersaglio.length > 0 && s.carta === voce.carta;
   const titolo = voce ? T.effetti.titolo(nome(m.vista, giocatore), nomeCarta(voce.carta)) : T.fasi.effetti;
   const d = vuota(chiave, mira ? T.effetti.bersaglio : titolo);
@@ -113,7 +119,7 @@ function domandaEffetto(m: Momento, chiave: string, s: Scelta, giocatore: IdGioc
 }
 
 function avanzaEffetto(m: Momento, s: Scelta, g: Gesto, d: Domanda): Risultato {
-  const attiva = filtra(m.azioni, 'attivaEffetto');
+  const { attiva, conBersaglio, rinuncia } = mosseEffetto(m);
   if (g.tipo === 'pecora' && d.pecore.includes(g.chi)) {
     const azione = attiva.find((a) => a.bersaglio === g.chi);
     return azione ? conMossa(s, azione) : senzaEsito(s);
@@ -121,11 +127,10 @@ function avanzaEffetto(m: Momento, s: Scelta, g: Gesto, d: Domanda): Risultato {
   if (g.tipo !== 'pulsante' || !pulsanteAttivo(d, g.id)) return senzaEsito(s);
   if (g.id === 'attiva') {
     // un effetto con bersaglio accende le pecore e aspetta; gli altri partono subito
-    if (attiva.some((a) => a.bersaglio !== undefined)) return d.centro ? senzaEsito({ ...s, carta: d.centro }) : senzaEsito(s);
+    if (conBersaglio.length > 0) return d.centro ? senzaEsito({ ...s, carta: d.centro }) : senzaEsito(s);
     return attiva[0] ? conMossa(s, attiva[0]) : senzaEsito(s);
   }
   if (g.id === 'rinuncia') {
-    const rinuncia = filtra(m.azioni, 'rinunciaEffetto')[0];
     return rinuncia ? conMossa(s, rinuncia) : senzaEsito(s);
   }
   if (g.id === 'annulla') return senzaEsito({ ...s, carta: null });
@@ -138,7 +143,7 @@ function domandaRichiesta(m: Momento, chiave: string, s: Scelta): Domanda {
   const r = m.vista.richiesta;
   if (!r) return vuota(chiave, T.fasi[m.vista.fase.nome]);
   if (r.tipo === 'guarda_due') {
-    const d = vuota(chiave, `${nomeCarta(r.carta)} · ${T.effetti.guardaDue}`);
+    const d = vuota(chiave, T.scena.scelte.conDettaglio(nomeCarta(r.carta), T.effetti.guardaDue));
     d.grandi = m.manoScoperta ? [...r.carte] : [];
     return d;
   }
@@ -146,7 +151,9 @@ function domandaRichiesta(m: Momento, chiave: string, s: Scelta): Domanda {
   const opzioni = filtra(m.azioni, 'completaEffetto');
   const carte = m.manoScoperta ? unici(opzioni.flatMap((a) => a.carte)) : [];
   const sollevate = valide(s, carte);
-  const d = vuota(chiave, `${nomeCarta(r.carta)} · ${multipla ? T.effetti.scartaFinoATre : T.effetti.scartaESomma}`);
+  const d = vuota(chiave, T.scena.scelte.conDettaglio(nomeCarta(r.carta), multipla ? T.effetti.scartaFinoATre : T.effetti.scartaESomma));
+  // Le carte da scartare si toccano e basta: né `scarta_e_somma` né `scarta_fino_a_tre` hanno il trascinamento (voluto,
+  // il gesto di scartare è il pulsante), quindi `trascinabili` resta vuota
   d.carte = carte;
   d.sollevate = sollevate;
   const attivo = opzioni.some((a) => stessoInsieme(a.carte, sollevate));
@@ -191,7 +198,7 @@ function domandaReazione(m: Momento, chiave: string, s: Scelta, giocatore: IdGio
   const sollevate = valide(s, carte);
   const cima = m.vista.pila[m.vista.pila.length - 1];
   const privato = T.reazione.privato(nome(m.vista, giocatore));
-  const d = vuota(chiave, cima ? `${descriviVoce(m.vista, cima)} · ${privato}` : privato);
+  const d = vuota(chiave, cima ? T.scena.scelte.conDettaglio(descriviVoce(m.vista, cima), privato) : privato);
   if (m.manoScoperta && belati.length === 0) d.avvisi = [T.reazione.nonHai];
   d.carte = carte;
   d.sollevate = sollevate;
@@ -329,7 +336,14 @@ function datiConsolazione(m: Momento, s: Scelta) {
 function domandaConsolazione(m: Momento, chiave: string, s: Scelta, giocatore: IdGiocatore): Domanda {
   const { conclusioni, guai, guaio, unicaCura, carte, sollevate } = datiConsolazione(m, s);
   const titolo = T.consolazione.titolo(nome(m.vista, giocatore));
-  const d = vuota(chiave, guaio ? `${titolo} · ${nomeCarta(guaio)}` : guai.length > 0 ? `${titolo} · ${T.consolazione.cura}` : titolo);
+  const d = vuota(
+    chiave,
+    guaio
+      ? T.scena.scelte.conDettaglio(titolo, nomeCarta(guaio))
+      : guai.length > 0
+        ? T.scena.scelte.conDettaglio(titolo, T.consolazione.cura)
+        : titolo,
+  );
   d.avvisi = avvisiDi(m.vista, giocatore);
   d.guai = guai;
   d.guaioScelto = guaio;

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { nuovaPartita, vistaPer } from '../../../engine/src';
-import { eTrovata } from '../../../engine/src/dati';
+import { applica, azioniPossibili, defCarta, nuovaPartita, vistaPer } from '../../../engine/src';
 import type { IdGiocatore, Stato } from '../../../engine/src';
-import { avanza, scegli, scenario } from '../../../engine/test/aiuti';
+import { avanza, chiudiPunteggio, conFaccia, nessunaReazione, prosegui, scegli, scenario } from '../../../engine/test/aiuti';
 import { fotografia, inBassoIniziale, riassuntoTestuale } from './fotografia';
 
 const GIOCATORI = [
@@ -21,7 +20,7 @@ function inScelta(): Stato {
 const vista = (s: Stato, per: IdGiocatore | null = null) => vistaPer(s, per);
 const scelte = (s: Stato, id: IdGiocatore) => {
   const g = s.giocatori.find((x) => x.id === id)!;
-  const prima = g.mano.find((c) => eTrovata(c));
+  const prima = g.mano.find((c) => defCarta(c).famiglia === 'trovata');
   return { [id]: [prima!] };
 };
 
@@ -63,6 +62,61 @@ describe('fotografia', () => {
       const mano = s.giocatori[0]!.mano;
       const json = JSON.stringify(f);
       for (const c of mano) expect(json).not.toContain(c);
+    });
+
+    it('la carta scelta (coperta) non compare per nessun giocatore, da qualunque posto e con qualunque vista', () => {
+      let s = inScelta();
+      s = scegli(s, { ...scelte(s, 'g1'), ...scelte(s, 'g2') });
+      expect(s.fase.nome).toBe('scelta');
+      const scelta = (id: IdGiocatore) => scelte(s, id)[id]![0]!;
+      const segrete = [scelta('g1'), scelta('g2')];
+      for (const inBasso of ['g1', 'g2', 'g3'] as const) {
+        // Vista del tavolo e vista privata di chi sta in basso (la sua scelta è nella vista, non nella fotografia)
+        for (const v of [vista(s), vista(s, inBasso)]) {
+          const f = fotografia(v, inBasso, null);
+          const json = JSON.stringify(f);
+          for (const c of segrete) expect(json, `${c} visto da ${inBasso}`).not.toContain(c);
+          expect(f.posti.find((p) => p.id === 'g1')!.giocata).toEqual({ coperta: true });
+          expect(f.posti.find((p) => p.id === 'g2')!.giocata).toEqual({ coperta: true });
+          expect(f.posti.find((p) => p.id === 'g3')!.giocata).toBeNull();
+        }
+      }
+    });
+
+    it('Belato finale con le giocate già scoperte: restano le carte vere di prima, mai coperte, anche dopo la scelta di uno', () => {
+      let s = prosegui(
+        scenario({
+          guaio: 'tosatura-a-sorpresa',
+          mani: {
+            g1: ['carriola'],
+            g2: ['balla-di-fieno', 'coperta-di-lana', 'sasso-comodo'],
+            g3: ['balla-di-fieno', 'carriola', 'corona-di-margherite'],
+          },
+        }),
+      );
+      s = prosegui(scegli(s, { g1: ['carriola'], g2: ['balla-di-fieno'], g3: ['balla-di-fieno'] }));
+      if (s.fase.nome === 'belati_punteggio') s = chiudiPunteggio(s);
+      for (let giri = 0; giri < 10 && s.fase.nome === 'dado'; giri++) {
+        const chi = s.datiRound.lanciatori[s.fase.indice]!;
+        s = nessunaReazione(applica(conFaccia(s, 'pascolo_piccolo'), { tipo: 'lanciaDado', giocatore: chi }));
+      }
+      s = prosegui(s);
+      expect(s.fase.nome).toBe('belato_finale');
+      const giocate = vista(s).datiRound.giocate;
+      expect(Object.keys(giocate).length).toBeGreaterThan(0);
+      const prima = fotografia(vista(s), 'g1', null);
+      for (const p of prima.posti) {
+        if (giocate[p.id]) expect(p.giocata).toEqual({ coperta: false, carte: giocate[p.id] });
+        else expect(p.giocata).toBeNull();
+      }
+      // Uno dei due sceglie il Belato finale: la sua scelta è ancora segreta e la fotografia non cambia le giocate
+      const sceglie = azioniPossibili(s, 'g2').find((a) => a.tipo === 'sceltaFinale')!;
+      const dopo = applica(s, sceglie);
+      expect(dopo.fase.nome).toBe('belato_finale');
+      const f = fotografia(vista(dopo), 'g1', null);
+      expect(f.posti.map((p) => p.giocata)).toEqual(prima.posti.map((p) => p.giocata));
+      expect(JSON.stringify(f)).not.toContain(sceglie.tipo === 'sceltaFinale' ? sceglie.carta : '');
+      expect(f.posti.find((p) => p.id === 'g2')!.deveAgire).toBe(false);
     });
 
     it('dopo la rivelazione le carte vere', () => {

@@ -86,6 +86,12 @@ export class SessioneHost implements Sessione {
   private chiaveFinestra: string | null = null;
   private scadenza: number | null = null;
   private prosegueAlle: number | null = null;
+  /**
+   * Lo stato per cui sono stati fissati l'avanzamento automatico e la mossa del bot: finché la partita non cambia,
+   * un aggiornamento qualsiasi (presenze, ingressi) non li fa ripartire da capo.
+   */
+  private statoProsegui: Stato | null = null;
+  private botFissato: { stato: Stato; id: IdGiocatore; alle: number } | null = null;
   private versione = 0;
   private pubblicati = new Map<string, string>();
   private ultimaAttivita = 0;
@@ -563,7 +569,11 @@ export class SessioneHost implements Sessione {
   private pianifica(): void {
     this.fermaTimer();
     const s = this.stato;
+    const proseguiFissato = s !== null && this.statoProsegui === s ? this.prosegueAlle : null;
+    const botFissato = s !== null && this.botFissato?.stato === s ? this.botFissato : null;
     this.prosegueAlle = null;
+    this.statoProsegui = null;
+    this.botFissato = null;
     const ora = oraServizio(this.t);
     // Prima di tutto si "consumano" gli eventi nuovi (anche senza connessione o in pausa): la loro recita conta una volta sola.
     this.registraRecita(s, ora);
@@ -595,13 +605,18 @@ export class SessioneHost implements Sessione {
       this.scadenza = null;
       if (attesa.sistema && attesa.giocatori.length === 0) {
         const pausa = TEMPI.prosegui[s.fase.nome] ?? 1500;
-        this.prosegueAlle = fineRecita + pausa;
-        this.timerSistema = setTimeout(() => this.applica({ tipo: 'prosegui' }), this.prosegueAlle - ora);
+        this.prosegueAlle = proseguiFissato ?? fineRecita + pausa;
+        this.statoProsegui = s;
+        this.timerSistema = setTimeout(() => this.applica({ tipo: 'prosegui' }), Math.max(0, this.prosegueAlle - ora));
       }
     }
 
     const bot = this.giocatori.find((g) => g.bot && attesa.giocatori.includes(g.id));
-    if (bot) this.timerBot = setTimeout(() => this.mossaBot(bot.id), Math.max(TEMPI.bot, fineRecita - ora));
+    if (bot) {
+      const alle = botFissato?.id === bot.id ? botFissato.alle : ora + Math.max(TEMPI.bot, fineRecita - ora);
+      this.botFissato = { stato: s, id: bot.id, alle };
+      this.timerBot = setTimeout(() => this.mossaBot(bot.id), Math.max(0, alle - ora));
+    }
   }
 
   /**

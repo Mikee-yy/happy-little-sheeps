@@ -106,21 +106,36 @@ export class SessioneProva implements Sessione {
     if (bot) this.timerBot = this.temporizzatore(() => this.mossaBot(bot), this.pausaMs);
   }
 
-  /** Come i bot delle stanze (sync/host.ts): Testata a caso, altrimenti la strategia "semplice". */
+  /**
+   * Come i bot delle stanze (sync/host.ts): Testata a caso, altrimenti la strategia "semplice". Se la mossa scelta non c'è
+   * tra le azioni, non è del bot, il motore la rifiuta o la strategia si rompe, si ripiega su un'altra azione valida: il bot
+   * non si ferma.
+   */
   private mossaBot(id: IdGiocatore): void {
     this.timerBot = null;
     if (this.chiusa || this.inPausa) return;
     const azioni = azioniPossibili(this.stato, id);
     if (azioni.length === 0) return;
+    const candidate: Azione[] = [];
     const testate = azioni.filter((a) => a.tipo === 'esitoTestata');
-    let azione: Azione;
     if (testate.length > 0) {
       const massimo = Math.max(...testate.map((a) => (a.tipo === 'esitoTestata' ? a.esito : 0)));
-      azione = { tipo: 'esitoTestata', giocatore: id, esito: esitoTestataCasuale(massimo, this.casuale) };
+      candidate.push({ tipo: 'esitoTestata', giocatore: id, esito: esitoTestataCasuale(massimo, this.casuale) });
     } else {
-      azione = semplice.scegli(this.stato, id, azioni, this.casuale);
-      if (!tentaApplica(this.stato, azione).ok) azione = azioni[Math.floor(this.casuale() * azioni.length)]!;
+      try {
+        candidate.push(semplice.scegli(this.stato, id, azioni, this.casuale));
+      } catch {
+        // La strategia si è rotta: si ripiega sulle azioni possibili
+      }
     }
-    this.invia(azione);
+    for (const azione of candidate) {
+      // Solo una mossa del bot: una valida ma di un altro (l'umano) il motore l'accetterebbe lo stesso
+      if (azione && 'giocatore' in azione && azione.giocatore === id && this.invia(azione).ok) return;
+    }
+    // Ripiego (il numero a caso si estrae solo qui, così la storia della prova guidata non cambia): le azioni possibili, da una a caso
+    const inizio = Math.floor(this.casuale() * azioni.length);
+    for (let i = 0; i < azioni.length; i++) {
+      if (this.invia(azioni[(inizio + i) % azioni.length]!).ok) return;
+    }
   }
 }

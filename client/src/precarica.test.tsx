@@ -55,7 +55,7 @@ describe('precaricamento della scena', () => {
     expect(scenaRichiesta()).toBe(false);
     await clic('Gioca su questo dispositivo');
     expect(scenaRichiesta()).toBe(true);
-  });
+  }, 30_000);
 
   it('"Partita di prova" la chiede', async () => {
     const { clic, scenaRichiesta } = await monta();

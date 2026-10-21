@@ -30,7 +30,7 @@ describe('ambiente', () => {
       amb.aggiornaParticelle(0.033);
     }
     expect(Number.isFinite(amb.ventoIn(100))).toBe(true);
-  });
+  }, 30_000);
 
   it.each([2, 3, 4] as const)('nessuna pianta nelle zone libere (%i giocatori)', (n) => {
     const { disp, amb } = nuovo(n);

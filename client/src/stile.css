@@ -1186,6 +1186,7 @@ button.carta {
 }
 /* Nella striscia in cima, sotto la scritta: più bassa e stretta, così le targhe degli avversari restano visibili */
 .testata-scena .conto {
+  pointer-events: none; /* come la scritta: i tocchi sotto la pillola arrivano alla scena (e il menu resta raggiungibile) */
   height: 20px;
   width: min(100%, 260px);
   margin: 4px auto 0;
@@ -1568,26 +1569,8 @@ button.carta {
   display: flex;
   flex-direction: column;
 }
-.a-tutta-altezza .pannello.testata {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spazio-2);
-  padding: var(--spazio-3);
-}
-.a-tutta-altezza .testata .arena {
-  flex: 1 1 0;
-  min-height: 0;
-  width: auto;
-  max-width: 100%;
-  aspect-ratio: 360 / 440;
-  align-self: center;
-}
-.a-tutta-altezza .testata .caduti {
-  min-height: 30px;
-}
-/* Il riquadro della Testata sopra la scena: il pannello e l'arena come nel cassetto a tutta altezza */
+/* Il pannello e l'arena della Testata, uguali nel cassetto a tutta altezza e nel riquadro sopra la scena */
+.a-tutta-altezza .pannello.testata,
 .riquadro-testata .pannello.testata {
   flex: 1 1 0;
   min-height: 0;
@@ -1596,6 +1579,7 @@ button.carta {
   gap: var(--spazio-2);
   padding: var(--spazio-3);
 }
+.a-tutta-altezza .testata .arena,
 .riquadro-testata .testata .arena {
   flex: 1 1 0;
   min-height: 0;
@@ -1604,6 +1588,7 @@ button.carta {
   aspect-ratio: 360 / 440;
   align-self: center;
 }
+.a-tutta-altezza .testata .caduti,
 .riquadro-testata .testata .caduti {
   min-height: 30px;
 }

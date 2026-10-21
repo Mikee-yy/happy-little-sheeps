@@ -420,6 +420,7 @@ export function Partita(p: {
         invia={invia}
         errore={errore}
         togliErrore={() => setErrore(null)}
+        suCambioDomanda={() => setErrore(null)}
         onRisponde={setScelto}
         onIndietro={() => setScelto(null)}
         onMenu={() => setMenu(true)}

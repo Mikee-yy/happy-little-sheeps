@@ -1,32 +1,20 @@
 // Prove delle domande dei momenti senza mano (le fasi automatiche, "Chi risponde?", dado, furto, Testata).
 // Partite vere del motore (engine/test/aiuti.ts); ogni mossa prodotta deve essere uno degli oggetti permessi.
 import { describe, expect, it } from 'vitest';
-import { applica, azioniPossibili, vistaPer } from '../../../../engine/src';
+import { applica, azioniPossibili } from '../../../../engine/src';
 import type { Azione, Stato } from '../../../../engine/src';
 import { chiudiPunteggio, conFaccia, nessunaReazione, prosegui, scegli, scenario } from '../../../../engine/test/aiuti';
 import type { OpzioniScenario } from '../../../../engine/test/aiuti';
-import { scena } from '../../partita/regia';
 import { scenaProva } from '../../prova/regiaProva';
 import { T } from '../../testi';
+import { momentoDi as momentoComune } from './aiuti-momento';
 import { avanza, chiaveDi, domandaDi, sceltaVuota } from './domanda';
 import type { Domanda, Gesto, Momento, Scelta } from './tipi';
 
 const NEUTRO = 'tosatura-a-sorpresa';
 
-/** Il momento come lo vede il gioco "Passa il telefono": vista del tavolo, schermo della regia, mosse permesse. */
-function momentoDi(s: Stato, condiviso = true): Momento {
-  const vista = vistaPer(s, null);
-  const schermo = scena(vista, null);
-  const chi = 'giocatore' in schermo ? schermo.giocatore : null;
-  return {
-    vista,
-    schermo,
-    azioni: chi ? azioniPossibili(s, chi) : [],
-    sistema: azioniPossibili(s, 'sistema'),
-    condiviso,
-    manoScoperta: false,
-  };
-}
+/** Il momento come lo vede il gioco "Passa il telefono": vista del tavolo, schermo della regia, mosse permesse; qui la mano non è mai scoperta. */
+const momentoDi = (s: Stato, condiviso = true): Momento => momentoComune(s, { condiviso, manoScoperta: false });
 
 function domandaVera(m: Momento, s: Scelta = sceltaVuota(chiaveDi(m))): Domanda {
   const d = domandaDi(m, s);
@@ -134,6 +122,44 @@ describe('automatica', () => {
     expect(d.scritta).toBe(T.guai.prende('Giocatore 3'));
     expect(d.centro).toBeNull();
     expect(d.pulsanti).toEqual([{ id: 'continua', testo: T.azioni.continua, attivo: true }]);
+  });
+
+  /** Il Guaio al peggiore con la fase costruita a mano: chi prende il Guaio, i pari merito, i partecipanti e i più alti. */
+  type Chi = 'g1' | 'g2' | 'g3';
+  function guaioAlPeggiore(fase: { destinatario: Chi | null; spareggio: Chi[] | null }, partecipanti: Chi[], piuAlti: Chi[]): Stato {
+    const base = scenario({ guaio: NEUTRO });
+    return { ...base, fase: { nome: 'guaio_al_peggiore', ...fase }, datiRound: { ...base.datiRound, partecipanti, piuAlti } };
+  }
+
+  it('Guaio al peggiore: pari merito in fondo, la scritta dice chi va allo spareggio', () => {
+    const s = guaioAlPeggiore({ destinatario: null, spareggio: ['g1', 'g3'] }, ['g1', 'g2', 'g3'], ['g2']);
+    expect(domandaVera(momentoDi(s)).scritta).toBe(T.guai.spareggio('Giocatore 1 e Giocatore 3'));
+  });
+
+  it('Guaio al peggiore: tutti pari (nessuno ha il punteggio più alto), niente destinatario né spareggio', () => {
+    const s = guaioAlPeggiore({ destinatario: null, spareggio: null }, ['g1', 'g2', 'g3'], []);
+    expect(domandaVera(momentoDi(s)).scritta).toBe(T.guai.tuttiPari);
+  });
+
+  it('Guaio al peggiore: il Guaio torna in fondo (un solo partecipante, o qualcuno con il punteggio più alto)', () => {
+    const solo = guaioAlPeggiore({ destinatario: null, spareggio: null }, ['g1'], []);
+    expect(domandaVera(momentoDi(solo)).scritta).toBe(T.guai.inFondo);
+    const conPiuAlto = guaioAlPeggiore({ destinatario: null, spareggio: null }, ['g1', 'g2'], ['g1']);
+    expect(domandaVera(momentoDi(conPiuAlto)).scritta).toBe(T.guai.inFondo);
+  });
+
+  it('"Continua" ripiega sulla scadenza dove il sistema aspetta solo quella, e preferisce il prosegui se c\'è', () => {
+    const scadenza = { tipo: 'scadenza' } as Azione;
+    const proseguiAzione = { tipo: 'prosegui' } as Azione;
+    const base = momentoDi(scenario({ guaio: 'insonnia' }));
+    const soloScadenza = { ...base, sistema: [scadenza] };
+    const d = domandaVera(soloScadenza);
+    expect(pulsante(d, 'continua')?.attivo).toBe(true);
+    const r = tocca(soloScadenza, sceltaVuota(d.chiave), { tipo: 'pulsante', id: 'continua' });
+    expect(r.esito?.tipo === 'mossa' && r.esito.azione).toBe(scadenza);
+    const entrambe = { ...base, sistema: [scadenza, proseguiAzione] };
+    const r2 = tocca(entrambe, sceltaVuota(chiaveDi(entrambe)), { tipo: 'pulsante', id: 'continua' });
+    expect(r2.esito?.tipo === 'mossa' && r2.esito.azione).toBe(proseguiAzione);
   });
 
   it('"Continua" spento se il sistema non ha un prosegui da offrire', () => {
@@ -326,7 +352,7 @@ describe('pubblica: dichiarazione del furto', () => {
     expect(giu.esito).toBeNull();
   });
 
-  it('il totale ferma anche l\'avversario con altri agnellini a disposizione', () => {
+  it('raggiunto il totale il furto si ferma: nemmeno un avversario con altri agnellini a disposizione ne cede ancora', () => {
     const m = momentoDi(alFurto());
     let s = sceltaVuota(chiaveDi(m));
     s = tocca(m, s, { tipo: 'pecora', chi: 'g2' }).scelta;
@@ -416,6 +442,14 @@ describe('pubblica: Testata', () => {
     expect(r.esito?.tipo === 'mossa' && r.esito.azione).toBe(m.azioni.find((a) => a.tipo === 'dichiaraDado' && a.bersaglio === 'g3'));
   });
 
+  it('dichiarazione senza furto né bersagli (nessuna mossa permessa): nessuna domanda, non il titolo della Testata senza pecore', () => {
+    const m = { ...momentoDi(allaTestata()), azioni: [] };
+    expect(m.schermo).toEqual({ tipo: 'pubblica', giocatore: 'g1', pannello: 'dichiarazione' });
+    expect(domandaDi(m, sceltaVuota(chiaveDi(m)))).toBeNull();
+    const r = tocca(m, sceltaVuota(chiaveDi(m)), { tipo: 'pecora', chi: 'g2' });
+    expect(r.esito).toBeNull();
+  });
+
   it('un bersaglio non permesso (il lanciatore) o altri gesti: nessun esito', () => {
     const m = momentoDi(allaTestata());
     const v = sceltaVuota(chiaveDi(m));
@@ -432,6 +466,7 @@ describe('pubblica: Testata', () => {
     const m = momentoDi(s);
     expect(m.schermo).toEqual({ tipo: 'pubblica', giocatore: 'g1', pannello: 'testata' });
     const d = domandaVera(m);
+    expect(d.scritta).toBe(T.testata.titolo);
     expect(d.testata).toBe(true);
     expect(d.pecore).toEqual([]);
     expect(d.dado).toBe(false);

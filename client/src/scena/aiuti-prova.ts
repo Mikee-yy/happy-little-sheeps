@@ -29,23 +29,27 @@ export function contestoFinto(o: { caso?: () => number } = {}): Contesto {
  * Partite intere giocate dai bot come quelli di sync/prova.ts: Testata con esito a caso, altrimenti la strategia
  * "semplice" (o una mossa a caso); le fasi di sistema con la prima azione di sistema (prosegui o scadenza).
  * Dopo ogni mossa riceve la vista pubblica; `finita` vale true sull'ultima.
+ * Con `senzaEventi` la vista ha l'elenco degli eventi vuoto: chi guarda solo i conti non paga la copia dell'intero elenco a ogni mossa
+ * (che cresce con la partita).
  */
 export async function giocaPartiteSimulate(o: {
   n: 2 | 3 | 4;
   politica: 'semplice' | 'casuale';
   seme: number;
+  senzaEventi?: boolean;
   inizio?(v: Vista): void;
   dopoMossa(v: Vista, finita: boolean): void | Promise<void>;
 }): Promise<{ mosse: number }> {
   const r = generatore(o.seme);
   const pecore = SETUP.pecore.map((p) => p.id).slice(0, o.n);
   let s: Stato = nuovaPartita({ giocatori: pecore.map((pecora, i) => ({ id: `g${i + 1}`, nome: `G${i + 1}`, pecora })), seme: o.seme });
-  o.inizio?.(vistaPer(s, null));
+  const vista = (st: Stato): Vista => vistaPer(o.senzaEventi ? { ...st, eventi: [] } : st, null);
+  o.inizio?.(vista(s));
   let mosse = 0;
   while (!s.esito) {
     if (++mosse > MASSIMO_MOSSE) throw new Error(`partita simulata senza fine (fase ${s.fase.nome})`);
     s = applica(s, mossaDelBot(s, o.politica, r));
-    await o.dopoMossa(vistaPer(s, null), !!s.esito);
+    await o.dopoMossa(vista(s), !!s.esito);
   }
   return { mosse };
 }

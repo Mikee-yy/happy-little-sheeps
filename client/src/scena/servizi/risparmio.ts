@@ -4,6 +4,8 @@
 // Non torna indietro durante la partita, così l'aspetto non cambia a scatti.
 // Il tempo `ora` è quello del ciclo (millisecondi): lo dà ciclo.ts, qui non si legge nessun orologio.
 
+import { piattaforma } from '../piattaforma';
+
 export interface Risparmio {
   ultimoTocco: number;
   riposo: boolean;
@@ -32,7 +34,7 @@ export function creaRisparmio(scena: HTMLElement): Risparmio {
       const f = r.finestra;
       // A riposo, con la pagina nascosta o al ritorno da un'altra scheda (fotogramma lunghissimo) non si misura.
       // Il primo fotogramma apre la finestra invece di contare come un secondo intero.
-      if (!f.inizio || r.leggero || r.riposo || document.hidden || dtReale > 0.25) {
+      if (!f.inizio || r.leggero || r.riposo || piattaforma.paginaNascosta() || dtReale > 0.25) {
         f.inizio = ora;
         f.fotogrammi = 0;
         return;

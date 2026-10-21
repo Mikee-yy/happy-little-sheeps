@@ -2,13 +2,13 @@
 // salvataggio, consolazione). Partite vere del motore (engine/test/aiuti.ts); ogni mossa prodotta è uno degli
 // oggetti permessi (stesso oggetto, `toBe`), anche per scegliTrovata, completaEffetto e concludiConsolazione.
 import { describe, expect, it } from 'vitest';
-import { applica, azioniPossibili, configPer, vistaPer } from '../../../../engine/src';
+import { applica, configPer, vistaPer } from '../../../../engine/src';
 import type { Azione, IdCarta, IdGiocatore, Stato } from '../../../../engine/src';
 import { carta, chiudiPunteggio, conFaccia, nessunaReazione, prosegui, scegli, scenario } from '../../../../engine/test/aiuti';
 import type { OpzioniScenario } from '../../../../engine/test/aiuti';
 import { avvisiDi, nomeCarta } from '../../partita/descrizioni';
-import { scena } from '../../partita/regia';
 import { T } from '../../testi';
+import { momentoDi } from './aiuti-momento';
 import { avanza, chiaveDi, domandaDi, sceltaVuota } from './domanda';
 import type { Domanda, Esito, Gesto, Momento, Scelta } from './tipi';
 
@@ -19,28 +19,6 @@ type Scelte = Record<IdGiocatore, string[]>;
 type Di<K extends Azione['tipo']> = Extract<Azione, { tipo: K }>;
 
 // ─── Aiuti ───────────────────────────────────────────────────────────────────
-
-interface OpzioniMomento {
-  scelto?: IdGiocatore | null;
-  condiviso?: boolean;
-  manoScoperta?: boolean;
-}
-
-/** Il momento come lo costruirà Partita: vista di chi agisce per le schermate private, del tavolo per le altre. */
-function momentoDi(s: Stato, o: OpzioniMomento = {}): Momento {
-  const tavolo = vistaPer(s, null);
-  const schermo = scena(tavolo, o.scelto ?? null);
-  const chi = 'giocatore' in schermo ? schermo.giocatore : null;
-  const vista = schermo.tipo === 'privata' && chi ? vistaPer(s, chi) : tavolo;
-  return {
-    vista,
-    schermo,
-    azioni: chi ? azioniPossibili(s, chi) : [],
-    sistema: azioniPossibili(s, 'sistema'),
-    condiviso: o.condiviso ?? true,
-    manoScoperta: o.manoScoperta ?? true,
-  };
-}
 
 function domandaVera(m: Momento, s: Scelta = sceltaVuota(chiaveDi(m))): Domanda {
   const d = domandaDi(m, s);

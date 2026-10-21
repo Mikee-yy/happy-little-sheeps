@@ -229,6 +229,8 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
     manoScoperta: () => ultima?.mano != null,
     // Il primo consiglio ("Tocca una carta per sollevarla") se ne va quando la domanda solleva una carta
     allaSollevata: () => consigli.nascondi(1),
+    // Chi aveva visto i due consigli di prima vede "trascina" solo quando c'è davvero una carta da trascinare
+    allaTrascinabile: () => consigli.allaPrimaTrascinabile(),
     // Tenere premuta una carta grande, quella al centro o un Guaio dell'angolo la fa leggere
     lettura,
   });

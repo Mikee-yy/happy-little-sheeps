@@ -101,6 +101,12 @@ describe('Scritta della domanda', () => {
   });
 });
 
+describe('Pillola del conto alla rovescia', () => {
+  it('non prende i tocchi (come la scritta della domanda): quelli sotto di lei arrivano alla scena', () => {
+    expect(regola('.testata-scena .conto')).toMatch(/pointer-events:\s*none/);
+  });
+});
+
 describe('Scritta: la X per nasconderla', () => {
   const d = vuota('k', 'Scegli in segreto');
 

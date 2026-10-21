@@ -3,6 +3,8 @@
 // (scritta, X, Testata, riserva, festa, "Passa a"): qui lo sblocco da fuori, che serve alle stanze quando chi ospita
 // rifiuta una mossa già partita (punto di revisione 4 del pezzo 4).
 import { act, cleanup, render } from '@testing-library/react';
+import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { azioniPossibili, nuovaPartita, tentaApplica, vistaPer } from '../../../engine/src';
 import type { Azione, Stato } from '../../../engine/src';
@@ -208,5 +210,44 @@ describe('GiocoInScena: blocco legato alla situazione di chi gioca (stanze)', ()
     await act(async () => {});
     await gesto({ tipo: 'pulsante', id: 'gioca' });
     expect(invia).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("GiocoInScena: l'errore del motore non resta sulla domanda nuova", () => {
+  it('cambiata la domanda, già al primo disegno della nuova (prima che il browser dipinga) l\'errore non c\'è più', async () => {
+    const base = props(finoAllaScelta());
+    const altro: Momento = { ...base.momento, azioni: base.momento.azioni.slice(1) };
+    const cambia: { a: ((m: Momento) => void) | null } = { a: null };
+    function Involucro() {
+      const [momento, setMomento] = useState(base.momento);
+      const [errore, setErrore] = useState<string | null>('Errore della domanda di prima');
+      cambia.a = setMomento;
+      return (
+        <GiocoInScena
+          {...base}
+          momento={momento}
+          invia={() => true}
+          errore={errore}
+          suCambioDomanda={() => setErrore(null)}
+        />
+      );
+    }
+    const { container } = render(<Involucro />);
+    await act(async () => {});
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Errore della domanda di prima');
+
+    // Fuori da act: flushSync dà il disegno sincrono, come un tocco vero; gli effetti normali verrebbero dopo
+    const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const primaEnv = env.IS_REACT_ACT_ENVIRONMENT;
+    env.IS_REACT_ACT_ENVIRONMENT = false;
+    try {
+      flushSync(() => cambia.a!(altro));
+      expect(container.querySelector('.testata-scena .scritta'), 'la domanda nuova è già mostrata').not.toBeNull();
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+    } finally {
+      env.IS_REACT_ACT_ENVIRONMENT = primaEnv;
+    }
+    await act(async () => {});
+    expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 });

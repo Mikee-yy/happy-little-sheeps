@@ -12,7 +12,10 @@ import { copione, ATTESA_METEO_MS, type Battuta } from './copione';
 import { DURATE_NORMALI, durataRecita } from './durate';
 import durateFile from './durate.json';
 
-/** Ogni tipo di battuta, una volta sola: un tipo nuovo nel copione rompe la compilazione di questa prova. */
+/**
+ * Ogni tipo di battuta, una volta sola. Un tipo nuovo nel copione fa fallire il controllo dei tipi (`npm run typecheck`) di
+ * questo elenco; la prova "le voci del file sono esattamente i tipi di battuta" lo ripete a runtime su `durate.json`.
+ */
 const TIPI: Record<Battuta['tipo'], true> = {
   guaioRivelato: true,
   annuncio: true,
@@ -28,7 +31,6 @@ const TIPI: Record<Battuta['tipo'], true> = {
   festa: true,
 };
 const TIPI_ELENCO = Object.keys(TIPI) as Array<Battuta['tipo']>;
-
 
 /** Quattro giocatori, ognuno con 3 agnellini e la carta coperta davanti, gregge con 10 (la corsa tipica ha sempre di che muoversi). */
 function fotoQuattro(): Fotografia {
