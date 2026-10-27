@@ -1009,7 +1009,7 @@ describe('ignora_effetti — Tappi per le orecchie (brief 4; §6, D12)', () => {
   });
 
   it('con due Tappi il primo nell\'ordine ignora il secondo', () => {
-    // Stesso valore (9): prima chi ha meno agnellini, cioè g2.
+    // Stesso valore (9): l'ordine fra i due Tappi è estratto a caso (D10).
     const s0 = finoAgliEffetti(
       {
         guaio: NEUTRO,
@@ -1018,11 +1018,13 @@ describe('ignora_effetti — Tappi per le orecchie (brief 4; §6, D12)', () => {
       },
       { g1: ['tappi-per-le-orecchie'], g2: ['tappi-per-le-orecchie'], g3: ['agnellino-smarrito'] },
     );
-    expect(ordine(s0)).toEqual(['g2:ignora_effetti', 'g1:ignora_effetti', 'g3:prendi_agnellino']);
+    const [primo, secondo] = effetti(s0).coda.map((v) => v.giocatore) as [IdGiocatore, IdGiocatore];
+    expect(ordinate([primo, secondo])).toEqual(['g1', 'g2']);
+    expect(ordine(s0)).toEqual([`${primo}:ignora_effetti`, `${secondo}:ignora_effetti`, 'g3:prendi_agnellino']);
     const s1 = attivaERisolvi(s0);
-    expect(s1.datiRound.ignoraEffetti).toEqual({ giocatore: 'g2', carta: giocata(s1, 'g2', 'tappi-per-le-orecchie') });
+    expect(s1.datiRound.ignoraEffetti).toEqual({ giocatore: primo, carta: giocata(s1, primo, 'tappi-per-le-orecchie') });
     expect(carteConEsito(s0, s1, 'ignorato')).toEqual(
-      ordinate([giocata(s1, 'g1', 'tappi-per-le-orecchie'), giocata(s1, 'g3', 'agnellino-smarrito')]),
+      ordinate([giocata(s1, secondo, 'tappi-per-le-orecchie'), giocata(s1, 'g3', 'agnellino-smarrito')]),
     );
     expect(agnellini(s1, 'g3')).toBe(3);
     expect([totale(s1, 'g1'), totale(s1, 'g2'), totale(s1, 'g3')]).toEqual([9, 9, 1]);
@@ -1156,9 +1158,12 @@ describe('Ordine di risoluzione (brief 3 "Svolgimento", punto 4; §4.4, D10)', (
     expect([totale(s, 'g1'), totale(s, 'g2'), totale(s, 'g3')]).toEqual([5, 9, 8]);
   });
 
-  it('a parità di valore risolve prima chi ha meno agnellini', () => {
-    const s = finoAgliEffetti(
-      {
+  it('a parità di valore gli agnellini non contano: al variare del seme anche chi ne ha di più risolve per primo (D10, 21/10/2026)', () => {
+    const scelte: Scelte = { g1: ['pulizie-di-primavera'], g2: ['pulizie-di-primavera'], g3: ['carriola'] };
+    const primi = new Set<IdGiocatore>();
+    for (let seme = 1; seme <= 30; seme++) {
+      const o: OpzioniScenario = {
+        seme,
         guaio: NEUTRO,
         agnellini: { g1: 5, g2: 2, g3: 3 },
         mani: {
@@ -1166,14 +1171,17 @@ describe('Ordine di risoluzione (brief 3 "Svolgimento", punto 4; §4.4, D10)', (
           g2: ['pulizie-di-primavera', 'balla-di-fieno'],
           g3: ['carriola'],
         },
-      },
-      { g1: ['pulizie-di-primavera'], g2: ['pulizie-di-primavera'], g3: ['carriola'] },
-    );
-    expect(ordine(s)).toEqual(['g2:scarta_fino_a_tre', 'g1:scarta_fino_a_tre']);
-    expect(corrente(s).giocatore).toBe('g2');
+      };
+      const a = finoAgliEffetti(o, scelte);
+      expect(finoAgliEffetti(o, scelte)).toEqual(a);
+      expect(ordinate(ordine(a))).toEqual(['g1:scarta_fino_a_tre', 'g2:scarta_fino_a_tre']);
+      primi.add(corrente(a).giocatore);
+    }
+    // g1 ha più agnellini di g2, eppure in qualche seme risolve per primo.
+    expect(ordinate([...primi])).toEqual(['g1', 'g2']);
   });
 
-  it('gli agnellini si contano all\'ingresso nella fase: l\'ordine non cambia se un effetto precedente li modifica', () => {
+  it('l\'ordine si estrae all\'ingresso nella fase: non cambia se un effetto precedente modifica gli agnellini', () => {
     const s0 = finoAgliEffetti(
       {
         giocatori: 4,
@@ -1183,14 +1191,15 @@ describe('Ordine di risoluzione (brief 3 "Svolgimento", punto 4; §4.4, D10)', (
       },
       { g1: ['cannocchiale'], g2: ['cannocchiale'], g3: ['campanaccio-stonato'], g4: ['campanaccio-stonato'] },
     );
-    expect(ordine(s0)).toEqual(['g3:sposta_agnellino', 'g4:sposta_agnellino', 'g2:guarda_due', 'g1:guarda_due']);
-    // I due Campanacci tolgono 2 agnellini a g1: ora ne ha meno di g2, ma l'ordine resta.
+    // Valore crescente: i Campanacci (4) prima dei Cannocchiali (7); dentro ogni coppia, a caso.
+    expect(ordinate(ordine(s0).slice(0, 2))).toEqual(['g3:sposta_agnellino', 'g4:sposta_agnellino']);
+    expect(ordinate(ordine(s0).slice(2))).toEqual(['g1:guarda_due', 'g2:guarda_due']);
+    // I due Campanacci tolgono 2 agnellini a g1: l'ordine resta quello estratto all'ingresso.
     let s = attivaERisolvi(s0, 'g1');
     s = attivaERisolvi(s, 'g1');
     expect(agnellini(s, 'g1')).toBe(2);
-    expect(agnellini(s, 'g2')).toBe(3);
     expect(ordine(s)).toEqual(ordine(s0));
-    expect(corrente(s).giocatore).toBe('g2');
+    expect(corrente(s).giocatore).toBe(effetti(s0).coda[2]?.giocatore);
   });
 
   it('a ulteriore parità l\'ordine è casuale ma riproducibile con lo stesso seme', () => {

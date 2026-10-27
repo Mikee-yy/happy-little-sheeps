@@ -6,7 +6,7 @@ import { avanza, carta, chiudiPunteggio, conFaccia, nessunaReazione, prosegui, s
 import { chiaveDi, domandaDi, sceltaVuota } from '../scena/scelte/domanda';
 import type { Momento } from '../scena/scelte/tipi';
 import { T } from '../testi';
-import { momentoRemoto, scenaRemota, scrittaAttesa } from './regiaRemota';
+import { momentoRemoto, scenaRemota, scrittaAttesa, toccaAMe } from './regiaRemota';
 import type { ScenaRemota } from './regiaRemota';
 
 const per = (s: Stato, io: IdGiocatore) => scenaRemota(vistaPer(s, io), io, azioniPossibili(s, io));
@@ -228,7 +228,7 @@ describe('momentoRemoto', () => {
     const t = dellaStanza(nessunaReazione(applica(lanciata, dichiara)), 'g1');
     expect(t.momento?.schermo).toEqual({ tipo: 'pubblica', giocatore: 'g1', pannello: 'testata' });
     expect(t.momento?.vista).toBe(t.tavolo);
-    expect(domandaDelTelefono(t.momento!).d.testata).toBe(true);
+    expect(domandaDelTelefono(t.momento!).d.fionda).not.toBeNull();
   });
 
   it("furto: Annulla c'è ma è spento a scelta vuota", () => {
@@ -327,5 +327,73 @@ describe('scrittaAttesa', () => {
   it('schermi senza attesa: scritta vuota', () => {
     const r = dellaStanza(alDado(), 'g1');
     expect(scrittaAttesa(r.sc, r.tavolo)).toBe('');
+  });
+});
+
+describe('toccaAMe (il richiamo delle Regole nella stanza)', () => {
+  const tocca = (s: Stato, io: IdGiocatore) => {
+    const r = dellaStanza(s, io);
+    return toccaAMe(io, r.vistaIo, r.tavolo, r.azioni);
+  };
+
+  it('scelta segreta: a chi deve ancora scegliere sì; dopo aver scelto no, anche se potrebbe cambiare', () => {
+    const s = prosegui(scenario({ guaio: NEUTRO, mani: { g1: ['carriola'], g2: ['carriola'], g3: ['carriola'] } }));
+    expect(tocca(s, 'g2')).toBe(true);
+    const dopo = applica(s, azioniPossibili(s, 'g2').find((a) => a.tipo === 'scegliTrovata')!);
+    expect(azioniPossibili(dopo, 'g2').length).toBeGreaterThan(0);
+    expect(tocca(dopo, 'g2')).toBe(false);
+    expect(tocca(dopo, 'g1')).toBe(true);
+  });
+
+  it('effetti e richiesta: a chi è di turno sì, agli altri no', () => {
+    const s = quattroConCampanaccio();
+    expect(tocca(s, 'g1')).toBe(true);
+    expect(tocca(s, 'g2')).toBe(false);
+    const mani: Scelte = { g1: ['cannocchiale', 'carriola'], g2: ['sasso-comodo'], g3: ['balla-di-fieno'] };
+    let r = finoAgliEffetti({ guaio: NEUTRO, mazzo: ['corona-di-margherite', 'trifoglio-qualunque', 'ombrello-bucato'], mani }, { g1: ['cannocchiale'], g2: ['sasso-comodo'], g3: ['balla-di-fieno'] });
+    const f = r.fase;
+    if (f.nome !== 'effetti') throw new Error('fase attesa effetti');
+    const voce = f.coda[f.indice]!;
+    r = nessunaReazione(applica(r, { tipo: 'attivaEffetto', giocatore: voce.giocatore, carta: voce.carta }));
+    expect(dellaStanza(r, 'g1').sc).toEqual({ tipo: 'pannello', pannello: 'richiesta' });
+    expect(tocca(r, 'g1')).toBe(true);
+    expect(tocca(r, 'g2')).toBe(false);
+  });
+
+  it('dado, dichiarazione e mira della Testata: al lanciatore sì, agli altri no', () => {
+    const s = alDado();
+    expect(tocca(s, 'g1')).toBe(true);
+    expect(tocca(s, 'g2')).toBe(false);
+    const lanciata = applica(conFaccia(alDado(), 'testata'), { tipo: 'lanciaDado', giocatore: 'g1' });
+    expect(tocca(lanciata, 'g1')).toBe(true);
+    expect(tocca(lanciata, 'g2')).toBe(false);
+    const dichiara = azioniPossibili(lanciata, 'g1').find((a) => a.tipo === 'dichiaraDado' && a.bersaglio !== undefined)!;
+    const mira = nessunaReazione(applica(lanciata, dichiara));
+    expect(dellaStanza(mira, 'g1').sc).toEqual({ tipo: 'pannello', pannello: 'testata' });
+    expect(tocca(mira, 'g1')).toBe(true);
+  });
+
+  it('Belato Finale, salvataggio e consolazione: sì', () => {
+    expect(tocca(alBelatoFinale(), 'g2')).toBe(true);
+    const sv = alSalvataggio();
+    expect(tocca(sv, 'g2')).toBe(true);
+    expect(tocca(sv, 'g1')).toBe(false);
+    expect(tocca(applica(sv, { tipo: 'passa', giocatore: 'g2', voce: null }), 'g2')).toBe(true);
+  });
+
+  it('finestre col tempo: reazione al dado (anche con un Beee-NO! in mano) e Belati di punteggio no', () => {
+    const reazione = applica(conFaccia(alDado(), 'pascolo_piccolo'), { tipo: 'lanciaDado', giocatore: 'g1' });
+    expect(dellaStanza(reazione, 'g2').sc).toEqual({ tipo: 'pannello', pannello: 'reazione' });
+    expect(tocca(reazione, 'g2')).toBe(false);
+    expect(tocca(reazione, 'g1')).toBe(false);
+    const punteggio = alPunteggio();
+    expect(dellaStanza(punteggio, 'g3').sc).toEqual({ tipo: 'pannello', pannello: 'punteggio' });
+    expect(tocca(punteggio, 'g3')).toBe(false);
+  });
+
+  it('fasi automatiche e fine: no', () => {
+    expect(tocca(scenario({ guaio: NEUTRO }), 'g1')).toBe(false);
+    const finita: Stato = { ...alDado(), fase: { nome: 'fine_partita' }, esito: { modo: 'mazzo_finito', vincitori: ['g1'] } };
+    expect(tocca(finita, 'g1')).toBe(false);
   });
 });

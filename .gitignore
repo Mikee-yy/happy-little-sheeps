@@ -10,5 +10,8 @@ design_handoff_happy_little_sheeps/
 # Configurazione locale (contiene percorsi del PC)
 .claude/
 
+# Lavoro di sviluppo: registri, revisioni, foto di prova (contengono percorsi del PC)
+.superpowers/
+
 # Bozza della scena: scena.html si genera da scena.src.html con bozze/scena/costruisci.cjs
 bozze/scena/scena.html

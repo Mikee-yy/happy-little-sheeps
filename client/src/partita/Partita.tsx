@@ -188,7 +188,8 @@ export function Partita(p: {
   sessione: Sessione;
   onHome: () => void;
   onRigioca: () => void;
-  onRegole: () => void;
+  /** Le Regole dal menu, con i nomi dei giocatori nell'ordine dei posti (per gli esempi). */
+  onRegole: (nomi: readonly string[]) => void;
   umano?: IdGiocatore;
   pensiero?: Pensiero | null;
   /** Niente domanda né pannello d'azione (sotto il riquadro finale della prova non si gioca). */
@@ -440,7 +441,8 @@ export function Partita(p: {
         <Menu
           onRegole={() => {
             setMenu(false);
-            p.onRegole();
+            // Alle Regole solo i nomi: niente vista né mani (le Regole smontano la partita, al ritorno torna il "Passa a")
+            p.onRegole(tavolo.giocatori.map((g) => g.nome));
           }}
           onEsci={p.onHome}
           onChiudi={() => setMenu(false)}

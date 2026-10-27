@@ -2,7 +2,7 @@
 // Partita di prova: i bot giocano da soli, l'umano no; niente salvataggio.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { azioniPossibili, inAttesaDi } from '../engine/src';
-import { semplice } from '../engine/sim/politiche';
+import { normale, semplice } from '../engine/sim/politiche';
 import { SessioneProva } from './prova';
 
 beforeEach(() => {
@@ -173,6 +173,36 @@ describe('SessioneProva: un bot che sbaglia non ferma la partita', () => {
     const chi = eventi(s, 'ha_scelto').map((e) => (e.tipo === 'ha_scelto' ? e.giocatore : ''));
     expect(chi).not.toContain('g1');
     expect(chi).toHaveLength(2);
+    s.chiudi();
+  });
+});
+
+describe('SessioneProva: strategia dei bot (D47)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('nei tre round guidati i bot usano "semplice" (la storia preparata), dal quarto "normale"', () => {
+    const roundSemplice: number[] = [];
+    const roundNormale: number[] = [];
+    vi.spyOn(semplice, 'scegli').mockImplementation((st, _g, az) => {
+      roundSemplice.push(st.round);
+      return az.find((a) => a.tipo !== 'giocaBelato') ?? az[0]!;
+    });
+    vi.spyOn(normale, 'scegli').mockImplementation((st, _g, az) => {
+      roundNormale.push(st.round);
+      return az.find((a) => a.tipo !== 'giocaBelato') ?? az[0]!;
+    });
+    const s = SessioneProva.nuova({ pausaMs: 10 });
+    // L'umano fa la prima mossa che non sia un Belato; le fasi di sistema proseguono.
+    for (let i = 0; i < 3000 && !s.vista(null).esito && roundNormale.length === 0; i++) {
+      const umano = s.azioni('g1');
+      const mossa = umano.find((a) => a.tipo !== 'giocaBelato');
+      if (mossa && inAttesaDi((s as unknown as { stato: Parameters<typeof inAttesaDi>[0] }).stato).giocatori.includes('g1')) s.invia(mossa);
+      else if (s.azioni('sistema').length > 0) s.invia(s.azioni('sistema')[0]!);
+      vi.advanceTimersByTime(20);
+    }
+    expect(roundSemplice.length).toBeGreaterThan(0);
+    expect(Math.max(...roundSemplice)).toBeLessThanOrEqual(3);
+    expect(Math.min(...roundNormale)).toBe(4);
     s.chiudi();
   });
 });

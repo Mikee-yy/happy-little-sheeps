@@ -22,6 +22,8 @@ export interface RisultatoPartita {
   seme: number;
   numeroGiocatori: number;
   politica: string;
+  /** Politica di ogni posto (tutte uguali tranne che nei tavoli misti). */
+  politichePosti: string[];
   stato: 'ok' | 'errore' | 'stallo';
   errore?: string;
   round: number;
@@ -34,6 +36,8 @@ export interface RisultatoPartita {
   postoPrimo: number;
   vincitoriPosti: number[];
   eliminati: number;
+  /** Posti degli eliminati, nell'ordine. */
+  eliminatiPosti: number[];
   belatiFinali: number;
   beeeNo: number;
   annullate: number;
@@ -83,8 +87,16 @@ export function esitoTestataCasuale(massimo: number, r: Casuale): number {
   return Math.min(esito, massimo);
 }
 
-export function giocaPartita(o: { numeroGiocatori: number; seme: number; politica: Politica; variante?: Variante }): RisultatoPartita {
+/** Gioca una partita. Con `politiche` (una per posto, `g1` per primo) il tavolo è misto; altrimenti tutti usano `politica`. */
+export function giocaPartita(o: {
+  numeroGiocatori: number;
+  seme: number;
+  politica: Politica;
+  politiche?: Politica[];
+  variante?: Variante;
+}): RisultatoPartita {
   const r = generatore(o.seme ^ 0x5eed);
+  const perPosto = Array.from({ length: o.numeroGiocatori }, (_, i) => o.politiche?.[i] ?? o.politica);
   const tutte = SETUP.pecore.map((p) => p.id);
   const pecore: IdPecora[] = [];
   while (pecore.length < o.numeroGiocatori) {
@@ -94,7 +106,8 @@ export function giocaPartita(o: { numeroGiocatori: number; seme: number; politic
   const ris: RisultatoPartita = {
     seme: o.seme,
     numeroGiocatori: o.numeroGiocatori,
-    politica: o.politica.nome,
+    politica: o.politiche ? perPosto.map((p) => p.nome).join('+') : o.politica.nome,
+    politichePosti: perPosto.map((p) => p.nome),
     stato: 'ok',
     round: 0,
     azioni: 0,
@@ -104,6 +117,7 @@ export function giocaPartita(o: { numeroGiocatori: number; seme: number; politic
     postoPrimo: 0,
     vincitoriPosti: [],
     eliminati: 0,
+    eliminatiPosti: [],
     belatiFinali: 0,
     beeeNo: 0,
     annullate: 0,
@@ -138,6 +152,7 @@ export function giocaPartita(o: { numeroGiocatori: number; seme: number; politic
           break;
         case 'eliminato':
           ris.eliminati++;
+          ris.eliminatiPosti.push(posto(e.giocatore));
           break;
         case 'belato_finale':
           ris.belatiFinali++;
@@ -179,7 +194,7 @@ export function giocaPartita(o: { numeroGiocatori: number; seme: number; politic
           const massimo = Math.max(...testate.map((a) => (a.tipo === 'esitoTestata' ? a.esito : 0)));
           azione = { tipo: 'esitoTestata', giocatore: g, esito: esitoTestataCasuale(massimo, r) };
         } else {
-          azione = o.politica.scegli(s, g, possibili, r);
+          azione = (perPosto[posto(g)] ?? o.politica).scegli(s, g, possibili, r);
           const prova = tentaApplica(s, azione);
           if (prova.ok) prossimo = prova.stato;
           else {
@@ -217,6 +232,22 @@ export function simula(o: {
   const risultati: RisultatoPartita[] = [];
   for (let i = 0; i < o.partite; i++) {
     risultati.push(giocaPartita({ numeroGiocatori: o.numeroGiocatori, seme: o.semeIniziale + i, politica: o.politica, variante: o.variante }));
+  }
+  return risultati;
+}
+
+/**
+ * Tavoli misti: `tavolo` ha una politica per posto. A ogni partita i posti ruotano di uno, così ogni politica siede
+ * in ogni posto lo stesso numero di volte (il primo giocatore resta estratto dal motore).
+ */
+export function simulaMiste(o: { tavolo: Politica[]; partite: number; semeIniziale: number; variante?: Variante }): RisultatoPartita[] {
+  const n = o.tavolo.length;
+  const risultati: RisultatoPartita[] = [];
+  for (let i = 0; i < o.partite; i++) {
+    const politiche = o.tavolo.map((_, posto) => o.tavolo[(posto + i) % n] as Politica);
+    risultati.push(
+      giocaPartita({ numeroGiocatori: n, seme: o.semeIniziale + i, politica: politiche[0] as Politica, politiche, variante: o.variante }),
+    );
   }
   return risultati;
 }

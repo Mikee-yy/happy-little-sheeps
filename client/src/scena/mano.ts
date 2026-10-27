@@ -29,8 +29,12 @@ export interface OpzioniMano {
 }
 
 export interface Mano {
-  /** `carte`: il ventaglio scoperto; null: `dorsi` carte coperte. */
-  mostra(carte: IdCarta[] | null, dorsi: number): void;
+  /**
+   * `carte`: il ventaglio scoperto; null: `dorsi` carte coperte. Le carte che entrano in un ventaglio già scoperto (pescate)
+   * fanno il loro movimento una volta sola; con `ferme` (ricostruzione del tavolo) entrano ferme, come la prima mano
+   * mostrata e quella appena scoperta.
+   */
+  mostra(carte: IdCarta[] | null, dorsi: number, opz?: { ferme?: boolean }): void;
   /** La carta sollevata (al centro, ingrandita), se c'è. */
   attiva(): IdCarta | null;
   /** Rimette nel ventaglio la carta sollevata (un tocco sulla scena, bozza riga 2669). In modo comandato non fa niente: le carte sollevate le dice chi comanda. */
@@ -57,6 +61,12 @@ interface Posa {
 
 const TENUTA_MS = 430;
 const SOGLIA_TRASCINA = 9;
+/**
+ * Il movimento della carta appena pescata finisce da solo (un giro per parte, classe `una-volta` in carte/animazioni.css);
+ * se il browser non lo dice (o la carta resta sollevata) si chiude comunque dopo questo tempo: il giro più lungo
+ * (la ruota lenta, 14 s) con un poco di margine.
+ */
+export const UNA_VOLTA_MAX_MS = 15000;
 /** Rilasciata con il dito sopra questa linea della scena (y minore) la carta è giocata (bozza, riga 1888). */
 const LINEA_GIOCO = 640;
 
@@ -94,6 +104,10 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
   const annullaTrascinamento = new Map<IdCarta, () => void>();
   /** La carta che la lettura aperta dalla mano sta mostrando. */
   let lettaDa: IdCarta | null = null;
+  /** Il ventaglio è già scoperto: le carte che arrivano adesso sono pescate (non la prima mano, non la mano appena scoperta). */
+  let scoperta = false;
+  /** Le carte appena pescate che stanno facendo il loro movimento una volta: per ognuna, come chiuderlo in anticipo. */
+  const unaVolta = new Map<IdCarta, () => void>();
 
   const puntatore = (e: MouseEvent) => {
     const m = ctx.el.ui.getBoundingClientRect();
@@ -124,7 +138,9 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
       el.style.zIndex = String(alzata ? 2500 + Math.max(0, posto) : 2000 + i);
       el.classList.toggle('attiva', alzata);
       el.classList.toggle('spenta', spenta);
-      const animata = alzata;
+      // Sollevata si muove senza fine; appena pescata fa un giro solo (`una-volta`), poi torna ferma
+      const animata = alzata || unaVolta.has(id);
+      el.classList.toggle('una-volta', unaVolta.has(id) && !alzata);
       if ((el.dataset.anim === '1') !== animata) {
         el.innerHTML = cartaSVG(id, animata);
         el.dataset.anim = animata ? '1' : '';
@@ -309,6 +325,40 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
     });
   }
 
+  /**
+   * La carta appena pescata fa il suo movimento una volta. Finisce quando nessuna parte animata gira più (a ogni
+   * `animationend` si chiede al browser), o al più tardi dopo UNA_VOLTA_MAX_MS; poi il disegno torna quello fermo.
+   */
+  function avviaUnaVolta(id: IdCarta, el: HTMLElement) {
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const chiudi = () => {
+      if (t !== null) {
+        clearTimeout(t);
+        timer.delete(t);
+        t = null;
+      }
+      el.removeEventListener('animationend', suFine);
+      unaVolta.delete(id);
+    };
+    const finisci = () => {
+      chiudi();
+      disponi();
+    };
+    const suFine = () => {
+      // Le parti della carta (classe "an") che girano ancora; senza getAnimations decide il tempo massimo
+      if (typeof el.getAnimations !== 'function') return;
+      const ancora = el.getAnimations({ subtree: true }).some((a) => {
+        const bersaglio = (a.effect as KeyframeEffect | null)?.target;
+        return a.playState !== 'finished' && !!bersaglio?.classList.contains('an');
+      });
+      if (!ancora) finisci();
+    };
+    el.addEventListener('animationend', suFine);
+    t = setTimeout(finisci, UNA_VOLTA_MAX_MS);
+    timer.add(t);
+    unaVolta.set(id, chiudi);
+  }
+
   function chiudiLettura() {
     lettaDa = null;
     lettura.chiudi();
@@ -319,6 +369,7 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
     azzera.get(id)?.();
     azzera.delete(id);
     annullaTrascinamento.delete(id);
+    unaVolta.get(id)?.();
     el.remove();
     elementi.delete(id);
     if (attiva === id) attiva = null;
@@ -336,8 +387,9 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
   }
 
   return {
-    mostra(carte, numeroDorsi) {
+    mostra(carte, numeroDorsi, opz = {}) {
       if (carte === null) {
+        scoperta = false;
         svuotaScoperte();
         attiva = null;
         lettura.chiudi();
@@ -356,6 +408,10 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
         return;
       }
       svuotaDorsi();
+      // Pescate: entrano in un ventaglio già scoperto, con la scheda in vista (le carte arrivate mentre si guardava
+      // un'altra scheda restano ferme) e senza movimento ridotto
+      const pescate = scoperta && !opz.ferme && !ctx.ridotto && document.visibilityState !== 'hidden';
+      scoperta = true;
       const nuovi = new Set(carte);
       for (const [id, el] of [...elementi]) {
         if (nuovi.has(id)) continue;
@@ -378,6 +434,7 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
           el = creaCarta(id);
           elementi.set(id, el);
           mie.add(el);
+          if (pescate) avviaUnaVolta(id, el);
         }
         if (el !== prima) contenitore.insertBefore(el, prima);
         prima = salta(el.nextSibling);
@@ -419,6 +476,7 @@ export function creaMano(ctx: Contesto, lettura: Lettura, opzioni: OpzioniMano =
       svuotaDorsi();
       attiva = null;
       com = null;
+      scoperta = false;
     },
   };
 }

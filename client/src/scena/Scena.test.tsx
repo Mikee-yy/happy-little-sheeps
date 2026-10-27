@@ -6,6 +6,9 @@ import { readFileSync } from 'node:fs';
 import { StrictMode } from 'react';
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// Questo file monta teatri veri: con tutte le prove insieme una prova può superare i 5 s predefiniti (la macchina è
+// carica). Il limite più alto vale per tutto il file, così la prossima prova lenta non fallisce per finta.
+vi.setConfig({ testTimeout: 60_000 });
 import { disposizione } from './disposizioni';
 import { H } from './misure';
 import { posizioneMano } from './mano';
@@ -428,7 +431,7 @@ describe('Scena e regia: la partita sa quando la scena recita', () => {
     expect(t.stato().agnellini.g1?.mostrati).toBe(dopo.foto.posti[0]!.agnellini);
     r.unmount();
     expect(errori).not.toHaveBeenCalled();
-  }, 30_000);
+  });
 
   it('smontata durante la recita: onOccupato(false), una volta sola', () => {
     spia.manuale = true;
@@ -530,7 +533,7 @@ const domanda = (o: Partial<Domanda> = {}): Domanda => ({
   centro: null,
   furto: null,
   pulsanti: [{ id: 'nessuno', testo: 'Nessuno', attivo: true }],
-  testata: false,
+  fionda: null,
   ...o,
 });
 const bottone = (radice: Element, testo: string) =>
@@ -633,5 +636,5 @@ describe('Scena e domande: le scelte dentro la scena', () => {
     await scorri(t, 20_000, () => !t.occupato());
     r.rerender(<Scena foto={poi.foto} vista={poi.vista} domanda={{ ...d }} suGesto={() => {}} />);
     expect(radice.querySelector('.zona[data-chi="g2"]')).not.toBeNull();
-  }, 30_000);
+  });
 });

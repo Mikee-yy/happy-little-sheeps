@@ -13,11 +13,33 @@ import { T } from '../testi';
 import { TAVOLOZZA as P } from './ambiente/paesaggio';
 import { DURATA_SGANCIA_MS, type Camera } from './camera';
 import { cartaSVG, retroSVG } from './carte/carte';
+import { mettiPosa, montoneSVG } from './fionda/montone';
+import {
+  arrivoInScena,
+  basePartenza,
+  coperto,
+  latoCorsa,
+  partenzaDi,
+  posizioneInVolo,
+  puntoDiScena,
+  riportaSuRecinto,
+  scansa,
+  siToccano,
+  strisciaCorsa,
+  variazioneDaSeq,
+  ventaglio,
+  type Ingombro,
+  type Punto,
+  type Rett,
+} from './fionda/tiro';
 import { trasf } from './mano';
 import type { Meteo } from './meteo/indice';
-import { manoInScena } from './misure';
+import { manoInScena, W } from './misure';
 import type { Palco } from './palco';
-import { togliFumetti, type TipoReazione } from './personaggi/pecora';
+import type { Agnello } from './personaggi/agnello';
+import { dentro, type Area } from './personaggi/aree';
+import { effetto, prendi, rilascia } from './personaggi/giochi';
+import { togliFumetti, type Pecora, type TipoReazione } from './personaggi/pecora';
 import { posaDado } from './tavolo/coperta';
 
 export interface OpzioniGuaio {
@@ -52,8 +74,14 @@ export interface Ordini {
   fermaMeteo(): void;
   /** Lancio animato che si ferma su quella faccia (id della faccia del motore). */
   dado(faccia: string): Promise<void>;
-  /** Il montone e `quanti` agnellini del bersaglio in volo verso il gregge. */
-  testata(chi: IdGiocatore, bersaglio: IdGiocatore, quanti: number): Promise<void>;
+  /**
+   * Il Montone vola ad arco da vicino alla pecora di chi tira al recinto del bersaglio e ci dà una testata: con `quanti` > 0
+   * lo colpisce e quegli agnellini volano verso il gregge, con 0 atterra fuori; poi resta stordito, scuote la testa e corre
+   * via. Parte e atterra dove ha tirato chi ha la fionda su questo telefono (`regia.tiroLocale`); altrimenti parte vicino
+   * alla pecora di chi tira e atterra in un punto "di scena" della zona del risultato, l'una e l'altro ricavati da `seq`
+   * (gli stessi su tutti i telefoni).
+   */
+  testata(chi: IdGiocatore, bersaglio: IdGiocatore, quanti: number, seq?: number): Promise<void>;
   beeeNo(chi: IdGiocatore): Promise<void>;
   /**
    * L'annullamento nel gioco vero, dopo che la carta Beee-NO! è già volata: esplode il BEEE-NO!, la carta annullata
@@ -83,9 +111,10 @@ interface Tappa {
 }
 
 /** Elementi degli ordini sul prato e nell'interfaccia: si tolgono quando il tavolo si ricostruisce. */
-export const ELEMENTI_ORDINI = '.volante, .montone, .linee-zoom, .annuncio, .coriandolo';
+export const ELEMENTI_ORDINI = '.volante, .montone, .ombra-montone, .sbuffo-testata, .linee-zoom, .annuncio, .coriandolo';
 
-const CENTRO_TAVOLO = { x: 195, y: 360, k: 0.5 };
+/** Il centro della tovaglia: la carta ferma degli ordini, la carta "solo da guardare" delle scelte, la partenza della fionda. */
+export const CENTRO_TAVOLO = { x: 195, y: 360, k: 0.5 };
 
 /** Tempi degli ordini del pezzo 2 (tempo della scena). */
 const DURATA_GUAIO_RIVELATO_MS = 700;
@@ -97,6 +126,94 @@ const DURATA_FUMETTI_MS = 1200;
 const DURATA_ELIMINATA_MS = 1000;
 const DURATA_FESTA_MS = 3000;
 const CORIANDOLI = 70;
+/**
+ * La Testata (tempo della scena), con il Montone animato (fionda/montone.ts, pose in scena.css): il volo ad arco dalla pecora
+ * di chi tira (posa-volo, con la scia del vento), la testata sul punto d'arrivo (posa-botta), stordito (posa-stordito), scuote
+ * la testa (posa-scuote) e corre via arrabbiato (posa-corre). Colpito o a vuoto cambiano solo suoni ed effetti: le due strade
+ * durano uguale (`durate.json`, voce `testata`, quella che chi ospita usa per tutti i telefoni):
+ * 800 + 700 + 2000 + 800 + 700 = 5000 ms. Dopo il tiro nessun cerchio: si vede solo il recinto (con la polvere dove atterra).
+ */
+const DURATA_VOLO_TESTATA_MS = 800;
+/** La testata: la posa-botta dura 0,75 s (schiacciato fino a circa 0,3 s, poi si assesta); dopo 0,7 s è già stordito. */
+const DURATA_BOTTA_MS = 700;
+/** Stordito circa 2 secondi (progetto, "Seconda versione"). */
+const DURATA_STORDITO_MS = 2000;
+/** Una scrollata intera della posa-scuote (0,8 s in scena.css). */
+const DURATA_SCUOTE_MS = 800;
+const DURATA_USCITA_MONTONE_MS = 700;
+/** In volo il muso sale alla partenza e scende all'arrivo (gradi): arriva di testa. */
+const GIRO_PARTENZA = -16;
+const GIRO_ARRIVO = 20;
+/**
+ * La parte del volo (0–1) in cui il Montone passa dalla posa della mira (guarda a destra, dritto) a quella del volo: si gira
+ * verso l'arrivo (se sta a sinistra, la scala orizzontale passa piano da +1 a -1) e si inclina un poco alla volta.
+ */
+const GIRATA_VOLO = 0.15;
+/** Con il movimento ridotto il Montone resta fermo nel punto d'arrivo per tanto, prima di andare via. */
+const SOSTA_RIDOTTA_MS = 800;
+/**
+ * Chi sta sotto il punto d'arrivo (fionda.json, voce `scansa`) se ne accorge a questa parte del volo; poi un sobbalzo e lo
+ * scivolare di lato con un saltello: 0,4 × 800 + 180 + 300 = 800, già di lato quando il Montone tocca terra. Torna al suo posto
+ * mentre il Montone corre via, nello stesso tempo della corsa: la Testata dura quanto prima.
+ */
+const ACCORTO_VOLO = 0.4;
+const SOBBALZO_MS = 180;
+const SCIVOLA_MS = 300;
+/** Quanto saltano: per la pecora in frazioni della sua cornice, per l'agnellino in unità del mondo (prima della profondità). */
+const SALTI_PECORA = { sobbalzo: 0.1, scivola: 0.14, ritorno: 0.04 };
+const SALTI_AGNELLO = { sobbalzo: 6, scivola: 9, ritorno: 3 };
+/** Lo sbuffo di polvere dove atterra il Montone. */
+const DURATA_SBUFFO_MS = 1000;
+/**
+ * In volo il Montone sta sopra tutto, allo stesso livello del Montone della mira (scena.css, `.fionda-montone`): al lancio
+ * niente salto di profondità, né davanti né dietro la propria pecora e il proprio recinto. Sotto la mano e l'interfaccia.
+ */
+const Z_MONTONE_IN_ARIA = 1600;
+/**
+ * Il corpo del Montone nel disegno (prima della scala): dalla coda al muso circa 60 e 65 attorno ai piedi, alto 72 sopra di
+ * loro. La strada della corsa via è larga così.
+ */
+const CORPO_MONTONE = { mezzo: 65, alto: 72 };
+/** La pecora nella sua cornice larga `w`: la cima del corpo (sotto le orecchie) a 0,2 `w` dall'alto. */
+const PECORA_CIMA = 0.2;
+/** Fotogrammi del volo (l'arco è campionato: tra uno e l'altro la scena va dritta). */
+const PASSI_VOLO = 16;
+/** A metà volo il Montone è più grande di tanto (è più vicino a chi guarda). */
+const CRESCITA_IN_VOLO = 0.3;
+/** Il Montone come nella mira: larghezza del disegno, piedi (origine della scala), ingrandimento sulla profondità. */
+const LARGO_MONTONE = 150;
+const PIEDI_MONTONE_X = 75;
+const PIEDI_MONTONE_Y = 102;
+const SCALA_MONTONE = 1.1;
+/** Fuori dallo schermo di tanto, uscendo di lato. */
+const FUORI_SCHERMO = 160;
+/** L'ombra a terra del Montone in volo: misure del disegno (prima della scala) e quanto si stringe a metà volo. */
+const LARGO_OMBRA = 80;
+const ALTO_OMBRA = 16;
+const OMBRA_IN_ALTO = 0.35;
+/**
+ * I corpi che il Montone atterrato può coprire (personaggi/pecora.ts e agnello.ts): la pecora, nella sua cornice larga `w`,
+ * ha il corpo largo circa 0,7 `w` attorno al mezzo e i piedi a 0,78 `w` dall'alto; l'agnellino (28 px, scalato sulla
+ * profondità) è largo circa 22.
+ */
+const PECORA_MEZZA = 0.35;
+const PECORA_PIEDI = 0.78;
+const AGNELLO_MEZZO = 11;
+
+/** La larghezza del Montone a terra alla profondità `profondita` (come nella mira: 150 × profondità × 1.1). */
+export function largoMontone(profondita: number): number {
+  return LARGO_MONTONE * profondita * SCALA_MONTONE;
+}
+
+/** Dove sta il corpo della pecora di una postazione: i piedi in mezzo alla cornice e la mezza larghezza. */
+export function ingombroPecora(g: { x: number; y: number; w: number }): Ingombro {
+  return { x: g.x + g.w / 2, y: g.y + PECORA_PIEDI * g.w, mezzo: PECORA_MEZZA * g.w };
+}
+
+/** Dove sta il corpo di un agnellino con i piedi in `p`, alla profondità `profondita`. */
+export function ingombroAgnello(p: Punto, profondita: number): Ingombro {
+  return { x: p.x, y: p.y, mezzo: AGNELLO_MEZZO * profondita };
+}
 
 export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDelTeatro {
   const { ctx } = palco;
@@ -109,6 +226,8 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
   let salto = { x: 0, y: 0 };
   /** Cresce a ogni `interrompi`: gli ordini in corso si fermano anche senza una ricostruzione del tavolo (distruggi). */
   let interruzioni = 0;
+  /** Chi si è scansato dal Montone: ognuna rimette subito tutti al loro posto (la chiama `interrompi`, o la Testata alla fine). */
+  const scansati = new Set<() => void>();
 
   /** Per un ordine che comincia adesso: vero finché il tavolo non si ricostruisce e gli ordini non vengono interrotti. */
   function vivoDa(): () => boolean {
@@ -369,36 +488,529 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     await attendi(ctx.ridotto ? 50 : 1250);
   }
 
-  async function testata(_chi: IdGiocatore, bersaglio: IdGiocatore, quanti: number): Promise<void> {
+  /** Il recinto del bersaglio a riposo: lì atterra il volo, anche se adesso sta ancora tornando normale dopo la mira. */
+  function recintoARiposo(a: Area): Rett {
+    const [x0, y0, x1, y1] = a.area0 ?? [a.x0, a.y0, a.x1, a.y1];
+    return { x0, y0, x1, y1 };
+  }
+
+  /** Uno sbuffo di polvere a terra nel punto `p` (circa un secondo): si allarga e svanisce; col movimento ridotto svanisce e basta. */
+  function sbuffo(p: Punto): void {
+    const k = palco.profondita(p.y) * SCALA_MONTONE;
+    const s = document.createElement('div');
+    s.className = 'abs sbuffo-testata';
+    s.dataset.x = String(p.x);
+    s.dataset.y = String(p.y);
+    s.style.cssText += `;left:0;top:0;z-index:${Math.round(100 + p.y + 8) - 1}`;
+    s.innerHTML =
+      '<svg width="1" height="1" style="overflow:visible;display:block" aria-hidden="true">' +
+      [[-22, -3, 7], [-10, -8, 9], [4, -9, 8], [18, -4, 7], [-2, 0, 6]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join('') +
+      '</svg>';
+    el.mondo.appendChild(s);
+    const posa = (q: number): string => `translate(${p.x}px,${p.y}px) scale(${k * q})`;
+    const fotogrammi: Keyframe[] = ctx.ridotto
+      ? [{ transform: posa(1), opacity: 0.9 }, { transform: posa(1), opacity: 0 }]
+      : [{ transform: posa(0.4), opacity: 0.95 }, { transform: posa(1.1), opacity: 0.8, offset: 0.35 }, { transform: posa(1.5), opacity: 0 }];
+    void anima(s, fotogrammi, { duration: DURATA_SBUFFO_MS, easing: 'ease-out', fill: 'forwards' }).then(() => s.remove());
+  }
+
+  /** Un'animazione degli ordini che resta in mano a chi la chiede (per annullarla); `interrompi` la annulla comunque. */
+  function animaTenuta(e: Element, f: Keyframe[], o: KeyframeAnimationOptions): Animation {
+    const a = ctx.anima(e, f, o);
+    animazioni.add(a);
+    const via = () => {
+      animazioni.delete(a);
+    };
+    a.finished.then(via, via);
+    return a;
+  }
+
+  /** Un numero per una trasformazione: due decimali, mai "-0". */
+  const cifra = (v: number): number => Math.round(v * 100) / 100 || 0;
+  const liscio = (q: number): number => q * q * (3 - 2 * q);
+
+  /** Chi si scansa: `torna` lo riporta al suo posto con calma, `rimetti` subito (senza lasciare classi, trasformazioni o regia). */
+  interface Scansato {
+    torna(): void;
+    rimetti(): void;
+  }
+  /** Chi si è scansato dal Montone (`scansaDalMontone`); `spostata`: di quanto si è spostata di lato la pecora di `c` (0 se no). */
+  interface DaParte {
+    spostata(c: IdGiocatore): number;
+    /** Sotto quale livello deve atterrare il Montone per stare dietro le pecore rimaste sotto di lui (null: nessuna). */
+    zSotto(): number | null;
+    torna(): void;
+    meteFuori(): void;
+    fine(): void;
+  }
+
+  /**
+   * La pecora scivola di lato di `dx` (stessa profondità; 0: resta dov'è e fa solo il sobbalzo) con un saltello dopo un
+   * sobbalzo e le orecchie dritte, e alla fine si gira verso il Montone (`montone`: la sua x). Si gira solo il disegno
+   * (`Pecora.gira`): girare la cornice specchierebbe anche l'ombra al sole e il vento. Una sola animazione che resta alla
+   * fine (`fill: forwards`); il ritorno la sostituisce, e annullate tutte e due la pecora è subito al suo posto e nel suo
+   * verso. Con il movimento ridotto cambia posto senza passaggi in mezzo.
+   */
+  function scansaPecora(p: Pecora, dx: number, montone: number, w: number): Scansato {
+    const r = ctx.ridotto;
+    const x = p.g.x + p.g.w / 2 + dx;
+    // −1: per guardare il Montone si gira (il suo verso è `p.verso`)
+    const gira: 1 | -1 = Math.sign(montone - x) * p.verso < 0 ? -1 : 1;
+    const tr = (x: number, y: number): string => `translate(${cifra(x)}px,${cifra(y)}px)`;
+    const tot = SOBBALZO_MS + SCIVOLA_MS;
+    let chiuso = false;
+    const via = animaTenuta(
+      p.el,
+      r
+        ? [{ transform: tr(0, 0) }, { transform: tr(dx, 0) }]
+        : [
+            { transform: tr(0, 0), offset: 0 },
+            { transform: tr(0, -SALTI_PECORA.sobbalzo * w), offset: SOBBALZO_MS / 2 / tot },
+            { transform: tr(0, 0), offset: SOBBALZO_MS / tot },
+            { transform: tr(dx / 2, -SALTI_PECORA.scivola * w), offset: (SOBBALZO_MS + SCIVOLA_MS / 2) / tot },
+            { transform: tr(dx, 0), offset: 1 },
+          ],
+      { duration: r ? 1 : tot, easing: 'linear', fill: 'forwards' },
+    );
+    // Arrivata, si gira verso il Montone (annullata no: è già al suo posto)
+    via.finished.then(
+      () => {
+        if (!chiuso) p.gira(gira);
+      },
+      () => undefined,
+    );
+    if (!r) p.fai('orecchie', true);
+    let ritorno: Animation | null = null;
+    const ferma = (a: Animation | null): void => {
+      try {
+        a?.cancel();
+      } catch {
+        /* già finita */
+      }
+    };
+    return {
+      torna() {
+        if (ritorno || chiuso) return;
+        // Guarda il Montone, cioè verso casa: due passetti, poi si rigira nel suo verso. Senza `fill`: finita, è al suo posto
+        const h = -SALTI_PECORA.ritorno * w;
+        p.gira(gira);
+        const questo = animaTenuta(
+          p.el,
+          r
+            ? [{ transform: tr(dx, 0) }, { transform: tr(0, 0) }]
+            : [
+                { transform: tr(dx, 0), offset: 0 },
+                { transform: tr(dx * 0.75, h), offset: 0.22 },
+                { transform: tr(dx * 0.5, 0), offset: 0.44 },
+                { transform: tr(dx * 0.25, h), offset: 0.66 },
+                { transform: tr(0, 0), offset: 1 },
+              ],
+          { duration: r ? 1 : DURATA_USCITA_MONTONE_MS, easing: 'ease-in-out' },
+        );
+        ritorno = questo;
+        questo.finished.then(
+          () => {
+            if (!chiuso) p.gira(1);
+          },
+          () => undefined,
+        );
+        ferma(via);
+      },
+      rimetti() {
+        chiuso = true;
+        ferma(via);
+        ferma(ritorno);
+        p.gira(1);
+      },
+    };
+  }
+
+  /**
+   * L'agnellino del Gregge preso dalla regia (come per il meteo): un sobbalzo, scivola fino a `meta` (stessa profondità) con un
+   * saltello, resta lì a guardare il Montone (`montone`: la sua x); `torna` lo riporta a casa a passetti, poi è di nuovo libero.
+   * Tutto sull'orologio della scena. Con il movimento ridotto cambia posto subito.
+   */
+  function scansaAgnello(g: Agnello, meta: number, montone: number): Scansato {
+    const r = ctx.ridotto;
+    const casa = { x: g.x, y: g.y };
+    const inizio = ctx.orologio.ms;
+    let tornaDa: number | null = null;
+    let chiuso = false;
+    const verso = (verso: number): 1 | -1 => (verso < 0 ? -1 : 1);
+    prendi([g]);
+    const fx = (): boolean => {
+      const ora = ctx.orologio.ms;
+      g.y = casa.y;
+      if (tornaDa === null) {
+        const t = ora - inizio;
+        if (r || t >= SOBBALZO_MS + SCIVOLA_MS) {
+          g.x = meta;
+          g.verso = verso(montone - g.x);
+        } else if (t < SOBBALZO_MS) {
+          g.x = casa.x;
+          g.hop = Math.sin((t / SOBBALZO_MS) * Math.PI) * SALTI_AGNELLO.sobbalzo;
+          g.verso = verso(montone - g.x);
+        } else {
+          const q = (t - SOBBALZO_MS) / SCIVOLA_MS;
+          g.x = casa.x + (meta - casa.x) * liscio(q);
+          g.hop = Math.sin(q * Math.PI) * SALTI_AGNELLO.scivola;
+          g.verso = verso(meta - casa.x);
+        }
+        return false;
+      }
+      const q = r ? 1 : Math.min(1, (ora - tornaDa) / DURATA_USCITA_MONTONE_MS);
+      g.x = meta + (casa.x - meta) * liscio(q);
+      g.hop = Math.abs(Math.sin(q * 2 * Math.PI)) * SALTI_AGNELLO.ritorno;
+      g.verso = verso(casa.x - meta);
+      if (q < 1) return false;
+      g.x = casa.x;
+      g.hop = 0;
+      return true;
+    };
+    // Va dritto anche dietro il cartello del Gregge: il cartello non lo spinge (agnello.ts, `attraversa`)
+    g.attraversa = fx;
+    const lascia = (): void => {
+      if (g.attraversa === fx) g.attraversa = null;
+    };
+    void effetto(g, fx).then(() => {
+      // Arrivato a casa (o preso da qualcos'altro, che l'ha già lasciato): di nuovo libero
+      if (chiuso) return;
+      chiuso = true;
+      lascia();
+      rilascia([g]);
+    });
+    return {
+      torna() {
+        if (tornaDa === null) tornaDa = ctx.orologio.ms;
+      },
+      rimetti() {
+        if (chiuso) return;
+        chiuso = true;
+        lascia();
+        // Ancora nostro: subito a casa e libero (se un altro l'ha preso, resta a lui)
+        if (g.vivo && g.regia && (g.fx === fx || g.fx === null)) {
+          g.x = casa.x;
+          g.y = casa.y;
+          g.hop = 0;
+          rilascia([g]);
+          g.disegna();
+        }
+      },
+    };
+  }
+
+  /**
+   * Chi resterebbe sotto il Montone che atterra in `arrivo`: le pecore e gli agnellini del Gregge entro mezzo Montone
+   * (fionda.json, voce `scansa`). Se ne accorgono dopo `accorto` ms e si scansano di lato quanto basta (fionda/tiro.ts,
+   * `scansa`: dipende solo dal punto e da dove stanno, uguale su tutti i telefoni), restando dentro lo schermo e nel Gregge;
+   * un agnellino che finirebbe sul cartello lo salta (gli passa dietro) e si ferma appena oltre. Chi è svenuta, in viaggio,
+   * alzata o già presa da un gioco o dal meteo resta dov'è. `meteFuori` sposta con la stessa regola la meta di chi sta
+   * volando nel Gregge (gli agnellini colpiti), così non atterra sotto il Montone. `torna` li riporta al loro posto con calma;
+   * `fine` (anche da `interrompi`) subito, e chiude tutto.
+   */
+  function scansaDalMontone(arrivo: Punto, accorto: number): DaParte {
+    const largo = largoMontone(palco.profondita(arrivo.y));
+    const chi: Scansato[] = [];
+    /** Di quanto si è spostata di lato ogni pecora che si è scansata. */
+    const spostate = new Map<IdGiocatore, number>();
+    /** Il livello più basso delle pecore rimaste sotto di lui con i piedi non più indietro dei suoi (lui va dietro di loro). */
+    let zSotto: number | null = null;
+    /** La zona sotto il Montone nel Gregge, finché sta nel prato: lì gli agnellini liberi non scelgono posti nuovi. */
+    let zona: { a: Area; coperta: (x: number, y: number) => boolean } | null = null;
+    const togliZona = (): void => {
+      if (zona && zona.a.coperta === zona.coperta) delete zona.a.coperta;
+      zona = null;
+    };
+    let finito = false;
+    const fine = (): void => {
+      if (finito) return;
+      finito = true;
+      scansati.delete(fine);
+      togliZona();
+      for (const s of chi) s.rimetti();
+    };
+    scansati.add(fine);
+    /**
+     * Dove va nel Gregge `a` un agnellino con i piedi in `p` che sarebbe coperto (null se non lo è o se non c'è posto);
+     * `oltre`: quanto più in là (il ventaglio), se lì c'è posto.
+     */
+    function postoNelGregge(a: Area, p: Punto, oltre = 0): number | null {
+      // Un posto sul cartello del Gregge non va: si salta oltre, dalla parte verso cui va (lontano dal Montone)
+      const oltreCartello = (x: number): number => {
+        const z = dentro(a, x, p.y);
+        return !z ? x : x > arrivo.x ? z[2] + 1 : z[0] - 1;
+      };
+      const nelGregge = (x: number): boolean => {
+        const q = oltreCartello(x);
+        return q >= a.x0 && q <= a.x1;
+      };
+      const x = scansa(arrivo, largo, ingombroAgnello(p, palco.profondita(p.y)), nelGregge, oltre);
+      return x === null ? null : oltreCartello(x);
+    }
+    /** Il corpo della pecora di una postazione con i piedi in mezzo in `x` (come in `corsaVia`). */
+    const corpoIn = (g: { y: number; w: number }, x: number): Rett => ({
+      x0: x - PECORA_MEZZA * g.w,
+      y0: g.y + PECORA_CIMA * g.w,
+      x1: x + PECORA_MEZZA * g.w,
+      y1: g.y + PECORA_PIEDI * g.w,
+    });
+    dopo(() => {
+      if (finito) return;
+      // Le pecore: di lato solo dove c'è posto, cioè dentro lo schermo, fuori da ogni recinto (la scatola tra le due
+      // staccionate: dentro finirebbe dietro quella davanti) e lontano dalle altre pecore, a casa o già scansate. Chi non ha
+      // posto (accanto al bordo dello schermo e al suo recinto, come gli avversari in alto) resta dov'è: si accorge del
+      // Montone, lo guarda, e lui atterra dietro di lei se i suoi piedi non le stanno davanti
+      const recinti: Rett[] = palco.giocatori().flatMap((c) => {
+        const g = palco.posto(c);
+        if (!g) return [];
+        const [x, y0, y1, largo] = g.recinto;
+        return [{ x0: x, y0, x1: x + largo, y1 }];
+      });
+      const occupati = new Map<IdGiocatore, Rett>();
+      for (const c of palco.giocatori()) {
+        const g = palco.posto(c);
+        if (g) occupati.set(c, corpoIn(g, g.x + g.w / 2));
+      }
+      for (const c of palco.giocatori()) {
+        const p = palco.pecora(c), g = palco.posto(c);
+        if (!p || !g || p.svenutaFerma) continue;
+        const io = ingombroPecora(g);
+        if (!coperto(arrivo, largo, io)) continue;
+        const altre = [...recinti, ...[...occupati].filter(([d]) => d !== c).map(([, r]) => r)];
+        const x = scansa(arrivo, largo, io, (x) => x - g.w / 2 >= 0 && x + g.w / 2 <= W && !altre.some((r) => siToccano(corpoIn(g, x), r)));
+        const dx = x === null ? 0 : x - io.x;
+        if (x !== null) {
+          spostate.set(c, dx);
+          occupati.set(c, corpoIn(g, x));
+        } else if (arrivo.y <= io.y) {
+          const z = Number(p.el.style.zIndex) - 1;
+          zSotto = zSotto === null ? z : Math.min(zSotto, z);
+        }
+        chi.push(scansaPecora(p, dx, arrivo.x, g.w));
+      }
+      const a = palco.area('gregge');
+      if (!a) return;
+      // Finché il Montone sta lì, gli agnellini liberi non scelgono posti sotto di lui (aree.ts, `coperta`); chi ci stava
+      // andando cambia meta, di lato come chi si scansa
+      const sotto = (x: number, y: number): boolean => coperto(arrivo, largo, ingombroAgnello({ x, y }, palco.profondita(y)));
+      togliZona();
+      zona = { a, coperta: sotto };
+      a.coperta = sotto;
+      // Gli agnellini: dall'alto in basso (uguale per tutti), ognuno un poco più in là del precedente (fionda/tiro.ts,
+      // `ventaglio`), così non si fermano tutti nello stesso punto appena fuori dal Montone
+      const liberi = a.agnelli.filter((g) => g.vivo && g.giunto && !g.regia && !g.inViaggio && !g.sollevato && !g.intrappolato);
+      const daScansare = liberi.filter((g) => coperto(arrivo, largo, ingombroAgnello(g, palco.profondita(g.y))));
+      daScansare.sort((p, q) => p.y - q.y || p.x - q.x);
+      daScansare.forEach((g, i) => {
+        const x = postoNelGregge(a, g, ventaglio(i) * largo);
+        if (x !== null) chi.push(scansaAgnello(g, x, arrivo.x));
+      });
+      for (const g of liberi) {
+        if (daScansare.includes(g) || !sotto(g.tx, g.ty)) continue;
+        const x = postoNelGregge(a, { x: g.tx, y: g.ty });
+        g.tx = x ?? g.x;
+        if (x === null) g.ty = g.y;
+      }
+    }, accorto);
+    return {
+      spostata: (c) => spostate.get(c) ?? 0,
+      zSotto: () => zSotto,
+      torna() {
+        if (finito) return;
+        // Il Montone corre via: il Gregge è di nuovo tutto libero
+        togliZona();
+        for (const s of chi) s.torna();
+      },
+      meteFuori() {
+        const a = palco.area('gregge');
+        if (finito || !a) return;
+        // Chi sta arrivando nel Gregge (in partenza o in volo): la meta, se è sotto il Montone, va di lato alla stessa profondità
+        for (const g of a.agnelli) {
+          if (!g.vivo || g.giunto) continue;
+          const x = postoNelGregge(a, { x: g.tx, y: g.ty });
+          if (x !== null) g.tx = x;
+        }
+      },
+      fine,
+    };
+  }
+
+  /**
+   * Da che parte corre via il Montone atterrato in `arrivo`, e a che profondità. Contano le pecore che gli starebbero dietro
+   * (disegnate sotto di lui alla profondità dell'arrivo): quelle davanti le passa dietro comunque. Per chi si è scansata
+   * conta tutta la strada del ritorno, da dove si è fermata fino a casa. Prima il lato più vicino, poi l'altro; se c'è
+   * qualcuno da tutte e due le parti, dal lato più vicino ma dietro tutte quelle che incontra. Uguale su tutti i telefoni.
+   */
+  function corsaVia(arrivo: Punto, daParte: DaParte): { lato: -1 | 1; z: number } {
+    const zArrivo = Math.round(100 + arrivo.y + 8);
+    const k = palco.profondita(arrivo.y) * SCALA_MONTONE;
+    const corpo = { mezzo: CORPO_MONTONE.mezzo * k, alto: CORPO_MONTONE.alto * k };
+    const dietro = palco.giocatori().flatMap((c) => {
+      const p = palco.pecora(c), g = palco.posto(c);
+      if (!p || !g) return [];
+      const zp = Number(p.el.style.zIndex);
+      if (!(zp <= zArrivo)) return [];
+      const cx = g.x + g.w / 2, dx = daParte.spostata(c), mezzo = PECORA_MEZZA * g.w;
+      const r: Rett = { x0: Math.min(cx, cx + dx) - mezzo, y0: g.y + PECORA_CIMA * g.w, x1: Math.max(cx, cx + dx) + mezzo, y1: g.y + PECORA_PIEDI * g.w };
+      return [{ r, z: zp }];
+    });
+    const vicino: -1 | 1 = arrivo.x < W / 2 ? -1 : 1;
+    const lato = latoCorsa(arrivo, corpo, dietro.map((d) => d.r), vicino);
+    if (lato !== null) return { lato, z: zArrivo };
+    const strada = strisciaCorsa(arrivo, corpo, vicino);
+    return { lato: vicino, z: Math.min(zArrivo, ...dietro.filter((d) => siToccano(strada, d.r)).map((d) => d.z - 1)) };
+  }
+
+  async function testata(chi: IdGiocatore, bersaglio: IdGiocatore, quanti: number, seq = 0): Promise<void> {
     const vivo = vivoDa();
+    // Il tiro fatto su questo telefono vale per questo volo solo: si legge e si azzera. Il Montone fermo della mira, se c'è, va via
+    const locale = regia.tiroLocale;
+    regia.tiroLocale = null;
+    el.mondo.querySelectorAll('.fionda-montone').forEach((e) => e.remove());
     const a = palco.area(bersaglio);
     if (!a) return;
-    const yPista = a.y1 + 2, xImpatto = a.x0 + 10;
+    const recinto = recintoARiposo(a);
+    // Il tiro ricordato vale solo per questo volo: stesso tiratore, bersaglio ed esito (un tiro rimasto lì, se la sua recita è
+    // saltata, non fa partire il volo di un altro dalla pecora di chi ha tirato prima)
+    const mio = locale && locale.chi === chi && locale.bersaglio === bersaglio && locale.esito === quanti ? locale : null;
+    // Da dove parte: su chi ha tirato da questo telefono, dove stava il Montone della mira (che al lancio torna lì, a riposo:
+    // niente salti; la partenza non dipende dal recinto ingrandito). Sugli altri telefoni vicino alla pecora di chi tira, con la
+    // variazione ricavata da `seq` (la stessa su tutti); senza la sua pecora in scena, dal centro della tovaglia
+    const posto = palco.posto(chi);
+    const partenza: Punto = mio
+      ? { x: mio.partenza.x, y: mio.partenza.y }
+      : posto
+        ? partenzaDi(basePartenza(posto), variazioneDaSeq(seq))
+        : { x: CENTRO_TAVOLO.x, y: CENTRO_TAVOLO.y };
+    // Il tiro vero era sul recinto ingrandito: riportato in proporzione su quello normale. Altri telefoni: il punto di scena
+    const vero: Punto = mio ? riportaSuRecinto(mio.arrivo, mio.recinto, recinto) : puntoDiScena(recinto, quanti, seq);
+    // Si disegna nello schermo; un colpo a vuoto sul prato, mai sulla collina o sulla casetta, sempre a vuoto e fuori dagli
+    // altri recinti (fionda/tiro.ts, `arrivoInScena`: lungo la linea del volo, o di lato)
+    const altri = palco.giocatori().flatMap((c) => {
+      const r = c === bersaglio ? undefined : palco.area(c);
+      return r ? [recintoARiposo(r)] : [];
+    });
+    const arrivo = arrivoInScena(partenza, vero, recinto, altri);
+    /** Il disegno guarda a destra: verso -1 lo specchia. */
+    const verso = arrivo.x < partenza.x ? -1 : 1;
+    // In volo sopra tutto, come nella mira (niente salti di profondità al lancio); l'ombra a terra, alla profondità del
+    // punto più vicino tra la partenza e l'arrivo
+    const zVolo = Z_MONTONE_IN_ARIA;
+    const zOmbra = Math.round(100 + Math.max(partenza.y, arrivo.y) + 7);
+    const ombra = document.createElement('div');
+    ombra.className = 'abs ombra-montone';
+    ombra.style.cssText =
+      `left:0;top:0;width:${LARGO_OMBRA}px;height:${ALTO_OMBRA}px;z-index:${zOmbra};pointer-events:none;` +
+      `transform-origin:${LARGO_OMBRA / 2}px ${ALTO_OMBRA / 2}px`;
+    ombra.innerHTML =
+      `<svg viewBox="0 0 ${LARGO_OMBRA} ${ALTO_OMBRA}" style="display:block;width:100%;height:100%" aria-hidden="true">` +
+      `<ellipse cx="${LARGO_OMBRA / 2}" cy="${ALTO_OMBRA / 2}" rx="${LARGO_OMBRA / 2 - 4}" ry="${ALTO_OMBRA / 2 - 1}" fill="${P.notte}" opacity=".15"/></svg>`;
+    el.mondo.appendChild(ombra);
+    // Il Montone animato (fionda/montone.ts), nella stessa cornice della mira; le pose sono classi sul contenitore. Con il
+    // movimento ridotto è fermo (`ferma`) e stordito dall'inizio: compare nel punto d'arrivo, resta un attimo e va via
     const m = document.createElement('div');
-    m.className = 'abs montone';
-    m.style.cssText = `left:0;top:0;width:150px;z-index:${100 + yPista + 8};pointer-events:none;transform-origin:75px 102px`;
-    m.innerHTML = '<svg viewBox="0 0 220 160" style="display:block;width:100%;overflow:visible" aria-hidden="true"><use href="#montone"/></svg>';
+    m.className = 'abs montone' + (ctx.ridotto ? ' ferma' : '');
+    m.style.cssText =
+      `left:0;top:0;width:${LARGO_MONTONE}px;z-index:${zVolo};pointer-events:none;` +
+      `transform-origin:${PIEDI_MONTONE_X}px ${PIEDI_MONTONE_Y}px`;
+    m.innerHTML = montoneSVG();
+    mettiPosa(m, ctx.ridotto ? 'stordito' : 'volo');
     el.mondo.appendChild(m);
-    const kk = palco.profondita(yPista) * 1.1, pos = (x: number) => `translate(${x - 75}px,${yPista - 102}px) scale(${kk})`;
+    /** Il Montone con i piedi in `p` (alzato di `alto`), scalato sulla profondità, girato di `giro` gradi (muso in su se negativo). */
+    const posa = (p: Punto, o: { alto?: number; grande?: number; giro?: number; verso?: number } = {}): string => {
+      const k = palco.profondita(p.y) * SCALA_MONTONE * (o.grande ?? 1);
+      return (
+        `translate(${p.x - PIEDI_MONTONE_X}px,${p.y - (o.alto ?? 0) - PIEDI_MONTONE_Y}px) ` +
+        `scale(${(o.verso ?? verso) * k},${k}) rotate(${o.giro ?? 0}deg)`
+      );
+    };
+    /** L'ombra centrata nel punto a terra `p`, scalata sulla profondità (più piccola quando il Montone è in alto). */
+    const posaOmbra = (p: Punto, piccola: number): string => {
+      const k = palco.profondita(p.y) * SCALA_MONTONE * (1 - piccola);
+      return `translate(${p.x - LARGO_OMBRA / 2}px,${p.y - ALTO_OMBRA / 2}px) scale(${k})`;
+    };
+    // L'arco: più grande a metà volo, il muso che sale alla partenza e scende all'arrivo (la testa davanti); l'ombra resta a terra
+    const volo: Keyframe[] = [];
+    const voloOmbra: Keyframe[] = [];
+    for (let i = 0; i <= PASSI_VOLO; i++) {
+      const t = i / PASSI_VOLO;
+      const p = posizioneInVolo(partenza, arrivo, t);
+      const arco = 4 * t * (1 - t);
+      // Nei primi passi si gira dalla posa della mira (verso 1, dritto) a quella del volo: niente scatti al lancio
+      const girata = Math.min(1, t / GIRATA_VOLO);
+      const giro = (GIRO_PARTENZA + (GIRO_ARRIVO - GIRO_PARTENZA) * t) * girata;
+      const v = 1 + (verso - 1) * girata;
+      volo.push({ transform: posa(p, { alto: p.alto, grande: 1 + CRESCITA_IN_VOLO * arco, giro, verso: v }) });
+      voloOmbra.push({ transform: posaOmbra(p, OMBRA_IN_ALTO * arco) });
+    }
     ctx.suona('beee', 0.6);
-    await anima(m, [{ transform: pos(-160) }, { transform: pos(xImpatto - 40) }], {
-      duration: ctx.ridotto ? 1 : 750,
-      easing: 'cubic-bezier(.5,0,.9,.6)',
-      fill: 'forwards',
-    });
-    if (!vivo()) return void m.remove();
-    ctx.suona('tonfo');
-    palco.reagisci(bersaglio, 'paura');
-    void anima(el.mondo, [{ transform: 'none' }, { transform: 'translate(-5px,2px)' }, { transform: 'translate(4px,-2px)' }, { transform: 'none' }], {
-      duration: ctx.ridotto ? 1 : 260,
-    });
-    palco.branco()?.sposta(quanti, bersaglio, 'gregge', 'vola');
-    await anima(m, [{ transform: pos(xImpatto - 40) }, { transform: pos(xImpatto - 70) + ' rotate(-6deg)', offset: 0.25 }, { transform: pos(560) }], {
-      duration: ctx.ridotto ? 1 : 1100,
+    const durataVolo = ctx.ridotto ? 1 : DURATA_VOLO_TESTATA_MS;
+    void anima(ombra, voloOmbra, { duration: durataVolo, easing: 'linear', fill: 'forwards' });
+    const volato = anima(m, volo, { duration: durataVolo, easing: 'linear', fill: 'forwards' });
+    // Chi resterebbe sotto il Montone se ne accorge verso la fine del volo e si scansa; torna quando il Montone corre via.
+    // Finita (o interrotta) la Testata, ognuno è al suo posto
+    const daParte = scansaDalMontone(arrivo, ACCORTO_VOLO * durataVolo);
+    const via = (): void => {
+      m.remove();
+      daParte.fine();
+    };
+    await volato;
+    ombra.remove();
+    if (!vivo()) return void via();
+    // La testata sul punto d'arrivo: la polvere, e a terra alla profondità del punto d'arrivo (dietro lo steccato davanti e le
+    // pecore davanti al recinto)
+    sbuffo(arrivo);
+    // Dietro la pecora rimasta sotto di lui (senza posto di lato) se i suoi piedi non le stanno davanti
+    m.style.zIndex = String(Math.min(Math.round(100 + arrivo.y + 8), daParte.zSotto() ?? Infinity));
+    if (!ctx.ridotto) mettiPosa(m, 'botta');
+    if (quanti > 0) {
+      // Colpito: tonfo, paura, il prato trema, gli agnellini volano al gregge
+      ctx.suona('tonfo');
+      palco.reagisci(bersaglio, 'paura');
+      void anima(el.mondo, [{ transform: 'none' }, { transform: 'translate(-5px,2px)' }, { transform: 'translate(4px,-2px)' }, { transform: 'none' }], {
+        duration: ctx.ridotto ? 1 : 260,
+      });
+      palco.branco()?.sposta(quanti, bersaglio, 'gregge', 'vola');
+      // Le mete nel Gregge le sceglie il branco senza sapere del Montone: chi finirebbe sotto di lui atterra di lato
+      daParte.meteFuori();
+    } else {
+      // A vuoto: un colpo più leggero sull'erba, niente paura né scossa
+      ctx.suona('tonfo', 0.5);
+    }
+    // Il muso giù contro il punto d'arrivo, poi i piedi a terra mentre la posa-botta lo schiaccia sul muso (scena.css: fino
+    // a circa 0,3 s). Resta lì: stordito e scuote nel punto d'arrivo, nella zona del risultato. La stessa durata nelle due strade
+    await anima(
+      m,
+      [{ transform: posa(arrivo, { giro: GIRO_ARRIVO }) }, { transform: posa(arrivo), offset: 0.12 }, { transform: posa(arrivo) }],
+      { duration: ctx.ridotto ? 1 : DURATA_BOTTA_MS, easing: 'ease-out', fill: 'forwards' },
+    );
+    if (!vivo()) return void via();
+    if (ctx.ridotto) {
+      // Fermo nel punto d'arrivo per un attimo
+      await attendi(SOSTA_RIDOTTA_MS);
+    } else {
+      // Stordito: occhi a spirale e stelline (scena.css); poi scuote la testa
+      mettiPosa(m, 'stordito');
+      await attendi(DURATA_STORDITO_MS);
+      if (!vivo()) return void via();
+      mettiPosa(m, 'scuote');
+      await attendi(DURATA_SCUOTE_MS);
+    }
+    if (!vivo()) return void via();
+    // Corre via arrabbiato, guardando dove va: dal lato più vicino se lì non passa sopra una pecora che gli sta dietro (anche
+    // quella che si è scansata e torna a casa proprio mentre lui corre), se no dall'altro; se ce n'è da tutte e due le parti,
+    // passa dietro di loro
+    const { lato, z } = corsaVia(arrivo, daParte);
+    m.style.zIndex = String(z);
+    const fuori = { x: lato < 0 ? -FUORI_SCHERMO : W + FUORI_SCHERMO, y: arrivo.y };
+    if (!ctx.ridotto) mettiPosa(m, 'corre');
+    daParte.torna();
+    await anima(m, [{ transform: posa(arrivo, { verso: lato }) }, { transform: posa(fuori, { verso: lato }) }], {
+      duration: ctx.ridotto ? 1 : DURATA_USCITA_MONTONE_MS,
       easing: 'ease-in',
       fill: 'forwards',
     });
-    m.remove();
+    via();
   }
 
   /* ---------- Ordini del pezzo 2 (la regia) ---------- */
@@ -597,6 +1209,8 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
         }
       }
       animazioni.clear();
+      // Chi si era scansato dal Montone torna subito al suo posto (le pecore sono già a posto: le animazioni sono annullate)
+      for (const fine of [...scansati]) fine();
       for (const [t, fine] of [...attese]) {
         ctx.orologio.annulla(t);
         attese.delete(t);

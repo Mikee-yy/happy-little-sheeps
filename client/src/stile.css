@@ -576,6 +576,13 @@ button.carta {
 .nuvoletta.beeeno {
   background: var(--colore-limone);
 }
+.carta-senza-effetto {
+  font-weight: 700;
+  font-size: 0.7em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
 .carta-quando {
   font-weight: 700;
   font-size: 0.85em;
@@ -859,8 +866,7 @@ button.carta {
 .passaggio,
 .fine-partita,
 .home,
-.preparazione,
-.regole {
+.preparazione {
   display: grid;
   gap: var(--spazio-4);
   justify-items: center;
@@ -883,8 +889,7 @@ button.carta {
   gap: var(--spazio-3);
   width: 100%;
 }
-.preparazione,
-.regole {
+.preparazione {
   justify-items: stretch;
   text-align: left;
 }
@@ -925,14 +930,12 @@ button.carta {
 .tratti {
   font-size: var(--testo-s);
 }
-.regole section,
 .riassunto {
   background: var(--colore-carta);
   border: var(--tratto-ui) solid var(--colore-inchiostro);
   border-radius: var(--raggio-pannello);
   padding: var(--spazio-3) var(--spazio-4);
 }
-.regole ul,
 .riassunto ul {
   margin: var(--spazio-2) 0 0;
   padding-left: 20px;
@@ -995,11 +998,249 @@ button.carta {
   margin-top: calc(-1 * var(--spazio-2));
   padding: 0;
 }
-.legenda {
+/* ─── Regole ─────────────────────────────────────────────────────────────── */
+
+/* Una colonna: con i 12 px di #app fanno i 16 px di margine. Nomi e parole lunghe vanno a capo. */
+.regole {
+  display: grid;
+  gap: var(--spazio-3);
+  min-width: 0;
+  padding: var(--spazio-6) var(--spazio-1) 0;
+  text-align: left;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.regole > * {
+  min-width: 0;
+}
+/* Il titolo prende il punto della tastiera all'apertura: senza cornice, non è un comando */
+.regole h1:focus {
+  outline: none;
+}
+/* Con l'Indietro fisso in fondo, Tab non lascia il punto della tastiera coperto */
+html:has(.regole) {
+  scroll-padding-bottom: 96px;
+  /* L'altezza del richiamo della stanza (una riga di testo, il pulsante, i margini e il tratto): la riga "va avanti" tiene
+     lo stesso posto, così quando il richiamo arriva al suo posto il testo sotto non si sposta */
+  --richiamo-altezza: calc(1.45rem + var(--spazio-2) + var(--pulsante-altezza) + 2 * var(--spazio-3) + 2 * var(--tratto-ui));
+}
+/* Con il richiamo fisso in cima, un titolo raggiunto con Maiusc+Tab non resta coperto */
+html:has(.regole-richiamo) {
+  scroll-padding-top: calc(var(--richiamo-altezza) + max(0px, env(safe-area-inset-top)) + var(--spazio-2));
+}
+.regole-stanza,
+.regole-richiamo {
+  box-sizing: border-box;
+  min-height: var(--richiamo-altezza);
+  margin: 0;
+  border: var(--tratto-ui) solid var(--colore-inchiostro);
+  border-radius: var(--raggio-pannello);
+  padding: var(--spazio-3) var(--spazio-4);
+  font-weight: 700;
+}
+.regole-stanza {
+  display: grid;
+  align-content: center;
+  background: var(--colore-carta);
+}
+/* Il richiamo della stanza: in cima al posto della riga, e resta in vista mentre si scorre */
+.regole-richiamo {
+  position: sticky;
+  top: max(0px, env(safe-area-inset-top));
+  z-index: 2;
+  display: grid;
+  gap: var(--spazio-2);
+  justify-items: start;
+  align-content: center;
+  background: var(--colore-limone);
+  box-shadow: var(--ombra-piena);
+}
+.regole-richiamo p {
+  margin: 0;
+}
+.regole-sezione {
+  min-width: 0;
+  background: var(--colore-carta);
+  border: var(--tratto-ui) solid var(--colore-inchiostro);
+  border-radius: var(--raggio-pannello);
+}
+.regole-sezione h2 {
+  margin: 0;
+}
+.regole-titolo {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spazio-3);
+  width: 100%;
+  min-height: var(--pulsante-altezza);
+  padding: var(--spazio-2) var(--spazio-4);
+  background: none;
+  border: 0;
+  border-radius: var(--raggio-pannello);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.regole-titolo:focus-visible,
+.figure-fila:focus-visible {
+  outline: var(--tratto-ui-forte) solid var(--colore-inchiostro);
+  outline-offset: 2px;
+}
+/* Freccia disegnata col bordo (niente testo da leggere): giù da chiusa, su da aperta */
+.regole-titolo::after {
+  content: '';
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin: 0 4px 4px auto;
+  border-right: var(--tratto-ui-forte) solid currentColor;
+  border-bottom: var(--tratto-ui-forte) solid currentColor;
+  transform: rotate(45deg);
+}
+.regole-titolo[aria-expanded='true']::after {
+  margin-bottom: -4px;
+  transform: rotate(-135deg);
+}
+.regole-numero {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--colore-inchiostro);
+  border-radius: 50%;
+  background: var(--colore-limone);
+  font-size: var(--testo-m);
+}
+.regole-pannello {
+  display: grid;
+  gap: var(--spazio-4);
+  padding: 0 var(--spazio-4) var(--spazio-4);
+}
+.regole-pannello[hidden] {
+  display: none;
+}
+.regole-passi {
+  display: grid;
+  gap: var(--spazio-4);
+  margin: 0;
+  padding-left: 22px;
+}
+.regole-passi li::marker {
+  font-family: var(--font-titoli);
+  font-weight: 800;
+}
+.regole-blocco {
+  display: grid;
+  gap: var(--spazio-2);
+  min-width: 0;
+}
+.regole-blocco p {
+  margin: 0;
+}
+/* Una o due figure: a sinistra, il testo a destra; il recinto invece sopra, largo */
+.regole-blocco.con-figure {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--spazio-3);
+  align-items: start;
+}
+.regole-blocco.figura-larga,
+.regole-blocco.figure-sopra {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* Colonna larga quanto una carta anche per i disegni più piccoli: i testi accanto partono tutti dallo stesso punto */
+.figure-accanto {
+  display: grid;
+  gap: var(--spazio-2);
+  justify-items: center;
+  min-width: 90px;
+}
+/* Due carte: affiancate sopra il testo (su uno schermo largo affiancate e con il testo accanto) */
+.figure-sopra > .figure-accanto {
+  grid-auto-flow: column;
+  justify-content: start;
   gap: var(--spazio-3);
 }
+@media (min-width: 600px) {
+  .regole-blocco.figure-sopra {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+/* Nei passi del round il numero sta all'altezza della prima riga del testo, non in fondo al disegno */
+.regole-passi .regole-blocco.con-figure > p {
+  align-self: first baseline;
+}
+/* Più di due figure: fila scorrevole sopra il testo, la pagina non scorre di lato */
+.figure-fila {
+  display: flex;
+  gap: var(--spazio-3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  padding: var(--spazio-1) var(--spazio-1) var(--spazio-2);
+  border-radius: var(--raggio-riquadro);
+}
+.figure-fila > .figura-regole {
+  flex: none;
+  scroll-snap-align: start;
+}
+.figura-regole {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--spazio-1);
+  margin: 0;
+}
+.figura-regole figcaption {
+  max-width: 110px;
+  font-size: var(--testo-s);
+  font-weight: 700;
+  text-align: center;
+}
+.figura-disegno {
+  display: block;
+  line-height: 0;
+}
+.figura-carta,
+.figura-segnaposto {
+  display: block;
+  width: 90px;
+  aspect-ratio: var(--carta-rapporto);
+}
+.figura-carta svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Al posto della carta finché non arriva: stesse misure, nessun disegno */
+.figura-segnaposto {
+  border: var(--tratto-ui) dashed var(--colore-inchiostro);
+  border-radius: 6px;
+  background: var(--colore-sfondo);
+}
+.di-recinto,
+.di-recinto .figura-disegno {
+  width: 100%;
+}
+.recinto-zone {
+  display: block;
+  width: min(100%, 300px);
+  height: auto;
+  margin: 0 auto;
+}
+/* Le carte di un pannello aperto ma fuori dallo schermo non si muovono */
+.regole .fuori-vista .anima .an {
+  animation-play-state: paused;
+}
+/* "Indietro" fisso in fondo; nel suo posto in fondo alla pagina non copre l'ultima sezione */
+.regole-fondo {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: var(--spazio-3) 0 max(var(--spazio-3), env(safe-area-inset-bottom));
+  background: var(--colore-sfondo);
+}
+
 .vincitori {
   display: flex;
   gap: var(--spazio-2);
@@ -1471,21 +1712,6 @@ button.carta {
   font-size: inherit;
   font-weight: 700;
 }
-/* Il colpo della Testata nella scena: il riquadro di mira di sempre, da sotto la striscia in cima (--spazio-alto,
-   misurata) fino in fondo; l'arena prende l'altezza che resta mantenendo le proporzioni */
-.riquadro-testata {
-  position: fixed;
-  top: var(--spazio-alto, 67px);
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
-  max-width: 560px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  padding: 0 12px max(12px, env(safe-area-inset-bottom));
-}
 /* In basso, sopra il prato: il consiglio della prova (o il riquadro finale) e il cassetto dei pannelli */
 .fondo-scena {
   position: fixed;
@@ -1569,9 +1795,8 @@ button.carta {
   display: flex;
   flex-direction: column;
 }
-/* Il pannello e l'arena della Testata, uguali nel cassetto a tutta altezza e nel riquadro sopra la scena */
-.a-tutta-altezza .pannello.testata,
-.riquadro-testata .pannello.testata {
+/* Il pannello e l'arena della Testata nel cassetto a tutta altezza (pannelli di riserva) */
+.a-tutta-altezza .pannello.testata {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -1579,8 +1804,7 @@ button.carta {
   gap: var(--spazio-2);
   padding: var(--spazio-3);
 }
-.a-tutta-altezza .testata .arena,
-.riquadro-testata .testata .arena {
+.a-tutta-altezza .testata .arena {
   flex: 1 1 0;
   min-height: 0;
   width: auto;
@@ -1588,8 +1812,7 @@ button.carta {
   aspect-ratio: 360 / 440;
   align-self: center;
 }
-.a-tutta-altezza .testata .caduti,
-.riquadro-testata .testata .caduti {
+.a-tutta-altezza .testata .caduti {
   min-height: 30px;
 }
 /* "Passa il dispositivo": copre la scena (che resta montata sotto) */

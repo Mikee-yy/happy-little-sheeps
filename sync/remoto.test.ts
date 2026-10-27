@@ -1,9 +1,10 @@
 // Partite a più dispositivi con il database in memoria: sala d'attesa, riservatezza, partita completa,
 // Beee-NO! di un ospite sul dado, ricarica e rientro, pausa e bot, host che si scollega, timer, pulizia.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { applica, vistaPer } from '../engine/src';
+import { applica, configPer, vistaPer } from '../engine/src';
 import type { Azione, Evento, IdGiocatore, Stato } from '../engine/src';
 import { avanza, chiudiPunteggio, conFaccia, prosegui, scegli, scenario } from '../engine/test/aiuti';
+import { normale } from '../engine/sim/politiche';
 import { SessioneHost, TEMPI } from './host';
 import type { OpzioniHost } from './host';
 import { archivioInMemoria } from './locale';
@@ -371,6 +372,23 @@ describe('Ricarica, rientro, pausa e bot', () => {
     expect(fase.nome === 'scelta' && fase.haScelto.g2).toBe(true);
   });
 
+  it.each([
+    [1, [{ regola: 'uguali', quanti: 4 }, { regola: 'perTipo', quanti: 2 }]],
+    [2, [{ regola: 'uguali', quanti: 3 }, { regola: 'diversi', quanti: 3 }]],
+  ])('con %i ospiti, una stanza salvata con le regole di eliminazione di prima riprende con quelle di adesso', async (nOspiti, vecchie) => {
+    const tv = await tavolata(nOspiti);
+    tv.host.inizia(2);
+    await scorri();
+    tv.host.chiudi();
+    await scorri();
+    const dati = JSON.parse(tv.salvataggioHost.leggi()!);
+    dati.stato.config.regoleEliminazione = vecchie;
+    tv.salvataggioHost.scrivi(JSON.stringify(dati));
+    const host = await SessioneHost.riprendi(tv.rete.dispositivo('uid-host'), tv.salvataggioHost);
+    await scorri();
+    expect(host?.vista(null).config.regoleEliminazione).toEqual(configPer(nOspiti + 1).regoleEliminazione);
+  });
+
   it("un dispositivo diverso non può riprendere la stanza dell'host", async () => {
     const tv = await tavolata(1);
     tv.host.chiudi();
@@ -660,6 +678,18 @@ describe('Durata delle animazioni (opzione durataRecita)', () => {
     expect(host.vista(null).finestra?.inAttesa).toContain('g3');
     await scorri(200);
     expect(host.vista(null).finestra?.inAttesa).not.toContain('g3');
+  });
+
+  it('i bot delle stanze giocano con la politica "normale" (D47)', async () => {
+    const scegli = vi.spyOn(normale, 'scegli');
+    const { tv, host } = await alDado({});
+    tv.ospiti[1]!.chiudi();
+    await scorri();
+    host.sostituisciConBot('g3');
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    await scorri(TEMPI.bot + 100);
+    expect(scegli.mock.calls.some(([, id]) => id === 'g3')).toBe(true);
+    scegli.mockRestore();
   });
 
   it('senza opzione il bot muove dopo il suo ritardo di oggi', async () => {

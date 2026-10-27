@@ -1,13 +1,13 @@
 // Simulatore della fase 2: partite complete senza errori, riproducibilità, Testata casuale (D43), varianti.
 import { describe, expect, it } from 'vitest';
 import { configPer, nuovaPartita } from '../src';
-import { casuale, semplice } from '../sim/politiche';
-import { applicaVariante, esitoTestataCasuale, generatore, giocaPartita, simula } from '../sim/simulatore';
-import { riassumi } from '../sim/statistiche';
+import { casuale, normale, semplice } from '../sim/politiche';
+import { applicaVariante, esitoTestataCasuale, generatore, giocaPartita, simula, simulaMiste } from '../sim/simulatore';
+import { rapportoMisteMarkdown, riassumi, riassumiMiste } from '../sim/statistiche';
 
 describe('Simulatore', () => {
   it.each([2, 3, 4])('a %i giocatori completa 25 partite per politica senza errori né stalli', { timeout: 120_000 }, (n) => {
-    for (const politica of [casuale, semplice]) {
+    for (const politica of [casuale, semplice, normale]) {
       const r = riassumi(simula({ numeroGiocatori: n, partite: 25, semeIniziale: 100, politica }));
       expect(r.errori + r.stalli, r.esempiErrori.join('\n')).toBe(0);
       expect(r.partite).toBe(25);
@@ -27,6 +27,24 @@ describe('Simulatore', () => {
   it('la politica semplice propone quasi sempre azioni valide', { timeout: 60_000 }, () => {
     const r = riassumi(simula({ numeroGiocatori: 3, partite: 30, semeIniziale: 1, politica: semplice }));
     expect(r.ripieghi).toBe(0);
+  });
+
+  it('la politica normale (il bot del gioco, D47) propone sempre azioni valide', { timeout: 60_000 }, () => {
+    for (const n of [2, 3, 4]) {
+      const r = riassumi(simula({ numeroGiocatori: n, partite: 20, semeIniziale: 1, politica: normale }));
+      expect(r.errori + r.stalli, r.esempiErrori.join('\n')).toBe(0);
+      expect(r.ripieghi).toBe(0);
+    }
+  });
+
+  it('tavoli misti: i posti ruotano, ogni partita ha una politica per posto e le vittorie sommano a 1', { timeout: 60_000 }, () => {
+    const tavolo = [normale, semplice, semplice];
+    const risultati = simulaMiste({ tavolo, partite: 6, semeIniziale: 1 });
+    expect(risultati.map((r) => r.politichePosti.indexOf('normale'))).toEqual([0, 2, 1, 0, 2, 1]);
+    const m = riassumiMiste(['normale', 'semplice', 'semplice'], risultati);
+    expect(m.errori + m.stalli).toBe(0);
+    expect(m.perPolitica.normale!.atteso).toBeCloseTo(1 / 3);
+    expect(m.perPolitica.normale!.vittorie + m.perPolitica.semplice!.vittorie).toBeCloseTo(1);
   });
 });
 
@@ -75,5 +93,14 @@ describe('Varianti di bilanciamento', () => {
     const r1 = giocaPartita({ numeroGiocatori: 3, seme: 3, politica: semplice });
     const r2 = giocaPartita({ numeroGiocatori: 3, seme: 3, politica: semplice, variante: { nome: 'x', postiOvile: { 2: 20 } } });
     expect(r2).toEqual(r1);
+  });
+
+  it('rapporto dei bot: la durata è quella di tutte le partite, la sezione dei posti uguali non ne dà una sua', () => {
+    const misto = riassumiMiste(['normale', 'semplice'], simulaMiste({ tavolo: [normale, semplice], partite: 2, semeIniziale: 1 }));
+    const pura = riassumi(simula({ numeroGiocatori: 2, partite: 2, semeIniziale: 1, politica: normale }));
+    const testo = rapportoMisteMarkdown([misto], [pura], { seme: 1, durataSecondi: 708 });
+    expect(testo).toContain('Seme iniziale 1; 4 partite in 708 s.');
+    expect(testo).toContain('Seme iniziale 1; 2 partite.');
+    expect(testo).not.toContain('2 partite in 708 s');
   });
 });

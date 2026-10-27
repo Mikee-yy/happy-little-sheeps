@@ -318,7 +318,7 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
     // Mano coperta o ricostruzione: niente fantasmi di carte scoperte (regola anti-sbirciata)
     if (subito || f.mano === null) {
       togliFantasmi();
-      mano.mostra(f.mano, dorsi);
+      mano.mostra(f.mano, dorsi, { ferme: true });
       return;
     }
     const prima = [...el.mano.querySelectorAll<HTMLElement>('.cm')];
@@ -467,7 +467,7 @@ export function creaTeatro(radice: HTMLElement, o: OpzioniTeatro = {}): Teatro {
       // mentre la sua copia vola e le carte pescate entrano
       if (ultima && chiaveDi(f) === assetto && String(f.mano) !== String(ultima.mano)) {
         ultima = { ...ultima, mano: f.mano };
-        mostraMano(ultima, f.mano === null);
+        mostraMano(ultima, f.mano === null || !!opz?.subito);
         chiediUi.riposiziona();
       }
       regista.recita(f, v, opz);

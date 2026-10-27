@@ -1,9 +1,21 @@
 // Sessione su un solo dispositivo ("Passa il telefono"): nessun servizio esterno, salvataggio automatico nel browser.
-import { azioniPossibili, nuovaPartita, tentaApplica, vistaPer } from '../engine/src';
+import { azioniPossibili, configPer, nuovaPartita, tentaApplica, vistaPer } from '../engine/src';
 import type { Azione, IdGiocatore, IdPecora, Stato, Vista } from '../engine/src';
 import type { EsitoInvio, Sessione } from './sessione';
 
 const VERSIONE_SALVATAGGIO = 1;
+
+/**
+ * Le partite salvate da una versione precedente portano con sé le regole di eliminazione di allora (D46 le ha
+ * cambiate): alla ripresa si rimettono quelle di setup.json, così la partita segue le Regole che si leggono.
+ * L'eliminazione si controlla solo quando si prende un Guaio, quindi nessuno esce di colpo alla ripresa.
+ */
+export function aggiornaSalvato(stato: Stato): Stato {
+  return {
+    ...stato,
+    config: { ...stato.config, regoleEliminazione: configPer(stato.config.numeroGiocatori).regoleEliminazione },
+  };
+}
 
 /** Dove si salva la partita. Nel browser è localStorage; nei test un oggetto in memoria. */
 export interface Archivio {
@@ -83,8 +95,9 @@ export class SessioneLocale implements Sessione {
       const dati = JSON.parse(testo) as { versione?: number; stato?: Stato };
       if (dati.versione !== VERSIONE_SALVATAGGIO || !dati.stato) return null;
       // La vista fallisce se lo stato salvato non è più compatibile con il motore.
-      vistaPer(dati.stato, null);
-      return new SessioneLocale(dati.stato, archivio);
+      const stato = aggiornaSalvato(dati.stato);
+      vistaPer(stato, null);
+      return new SessioneLocale(stato, archivio);
     } catch {
       return null;
     }

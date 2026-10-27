@@ -21,8 +21,15 @@ export interface Area {
   mostrati: number;
   /** Zone da non calpestare (il cartello del gregge). */
   evita?: Rett[];
+  /**
+   * Una zona dove adesso non si va (il Montone della Testata, finché sta nel prato): vero se un agnellino con i piedi in (x, y)
+   * ci starebbe sotto. Non spinge via nessuno: vale solo per i posti nuovi. La toglie chi la mette.
+   */
+  coperta?: (x: number, y: number) => boolean;
   /** L'area è nascosta dall'inquadratura: i suoi agnellini spariscono. */
   sfumata?: boolean;
+  /** Opacità degli avversari attenuati attorno a un recinto ingrandito (la mira della fionda); senza, opachi. */
+  attenuata?: number;
   /** Forma del recinto (la imposta chi lo disegna); se c'è, la staccionata tiene dentro gli agnellini. */
   recinto?: unknown;
   recinto0?: unknown;
@@ -38,8 +45,13 @@ export interface Zona {
   y1: number;
   agnelli: readonly { x: number; y: number; tx?: number; ty?: number }[];
   evita?: Rett[];
+  coperta?: (x: number, y: number) => boolean;
   area?: Zona;
 }
+
+/** Il punto cade su un ostacolo della zona (o dell'area intera), o sotto la sua zona coperta. */
+const vietato = (a: Zona, x: number, y: number): boolean =>
+  !!dentro(a, x, y) || !!a.coperta?.(x, y) || (!!a.area && (!!dentro(a.area, x, y) || !!a.area.coperta?.(x, y)));
 
 export function creaArea(nome: Luogo, [x0, y0, x1, y1]: Rett, posti: number): Area {
   return { nome, x0, y0, x1, y1, posti, agnelli: [], mostrati: 0, cartello: null };
@@ -76,7 +88,7 @@ export function puntoLibero(a: Zona, io: object | null, caso: () => number): { x
   let dist = -1;
   for (let i = 0; i < 30; i++) {
     const p = { x: rand(a.x0, a.x1), y: rand(a.y0, a.y1) };
-    if (dentro(a, p.x, p.y) || (a.area && dentro(a.area, p.x, p.y))) continue;
+    if (vietato(a, p.x, p.y)) continue;
     let d = 1e9;
     for (const o of a.agnelli) if (o !== io) d = Math.min(d, Math.hypot((o.tx ?? o.x) - p.x, ((o.ty ?? o.y) - p.y) * 1.6));
     if (d > dist) {
@@ -84,6 +96,8 @@ export function puntoLibero(a: Zona, io: object | null, caso: () => number): { x
       migliore = p;
     }
   }
+  // Tutto il pezzo sotto la zona coperta (il Montone) o sugli ostacoli: si cerca in tutta l'area
+  if (!migliore && a.area && (a.coperta || a.area.coperta)) return puntoLibero(a.area, io, caso);
   // Se ogni tentativo cadeva su un ostacolo, va bene il bordo di sotto dell'area
   const g = io as { x?: number } | null;
   return migliore || { x: clamp(g?.x ?? (a.x0 + a.x1) / 2, a.x0, a.x1), y: (a.area || a).y1 };

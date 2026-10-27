@@ -3,6 +3,9 @@
 // tocco sul prato, ricostruzione e accessibilità. Ciclo manuale, senza ambiente né giochi; fotografie con 2, 3 e 4 giocatori
 // (la recita vera, per "occupato", viene da una partita del motore).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// Questo file monta teatri veri: con tutte le prove insieme una prova può superare i 5 s predefiniti (la macchina è
+// carica). Il limite più alto vale per tutto il file, così la prossima prova lenta non fallisce per finta.
+vi.setConfig({ testTimeout: 60_000 });
 import { applica, defCarta, nuovaPartita, SETUP, vistaPer } from '../../../engine/src';
 import type { IdCarta, IdGiocatore, Stato, Vista } from '../../../engine/src';
 import { chiudiPunteggio, conFaccia, nessunaReazione, prosegui, scegli, scenario } from '../../../engine/test/aiuti';
@@ -42,7 +45,7 @@ function domanda(o: Partial<Domanda> = {}): Domanda {
     centro: null,
     furto: null,
     pulsanti: [],
-    testata: false,
+    fionda: null,
     ...o,
   };
 }
@@ -574,7 +577,7 @@ describe('tocco sul prato e meteo ancora in corso sullo sfondo (regola F)', () =
     return t;
   }
 
-  it('con una domanda (anche con una carta sollevata) il tocco sul prato manda prato E salta il meteo (entro 4 s)', { timeout: 30_000 }, async () => {
+  it('con una domanda (anche con una carta sollevata) il tocco sul prato manda prato E salta il meteo (entro 4 s)', async () => {
     const t = await conMeteo();
     const { gesti, suGesto } = registra();
     t.chiedi(domanda({ carte: MANO, sollevate: [B], pecore: ['g3'] }), suGesto);
@@ -594,7 +597,7 @@ describe('tocco sul prato e meteo ancora in corso sullo sfondo (regola F)', () =
     expect(errori).not.toHaveBeenCalled();
   });
 
-  it('un tocco su zona, pulsante, mano, dado o menu non salta il meteo e non manda prato (la tovaglia manda prato ma non salta)', { timeout: 30_000 }, async () => {
+  it('un tocco su zona, pulsante, mano, dado o menu non salta il meteo e non manda prato (la tovaglia manda prato ma non salta)', async () => {
     const t = await conMeteo();
     const { gesti, suGesto } = registra();
     t.chiedi(domanda({ carte: MANO, pecore: ['g3'], dado: true, pulsanti: [{ id: 'continua', testo: 'Continua', attivo: true }] }), suGesto);
@@ -609,7 +612,7 @@ describe('tocco sul prato e meteo ancora in corso sullo sfondo (regola F)', () =
     expect(t.eventoInCorso()).toBe(true);
   });
 
-  it('senza domanda il comportamento del pezzo 2 non cambia: salta, e una carta sollevata da sola lo impedisce', { timeout: 30_000 }, async () => {
+  it('senza domanda il comportamento del pezzo 2 non cambia: salta, e una carta sollevata da sola lo impedisce', async () => {
     const t = await conMeteo();
     const salta = vi.spyOn(t.ctx.regia, 'salta');
     tocca(carte()[0]!);
@@ -651,7 +654,7 @@ describe('scena occupata', () => {
     expect(zone()).toHaveLength(1);
     expect(bottoni()).toHaveLength(1);
     expect(errori).not.toHaveBeenCalled();
-  }, 30_000);
+  });
 
   it('una domanda sostituita mentre la scena recita: a recita finita compare l\'ultima; smettiDiChiedere la cancella', async () => {
     const { prima, dopo } = pascolo();
@@ -669,7 +672,7 @@ describe('scena occupata', () => {
     t.smettiDiChiedere();
     await finche(t, () => !t.occupato(), 10_000);
     expect(zone()).toHaveLength(0);
-  }, 30_000);
+  });
 
   it('con la scena occupata la mano torna libera; a scena libera la domanda la riprende con le carte sollevate', async () => {
     const { prima, dopo } = pascolo();
@@ -682,7 +685,7 @@ describe('scena occupata', () => {
     expect(carte().some((e) => e.classList.contains('attiva'))).toBe(false);
     await finche(t, () => !t.occupato(), 10_000);
     expect(carte()[1]!.classList.contains('attiva')).toBe(true);
-  }, 30_000);
+  });
 });
 
 describe('ricostruzione e adattamento', () => {
@@ -832,7 +835,7 @@ describe('fuoco da tastiera', () => {
     } finally {
       fuori.remove();
     }
-  }, 30_000);
+  });
 });
 
 describe('accessibilità e pensiero', () => {
@@ -860,7 +863,7 @@ describe('accessibilità e pensiero', () => {
     expect(q('.pensiero')).not.toBeNull();
     t.pensa(null);
     expect(q('.pensiero')).toBeNull();
-  }, 30_000);
+  });
 
   it('pensa con lo stesso pensiero e domande che si ripetono non ricrea la nuvoletta', () => {
     const t = nuovo(foto(3));
@@ -1480,7 +1483,7 @@ describe('furto', () => {
     t.avanza(33);
     expect(alzati()).toHaveLength(1);
     expect(errori).not.toHaveBeenCalled();
-  }, 30_000);
+  });
 
   it('dopo una ricostruzione del tavolo gli agnellini nuovi si alzano al posto dei vecchi, nello stesso numero', () => {
     const f = fotoConAgnellini(3, { g1: 4, g2: 5, g3: 4 });
@@ -1517,7 +1520,7 @@ describe('furto', () => {
     expect(fermo).toBeLessThan(-25.8);
   });
 
-  it('con i giochi tra agnellini accesi gli agnellini alzati non vengono presi a giocare: restano alzati, ognuno col suo controllo', { timeout: 30_000 }, () => {
+  it('con i giochi tra agnellini accesi gli agnellini alzati non vengono presi a giocare: restano alzati, ognuno col suo controllo', () => {
     const f = fotoConAgnellini(3, { g1: 5, g2: 6, g3: 5 });
     const t = (teatro = creaTeatro(radice, { ciclo: 'manuale', ambiente: false, giochi: true, caso: casoConSeme(5) }));
     t.allinea(f, 'subito');
@@ -1538,7 +1541,7 @@ describe('furto', () => {
     expect(errori).not.toHaveBeenCalled();
   });
 
-  it('un meteo che fa rannicchiare gli agnellini non porta via quelli alzati per il furto', { timeout: 30_000 }, async () => {
+  it('un meteo che fa rannicchiare gli agnellini non porta via quelli alzati per il furto', async () => {
     const f = fotoConAgnellini(3, { g1: 5, g2: 6, g3: 5 });
     const t = nuovo(f);
     const prima = JSON.stringify(t.stato().agnellini);
@@ -1559,7 +1562,7 @@ describe('furto', () => {
     expect(errori).not.toHaveBeenCalled();
   });
 
-  it('la pozzanghera non intrappola gli agnellini alzati per il furto', { timeout: 30_000 }, async () => {
+  it('la pozzanghera non intrappola gli agnellini alzati per il furto', async () => {
     const f = fotoConAgnellini(3, { g1: 5, g2: 6, g3: 5 });
     const t = nuovo(f);
     t.chiedi(domanda({ furto: { presi: { g2: 6 } } }), () => undefined);
@@ -1579,7 +1582,7 @@ describe('furto', () => {
     expect(errori).not.toHaveBeenCalled();
   });
 
-  it('il vento forte non spinge gli agnellini alzati per il furto', { timeout: 30_000 }, async () => {
+  it('il vento forte non spinge gli agnellini alzati per il furto', async () => {
     const f = fotoConAgnellini(3, { g1: 5, g2: 6, g3: 5 });
     const t = (teatro = creaTeatro(radice, { ciclo: 'manuale', ambiente: true, giochi: false, caso: casoConSeme(5) }));
     t.allinea(f, 'subito');
@@ -1735,7 +1738,7 @@ describe('la nuvoletta del pensiero', () => {
 describe('tutto insieme', () => {
   it('centro, grandi, Guai e furto insieme non rompono niente; togli li toglie tutti', () => {
     const t = nuovo({ ...fotoConGuai(3, [GUAIO_1]), mano: [A, B, C] });
-    t.chiedi(domanda({ centro: A, grandi: [B, C], guai: [GUAIO_1], furto: { presi: { g2: 1 } }, pecore: ['g2'], testata: true }), () => undefined);
+    t.chiedi(domanda({ centro: A, grandi: [B, C], guai: [GUAIO_1], furto: { presi: { g2: 1 } }, pecore: ['g2'], fionda: { bersaglio: 'g2', massimo: 3 } }), () => undefined);
     t.avanza(33);
     expect(errori).not.toHaveBeenCalled();
     t.smettiDiChiedere();

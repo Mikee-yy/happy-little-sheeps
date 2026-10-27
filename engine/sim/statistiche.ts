@@ -102,15 +102,26 @@ const pc = (x: number) => `${(x * 100).toFixed(1)}%`;
 const n1 = (x: number) => x.toFixed(1);
 const segno = (b: boolean) => (b ? '✅' : '❌');
 
-export function rapportoMarkdown(riassunti: Riassunto[], o: { titolo: string; seme: number; durataSecondi: number }): string {
+/** Descrizione di ogni politica nei rapporti (solo quelle presenti). */
+const DESCRIZIONI: Record<string, string> = {
+  casuale: 'ogni giocatore sceglie a caso tra le azioni valide (richiesta del brief).',
+  semplice:
+    "buon senso, come il bot del brief: Trovate pesate sul valore, furti e Testate a chi ha più agnellini, Belati di salvataggio solo a rischio di eliminazione, Beee-NO! quando un avversario sta per riempire l'Ovile o quando si è colpiti.",
+  normale:
+    "il bot del gioco (D47): come semplice, ma Trovate pesate sul quadrato del valore e, con un Guaio che lo eliminerebbe, la più alta; Belati +2/−2 per non restare in fondo quando c'è un Guaio e per lanciare il dado da solo; Finta svenuta verso chi ha più agnellini prima di Faccio finta di niente; Garzina anche quando l'Angolo è molto esposto; Beee-NO! tenuto per l'Ovile pieno, i furti e le Testate che costano almeno 2 agnellini, i Guai deviati che lo eliminerebbero, i −2 che lo mandano in fondo e, a 2 giocatori, i dadi da 3 o più agnellini che portano l'avversario davanti.",
+};
+
+/** Senza `durataSecondi` la riga d'apertura non dà la durata (la sezione dei posti uguali nel rapporto dei bot: il tempo è di tutte le partite). */
+export function rapportoMarkdown(riassunti: Riassunto[], o: { titolo: string; seme: number; durataSecondi?: number }): string {
   const righe: string[] = [];
   righe.push(`# ${o.titolo}`, '');
   righe.push(
-    `Seme iniziale ${o.seme}; ${riassunti.reduce((t, r) => t + r.partite, 0)} partite in ${o.durataSecondi.toFixed(0)} s.`,
+    `Seme iniziale ${o.seme}; ${riassunti.reduce((t, r) => t + r.partite, 0)} partite${o.durataSecondi === undefined ? '' : ` in ${o.durataSecondi.toFixed(0)} s`}.`,
     `Durata in minuti stimata con l'ipotesi di ${MINUTI_PER_ROUND} minuti per round.`,
     '',
-    '- **casuale**: ogni giocatore sceglie a caso tra le azioni valide (richiesta del brief).',
-    '- **semplice**: buon senso, come il bot del brief: Trovate pesate sul valore, furti e Testate a chi ha più agnellini, Belati di salvataggio solo a rischio di eliminazione, Beee-NO! quando un avversario sta per riempire l\'Ovile o quando si è colpiti.',
+    ...Object.entries(DESCRIZIONI)
+      .filter(([nome]) => riassunti.some((r) => r.politica === nome))
+      .map(([nome, testo]) => `- **${nome}**: ${testo}`),
     '',
     '## Criteri di accettazione',
     '',
@@ -170,4 +181,74 @@ export function rapportoMarkdown(riassunti: Riassunto[], o: { titolo: string; se
     }
   }
   return righe.join('\n') + '\n';
+}
+
+// ─── Tavoli misti (D47) ──────────────────────────────────────────────────────
+
+export interface RiassuntoMisto {
+  /** Politiche del tavolo, una per posto (prima della rotazione). */
+  tavolo: string[];
+  numeroGiocatori: number;
+  partite: number;
+  errori: number;
+  stalli: number;
+  roundMedi: number;
+  /** Per politica: posti al tavolo, quota di vittorie (le condivise in frazione) e attesa, eliminazioni per posto. */
+  perPolitica: Record<string, { posti: number; vittorie: number; atteso: number; eliminatiPerPosto: number }>;
+}
+
+export function riassumiMiste(tavolo: string[], risultati: RisultatoPartita[]): RiassuntoMisto {
+  const ok = risultati.filter((r) => r.stato === 'ok');
+  const n = tavolo.length;
+  const perPolitica: RiassuntoMisto['perPolitica'] = {};
+  for (const nome of tavolo) {
+    const p = (perPolitica[nome] ??= { posti: 0, vittorie: 0, atteso: 0, eliminatiPerPosto: 0 });
+    p.posti++;
+    p.atteso = p.posti / n;
+  }
+  for (const r of ok) {
+    for (const posto of r.vincitoriPosti) perPolitica[r.politichePosti[posto] as string]!.vittorie += 1 / r.vincitoriPosti.length;
+    for (const posto of r.eliminatiPosti) perPolitica[r.politichePosti[posto] as string]!.eliminatiPerPosto += 1;
+  }
+  for (const p of Object.values(perPolitica)) {
+    p.vittorie /= Math.max(1, ok.length);
+    p.eliminatiPerPosto /= Math.max(1, ok.length * p.posti);
+  }
+  return {
+    tavolo,
+    numeroGiocatori: n,
+    partite: risultati.length,
+    errori: risultati.filter((r) => r.stato === 'errore').length,
+    stalli: risultati.filter((r) => r.stato === 'stallo').length,
+    roundMedi: media(ok.map((r) => r.round)),
+    perPolitica,
+  };
+}
+
+export function rapportoMisteMarkdown(miste: RiassuntoMisto[], pure: Riassunto[], o: { seme: number; durataSecondi: number }): string {
+  const righe: string[] = ['# Rapporto dei bot', ''];
+  righe.push(
+    `Seme iniziale ${o.seme}; ${miste.reduce((t, r) => t + r.partite, 0) + pure.reduce((t, r) => t + r.partite, 0)} partite in ${o.durataSecondi.toFixed(0)} s.`,
+    'Generato con `npm run simula -- --miste normale,semplice`. Decisione D47 in `docs/motore.md`.',
+    '',
+    '## Tavoli misti',
+    '',
+    'A ogni partita i posti ruotano di uno, così ogni politica siede ovunque lo stesso numero di volte. Vittorie: quota delle partite vinte da chi usa quella politica (le vittorie condivise contano in frazione); "atteso" è la quota dei posti. Eliminazioni: per giocatore e per partita.',
+    '',
+    '| Giocatori | Tavolo | Partite | Round medi | Politica | Posti | Vittorie | Atteso | Vittorie per posto | Eliminazioni per posto |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  );
+  for (const m of miste) {
+    const conti = Object.entries(m.perPolitica).map(([nome, p]) => `${p.posti} ${nome}`).join(' + ');
+    for (const [nome, p] of Object.entries(m.perPolitica)) {
+      righe.push(
+        `| ${m.numeroGiocatori} | ${conti} | ${m.partite}${m.errori + m.stalli ? ` (${m.errori + m.stalli} errori o stalli)` : ''} | ${n1(m.roundMedi)} | ${nome} | ${p.posti} | ${pc(p.vittorie)} | ${pc(p.atteso)} | ${pc(p.vittorie / p.posti)} (atteso ${pc(1 / m.numeroGiocatori)}) | ${p.eliminatiPerPosto.toFixed(2)} |`,
+      );
+    }
+  }
+  righe.push('');
+  const accettazione = rapportoMarkdown(pure, { titolo: 'Tutti i posti con la stessa politica', seme: o.seme })
+    .replace(/^# /, '## ')
+    .replace(/\n## /g, '\n### ');
+  return righe.join('\n') + '\n' + accettazione;
 }

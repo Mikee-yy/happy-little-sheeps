@@ -1,6 +1,7 @@
 // Il teatro chiede: mostra la "domanda di adesso" (scelte/tipi.ts) dentro la scena e restituisce i gesti.
 // Non conosce le regole: dalla domanda ricava zone di tocco sulle pecore, pulsanti, dado illuminato, il comando della mano,
-// le carte grandi (al centro della tovaglia o affiancate), i Guai dell'angolo, gli agnellini alzati del furto e la nuvoletta del pensiero.
+// le carte grandi (al centro della tovaglia o affiancate), i Guai dell'angolo, gli agnellini alzati del furto, la fionda della Testata
+// (fionda/mira.ts) e la nuvoletta del pensiero.
 // Le zone, i pulsanti e le carte grandi stanno nello strato `.ui` (fermo anche quando la camera si avvicina a un giocatore);
 // le zone si posizionano con `camera.inScenaDaMondo`, perché il prato può essere inquadrato da vicino.
 // Gli agnellini alzati e le mini dei Guai sono decorazione del tavolo (non cambiano area né conti): il teatro li illumina o li alza
@@ -12,10 +13,12 @@ import { T } from '../testi';
 import type { Camera } from './camera';
 import { cartaSVG } from './carte/carte';
 import type { Contesto } from './contesto';
+import { creaMira } from './fionda/mira';
 import type { Lettura } from './lettura';
 import type { Mano } from './mano';
 import { posaSollevata, trasf } from './mano';
 import { H, W } from './misure';
+import { CENTRO_TAVOLO } from './ordini';
 import type { Palco } from './palco';
 import { QUOTA_ALZATO, type Agnello } from './personaggi/agnello';
 import type { Domanda, Gesto, Pensiero } from './scelte/tipi';
@@ -50,10 +53,10 @@ export interface Chiedi {
 
 /**
  * Dove un tocco non è un tocco sul prato: la mano, il menu, la lettura, le zone, i pulsanti, il dado, la nuvoletta,
- * le carte grandi (e quella al centro), i Guai dell'angolo illuminati e gli agnellini alzati del furto.
+ * le carte grandi (e quella al centro), i Guai dell'angolo illuminati, gli agnellini alzati del furto e il Montone della fionda.
  */
 export const NON_PRATO =
-  '.mano, .hud, .opzioni, .eventi, .lettura, .finale, .zona, .pulsanti-carta, .pulsanti-fila, .pensiero, .dado-pos, .carta-grande, .zona-guaio, .mini.illuminata, .agnellino-alzato';
+  '.mano, .hud, .opzioni, .eventi, .lettura, .finale, .zona, .pulsanti-carta, .pulsanti-fila, .pensiero, .dado-pos, .carta-grande, .zona-guaio, .mini.illuminata, .agnellino-alzato, .zona-fionda';
 /** Zone di tocco: quanto escono dal disegno (dita grandi su schermo piccolo) e che stacco resta tra due zone vicine. */
 const MARGINE_ZONA = 4;
 const STACCO_ZONE = 2;
@@ -69,8 +72,6 @@ const ALTEZZA_PULSANTE = 44;
 /** Tenuta per leggere una carta (come la mano) e quanto può muoversi il dito perché resti un tocco. */
 const TENUTA_MS = 430;
 const SOGLIA_MOSSO = 12;
-/** Il centro della tovaglia, dove sta la carta "solo da guardare" (come la carta ferma degli ordini). */
-const CENTRO_TAVOLO = { x: 195, y: 360, k: 0.5 };
 /** Carte grandi affiancate: centro verticale, scala massima, margine e distanza minima. */
 const GRANDI_Y = 340;
 const GRANDI_K = 0.68;
@@ -89,6 +90,20 @@ const PALLINI: Array<{ dx: number; dy: number; d: number }> = [
 ];
 const NUVOLA_SOPRA_PALLINI = 8;
 const NUVOLA_LARGA = 240;
+/**
+ * Mentre c'è la fionda della Testata il Montone sta accanto alla pecora in basso e la scia sale da lui: la nuvola va sotto,
+ * sopra la mano (che durante la Testata non si usa), e cresce verso il basso. I pallini scendono dai piedi della pecora
+ * (`PIEDI_X`, `PIEDI_Y`: frazioni del suo riquadro) e la nuvola comincia appena sotto l'ultimo, a sinistra della scena.
+ */
+const PIEDI_X = 0.32;
+const PIEDI_Y = 0.83;
+const PALLINI_SOTTO: Array<{ dx: number; dy: number; d: number }> = [
+  { dx: 0, dy: 3, d: 6 },
+  { dx: -5, dy: 13, d: 9 },
+  { dx: -10, dy: 25, d: 12 },
+];
+const NUVOLA_SOTTO_PALLINI = 4;
+const NUVOLA_SOTTO_X = 10;
 
 type Rett = [number, number, number, number];
 
@@ -141,6 +156,8 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
   /** Gli agnellini alzati per il furto, per giocatore, e i loro controlli di tocco nello strato `.ui`. */
   const alzati = new Map<IdGiocatore, Agnello[]>();
   const controlliAgnelli = new Map<Agnello, HTMLElement>();
+  /** La fionda della Testata: Montone, cerchi sul recinto del bersaglio e zona di tocco (fionda/mira.ts). */
+  const mira = creaMira(ctx, palco, camera);
 
   const sotto = document.createElement('div');
   sotto.className = 'pulsanti-carta';
@@ -651,6 +668,8 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
     const lista: Array<[string, HTMLElement]> = [];
     for (const [chi, el] of zone) lista.push([`zona:${chi}`, el]);
     lista.push(['dado', zonaDado]);
+    const fionda = mira.controllo();
+    if (fionda) lista.push(['fionda', fionda]);
     for (const { id, el } of mano.scoperte()) lista.push([`carta:${id}`, el]);
     for (const [id, el] of grandi) lista.push([`grande:${id}`, el]);
     for (const [id, el] of controlliGuai) lista.push([`guaio:${id}`, el]);
@@ -706,33 +725,50 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
     aggiornaCarte(d);
     aggiornaGuai(d);
     aggiornaFurto(d);
+    // La fionda: la stessa già mostrata si rimette solo a posto (un tiro a metà non si perde); senza fionda si scorda il tiro fatto
+    if (d.fionda) mira.mostra(d.fionda, manda);
+    else mira.togli(true);
     // Prima la mano (dice dove stanno le carte sollevate), poi ciò che si posiziona rispetto a lei
     comandaMano(d);
     posizionaZone();
     posizionaPulsanti();
     posizionaDado();
+    // La nuvoletta del pensiero si sposta sotto la pecora mentre c'è la fionda, e torna su quando non c'è più
+    posizionaPensiero();
   }
 
   // ---------- Nuvoletta del pensiero ----------
 
-  /** Pallini e nuvola sulla pecora in basso: la testa è in alto a destra del suo riquadro, la nuvola sta sopra l'ultimo pallino. */
+  /**
+   * Pallini e nuvola sulla pecora in basso: la testa è in alto a destra del suo riquadro, la nuvola sta sopra l'ultimo
+   * pallino. Mentre c'è la fionda (partita di prova: il consiglio della Testata resta aperto mentre si mira) la nuvola va
+   * sotto la pecora, sopra la mano: lontano dal Montone, dalla sua zona di tocco e dalla scia, che sale verso i recinti.
+   */
   function posizionaPensiero(): void {
     if (!pensiero) return;
     const chi = palco.inBasso();
     const posto = chi ? palco.posto(chi) : undefined;
-    const testaX = posto ? posto.x + posto.w * TESTA_X : 100;
-    const testaY = posto ? posto.y + posto.w * 0.85 * TESTA_Y : 545;
+    const conFionda = !!corrente?.d.fionda;
+    const ax = posto ? posto.x + posto.w * (conFionda ? PIEDI_X : TESTA_X) : 100;
+    const ay = posto ? posto.y + posto.w * (conFionda ? PIEDI_Y : 0.85 * TESTA_Y) : conFionda ? 627 : 545;
+    const pallini = conFionda ? PALLINI_SOTTO : PALLINI;
     pensiero.pallini.forEach((el, i) => {
-      const { dx, dy, d } = PALLINI[i]!;
-      el.style.left = `${testaX + dx - d / 2}px`;
-      el.style.top = `${testaY + dy - d / 2}px`;
+      const { dx, dy, d } = pallini[i]!;
+      el.style.left = `${ax + dx - d / 2}px`;
+      el.style.top = `${ay + dy - d / 2}px`;
       el.style.width = `${d}px`;
       el.style.height = `${d}px`;
     });
-    const ultimo = PALLINI[PALLINI.length - 1]!;
+    const ultimo = pallini[pallini.length - 1]!;
     const { nuvola } = pensiero;
-    nuvola.style.left = `${Math.max(10, Math.min(W - NUVOLA_LARGA - 10, testaX - 40))}px`;
-    nuvola.style.top = `${testaY + ultimo.dy - ultimo.d / 2 - NUVOLA_SOPRA_PALLINI}px`;
+    nuvola.classList.toggle('sotto', conFionda);
+    if (conFionda) {
+      nuvola.style.left = `${NUVOLA_SOTTO_X}px`;
+      nuvola.style.top = `${ay + ultimo.dy + ultimo.d / 2 + NUVOLA_SOTTO_PALLINI}px`;
+      return;
+    }
+    nuvola.style.left = `${Math.max(10, Math.min(W - NUVOLA_LARGA - 10, ax - 40))}px`;
+    nuvola.style.top = `${ay + ultimo.dy - ultimo.d / 2 - NUVOLA_SOPRA_PALLINI}px`;
   }
 
   function pulisciPensiero(): void {
@@ -777,10 +813,13 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
       sotto.hidden = true;
       fila.hidden = true;
       togliCarte();
+      mira.togli();
       for (const e of ctx.el.mondo.querySelectorAll('.pecora.illuminata, .recinto.illuminata')) e.classList.remove('illuminata', 'ferma');
       dado.classList.remove('illuminata', 'ferma');
       zonaDado.hidden = true;
       zonaDado.removeAttribute('tabindex');
+      // Senza la fionda la nuvoletta torna sopra la pecora
+      posizionaPensiero();
       // La mano torna libera solo se la domanda l'aveva presa
       if (c || chiaveMano !== null) {
         chiaveMano = null;
@@ -788,6 +827,7 @@ export function creaChiedi(ctx: Contesto, palco: Palco, mano: Mano, camera: Came
       }
     },
     riposiziona() {
+      // Con la domanda, `applica` rimette a posto anche la fionda (mira.mostra della stessa fionda la riposiziona)
       applica();
       posizionaPensiero();
     },

@@ -66,6 +66,11 @@ export const Dado3D = ({ size = 120, className }: { size?: number; className?: s
   <Simbolo id="dado-3d" viewBox="0 0 160 170" size={size} className={className} />
 );
 
+/** Il Montone della Testata (simbolo `montone`, cornice 220×160): `size` è la larghezza. */
+export const Montone = ({ size = 110 }: { size?: number }) => (
+  <Simbolo id="montone" viewBox="0 0 220 160" style={{ width: size, height: (size * 160) / 220 }} />
+);
+
 export const Retro = ({ guai = false, size = 44 }: { guai?: boolean; size?: number }) => (
   <Simbolo id={guai ? 'back-guai' : 'back-main'} viewBox="0 0 250 350" style={{ width: size, height: (size * 7) / 5 }} />
 );

@@ -187,7 +187,7 @@ describe('§8.1 modi di vincere: combinazioni non coperte (brief §3 "Come si vi
         eliminati: ['g3', 'g4'],
         agnellini: { g3: 0, g4: 0 },
         guaio: 'lupo-vegetariano',
-        angoli: { g2: ['grandine-a-sorpresa', 'insonnia'] },
+        angoli: { g2: ['grandine-a-sorpresa', 'insonnia', 'spuntatina'] },
         mani: { g1: ['carriola'], g2: ['sasso-comodo'], g3: [], g4: [] },
       },
       { g1: ['carriola'], g2: ['sasso-comodo'] },
@@ -454,7 +454,8 @@ describe('§8.6 eliminazione nel flusso a 4 giocatori e con il Gregge vuoto (bri
   }
 
   const casi: Array<{ nome: string; guaio: IdTipoCarta; angolo: IdTipoCarta[]; elimina: boolean }> = [
-    { nome: 'Meteo + Predatori + Tosatura del round (tre diversi)', guaio: TOSATURA, angolo: ['grandine-a-sorpresa', 'lupo-vegetariano'], elimina: true },
+    { nome: 'Meteo + Predatori + Drammi + Tosatura del round (quattro diversi)', guaio: TOSATURA, angolo: ['grandine-a-sorpresa', 'lupo-vegetariano', 'insonnia'], elimina: true },
+    { nome: 'Meteo + Predatori + Tosatura del round (tre diversi non bastano, D46)', guaio: TOSATURA, angolo: ['grandine-a-sorpresa', 'lupo-vegetariano'], elimina: false },
     { nome: 'Drammi + Drammi + Tosatura del round (tre uguali)', guaio: TOSATURA, angolo: ['insonnia', 'crisi-esistenziale'], elimina: true },
     { nome: 'Tosatura + Tosatura + Predatori del round', guaio: 'volpe-gentile', angolo: ['spuntatina', 'rasatura-integrale'], elimina: true },
     { nome: 'Meteo + Meteo + Predatori del round (non elimina)', guaio: 'volpe-gentile', angolo: ['grandine-a-sorpresa', 'nebbia-fitta'], elimina: false },
@@ -462,7 +463,7 @@ describe('§8.6 eliminazione nel flusso a 4 giocatori e con il Gregge vuoto (bri
   for (const c of casi) {
     it(`${c.nome}: ${c.elimina ? 'eliminato, la partita continua in tre' : 'resta in gioco'}`, () => {
       let s = aQuattro(c.guaio, c.angolo);
-      expect(gioc(s, 'g4').angolo).toHaveLength(3);
+      expect(gioc(s, 'g4').angolo).toHaveLength(c.angolo.length + 1);
       const gregge = s.gregge;
       const agnellini = gioc(s, 'g4').agnellini;
       s = concludi(s, 'g4');
@@ -473,13 +474,13 @@ describe('§8.6 eliminazione nel flusso a 4 giocatori e con il Gregge vuoto (bri
         expect(gioc(s, 'g4').agnellini).toBe(0);
         expect(gioc(s, 'g4').mano).toEqual([]);
         expect(s.gregge).toBe(gregge + agnellini);
-        expect(s.guaiFuoriGioco).toHaveLength(3);
+        expect(s.guaiFuoriGioco).toHaveLength(c.angolo.length + 1);
       }
     });
   }
 
   it('con il Gregge vuoto niente consolazione; gli agnellini dell\'eliminato rifondano il Gregge', () => {
-    let s = aQuattro(TOSATURA, ['grandine-a-sorpresa', 'lupo-vegetariano'], { gregge: 0 });
+    let s = aQuattro(TOSATURA, ['grandine-a-sorpresa', 'nebbia-fitta'], { gregge: 0 });
     expect(gioc(s, 'g4').agnellini).toBe(3);
     expect(s.gregge).toBe(0);
     s = concludi(s, 'g4');
@@ -867,21 +868,22 @@ describe('§3 "Gli effetti valgono una volta per carta per round" (brief §3; sp
 
 // ─── §8.6 Ogni combinazione con la Tosatura: controllo a forza bruta ─────────
 
-describe('§8.6 ogni combinazione con la Tosatura, a forza bruta (brief §3 "Eliminazione", "Variante a 2"; spec 8, D29)', () => {
+describe('§8.6 ogni combinazione con la Tosatura, a forza bruta (brief §3 "Eliminazione", "Variante a 2"; spec 8, D29, D46)', () => {
   const TIPI3: TipoGuaio[] = ['meteo', 'predatori', 'drammi'];
   type Conta = Record<TipoGuaio, number>;
 
   const piuUno = (c: Conta, t: TipoGuaio): Conta => ({ ...c, [t]: c[t] + 1 }) as Conta;
 
-  /** D29: ogni Tosatura diventa un Guaio di un tipo a scelta; elimina se almeno una scelta raggiunge la soglia. */
+  /** D29: per gli uguali ogni Tosatura diventa un Guaio di un tipo a scelta; elimina se almeno una scelta raggiunge la soglia. */
+  function ugualiPerDefinizione(conta: Conta, tosature: number, soglia: number): boolean {
+    if (tosature === 0) return TIPI3.some((t) => conta[t] >= soglia);
+    return TIPI3.some((t) => ugualiPerDefinizione(piuUno(conta, t), tosature - 1, soglia));
+  }
+
+  /** D46: 3 uguali (4 a 2 giocatori) o 4 diversi, dove ogni Tosatura conta come un tipo in più. */
   function eliminaPerDefinizione(conta: Conta, tosature: number, dueGiocatori: boolean): boolean {
-    if (tosature === 0) {
-      const valori = TIPI3.map((t) => conta[t]);
-      return dueGiocatori
-        ? valori.some((v) => v >= 4) || valori.every((v) => v >= 2)
-        : valori.some((v) => v >= 3) || valori.every((v) => v >= 1);
-    }
-    return TIPI3.some((t) => eliminaPerDefinizione(piuUno(conta, t), tosature - 1, dueGiocatori));
+    const diversi = TIPI3.filter((t) => conta[t] >= 1).length + tosature;
+    return ugualiPerDefinizione(conta, tosature, dueGiocatori ? 4 : 3) || diversi >= 4;
   }
 
   function angolo(c: Conta, t: number): TipoGuaioCarta[] {

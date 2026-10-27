@@ -70,7 +70,7 @@ Chi non conosce il gioco impara giocando: una partita vera contro due bot, prepa
 | 10 | Primo Furto | Furto: chi ha tirato ruba agnellini agli altri giocatori. |
 | 11 | Puoi rispondere con un Beee-NO! (prima volta) | Hai un Beee-NO!: si gioca in qualsiasi momento e annulla il dado, l'effetto di una Trovata o un altro Belato. Usalo adesso! |
 | 12 | Prima Testata | Testata del Montone: trascina il montone verso l'Ovile e lascia andare. Più tiri, più agnellini tornano nel Gregge. |
-| 13 | Prendi un Guaio (prima volta) | Il Guaio finisce nel tuo Angolo. In cambio prendi un agnellino e puoi scartare una carta. Attenzione: con 3 Guai uguali o 3 diversi sei fuori. |
+| 13 | Prendi un Guaio (prima volta) | Il Guaio finisce nel tuo Angolo. In cambio prendi un agnellino e puoi scartare una carta. Attenzione: con 3 Guai uguali o 4 diversi sei fuori. |
 | 14 | Un bot prende un Guaio (prima volta) | Il più basso prende il Guaio, ma riceve un agnellino di consolazione. |
 | 15 | Prima fine round | A fine round tutti ripescano fino ad avere 5 carte. |
 | 16 | Finito il terzo round | **Ora sai come si gioca!** Se il mazzo finisce, si gioca un ultimo round e vince chi ha più agnellini. Pulsanti: *Continua la partita* · *Torna alla schermata principale* |

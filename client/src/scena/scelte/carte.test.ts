@@ -218,7 +218,7 @@ describe('scelta', () => {
     expect(d.grandi).toEqual([]);
     expect(d.centro).toBeNull();
     expect(d.furto).toBeNull();
-    expect(d.testata).toBe(false);
+    expect(d.fionda).toBeNull();
     expect(d.pulsanti).toEqual([{ id: 'gioca', testo: T.scena.scelte.gioca(0), attivo: false, sottoLaCarta: true }]);
   });
 

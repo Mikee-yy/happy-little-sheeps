@@ -268,7 +268,14 @@ describe('copione: dado, agnellini, Testata', () => {
   it('Testata: [agnellini(testata), testata] dà una sola battuta testata', () => {
     expect(
       unica(agn('g2', 'gregge', 2, 'testata'), { tipo: 'testata', giocatore: 'g1', bersaglio: 'g2', esito: 2 }),
-    ).toEqual({ tipo: 'testata', chi: 'g1', bersaglio: 'g2', quanti: 2, attesa: { tipo: 'fine' } });
+    ).toEqual({ tipo: 'testata', chi: 'g1', bersaglio: 'g2', quanti: 2, seq: 101, attesa: { tipo: 'fine' } });
+  });
+
+  it('Testata: la battuta porta il seq dell\'evento', () => {
+    const lista: Evento[] = [{ seq: 4242, tipo: 'testata', giocatore: 'g3', bersaglio: 'g1', esito: 1 }];
+    expect(copione(lista, vista)).toEqual([
+      { tipo: 'testata', chi: 'g3', bersaglio: 'g1', quanti: 1, seq: 4242, attesa: { tipo: 'fine' } },
+    ]);
   });
 
   it('Testata con esito 0 (nessun agnellino spostato): battuta testata con quanti 0', () => {
@@ -492,6 +499,70 @@ describe('copione: eventi da mettere solo in pari e riservatezza', () => {
     );
     const fumetti = due.filter((x): x is Di<'fumetti'> => x.tipo === 'fumetti');
     expect(fumetti.map((x) => x.testi)).toEqual([{ g2: T.scena.fumetti.furto(2) }, { g3: T.scena.fumetti.furto(1) }]);
+  });
+
+  describe('furto in due lotti: il secondo fumetto quando se ne spostano meno', () => {
+    // La dichiarazione è arrivata in un lotto precedente: sta nello storico della vista
+    const dichiarazione: Evento = {
+      seq: 50,
+      tipo: 'dichiarazione',
+      voce: 1,
+      autore: 'g2',
+      dettagli: {
+        tipo: 'dado',
+        faccia: 'furto_grande',
+        dichiarazione: { effetto: 'furto', daAvversari: { g1: 2, g3: 1 }, dalGregge: 1 },
+      },
+    };
+    const conStoria: Vista = { ...vista, eventi: [...vista.eventi, dichiarazione] };
+    const dopo = (...nuovi: NuovoEvento[]): Battuta[] => copione(eventi(...nuovi), conStoria);
+
+    it('ne arrivano meno dei 4 dichiarati: dopo la corsa, un fumetto sopra il ladro col numero vero', () => {
+      const b = dopo(
+        { tipo: 'risolta', voce: 1 },
+        { tipo: 'agnellini', da: 'g1', a: 'g2', quanti: 1, causa: 'furto' },
+        { tipo: 'agnellini', da: 'g3', a: 'g2', quanti: 1, causa: 'furto' },
+      );
+      expect(b.map((x) => x.tipo)).toEqual(['agnellini', 'fumetti']);
+      expect(b[1]).toEqual({ tipo: 'fumetti', testi: { g2: T.scena.fumetti.furtoSolo(2) }, attesa: { tipo: 'massimo', ms: 1200 } });
+      expect(T.scena.fumetti.furtoSolo(2)).toBe('Solo 2 agnellini!');
+      expect(T.scena.fumetti.furtoSolo(1)).toBe('Solo 1 agnellino!');
+    });
+
+    it('ne arrivano quanti dichiarati: nessun fumetto in più', () => {
+      const b = dopo(
+        { tipo: 'risolta', voce: 1 },
+        { tipo: 'agnellini', da: 'g1', a: 'g2', quanti: 2, causa: 'furto' },
+        { tipo: 'agnellini', da: 'g3', a: 'g2', quanti: 1, causa: 'furto' },
+        { tipo: 'agnellini', da: 'gregge', a: 'g2', quanti: 1, causa: 'furto' },
+      );
+      expect(b.map((x) => x.tipo)).toEqual(['agnellini']);
+    });
+
+    it('furto annullato dal Beee-NO!: nessun "Solo 0"', () => {
+      const beeeNo: Evento = {
+        seq: 60,
+        tipo: 'dichiarazione',
+        voce: 2,
+        autore: 'g1',
+        dettagli: { tipo: 'belato', carta: 'beee-no#1', effetto: 'beee_no', voceBersaglio: 1 } as DettagliVoce,
+      };
+      const b = copione(eventi({ tipo: 'annullata', voce: 1, da: 2 }, { tipo: 'risolta', voce: 2 }), {
+        ...conStoria,
+        eventi: [...conStoria.eventi, beeeNo],
+      });
+      expect(b.map((x) => x.tipo)).toEqual(['beeeNo']);
+    });
+
+    it('dichiarazione e spostamenti nello stesso lotto: il primo fumetto dice già il numero vero, niente secondo', () => {
+      const b = dopo(
+        { ...dichiarazione, seq: undefined } as unknown as NuovoEvento,
+        { tipo: 'risolta', voce: 1 },
+        { tipo: 'agnellini', da: 'g1', a: 'g2', quanti: 1, causa: 'furto' },
+      );
+      expect(b.map((x) => x.tipo)).toEqual(['fumetti', 'agnellini']);
+      expect((b[0] as Di<'fumetti'>).testi).toEqual({ g2: T.scena.fumetti.furto(1) });
+    });
   });
 
   it('ordine degli eventi rispettato in una serie mista', () => {

@@ -1,7 +1,7 @@
 // Il gioco dentro la scena 2,5D, comune alla partita su un dispositivo (Partita) e alle stanze: la scena caricata a parte,
 // la domanda di adesso (scena/scelte/) con la scelta a metà, i gesti che diventano mosse, la scritta della domanda nella
-// striscia in cima, il riquadro di mira della Testata. Finché la scena non è pronta (si scarica, o non è arrivata) al suo
-// posto ci sono i pannelli di riserva di chi lo usa.
+// striscia in cima (anche la fionda della Testata è una domanda della scena). Finché la scena non è pronta (si scarica, o
+// non è arrivata) al suo posto ci sono i pannelli di riserva di chi lo usa.
 // Chi lo usa decide tutto il resto: la fotografia (con la mano già decisa, regola anti-sbirciata), il momento, se la
 // domanda si può mostrare (`conAzioni`: scena libera, niente strati sopra), cosa fare di "risponde"/"indietro", il menu.
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -15,7 +15,6 @@ import { T } from '../testi';
 import { Cronaca } from './componenti';
 import { ScenaCaricata } from './ScenaCaricata';
 import { Intestazione } from './Tavolo';
-import { Testata } from './Testata';
 
 /**
  * La scritta della domanda nella striscia in cima, al posto della cronaca: cosa fare (al più due righe), gli avvisi e
@@ -143,6 +142,8 @@ export function GiocoInScena(p: PropsGiocoInScena) {
    * Contiene lo sblocco: cambiando `sblocca` non vale più.
    */
   const risposta = useRef<string | null>(null);
+  /** Mosse rifiutate subito da `invia`: la fionda nella scena torna a mirare (vedi `tentativo` di Domanda.fionda). */
+  const [rifiutateSubito, setRifiutateSubito] = useState(0);
   const testata = useRef<HTMLDivElement>(null);
   const [spazioAlto, setSpazioAlto] = useState(SPAZIO_ALTO_RISERVA);
   // Coperto solo da un contenuto vero: `null`, `undefined` e `false` (come in `{cond && <Copertura/>}`) non coprono
@@ -186,6 +187,11 @@ export function GiocoInScena(p: PropsGiocoInScena) {
   // La stessa domanda dopo una mossa riuscita ha comunque un evento in più (o, nelle stanze, una situazione nuova di chi
   // gioca sul telefono): la firma cambia
   const firma = `${chiaveMomento}#${p.situazione ?? tavolo.eventi.reduce((m, e) => Math.max(m, e.seq), 0)}#${sblocca}`;
+  // La fionda nella scena ricorda il tiro già fatto finché il tentativo non cambia: cambia con la firma (sblocco, mossa
+  // riuscita) e con una mossa rifiutata subito
+  const domandaInScena: Domanda | null = domanda?.fionda
+    ? { ...domanda, fionda: { ...domanda.fionda, tentativo: `${firma}#${rifiutateSubito}` } }
+    : domanda;
   const suGesto = (g: Gesto): void => {
     // Un secondo tocco prima che la partita si ridisegni (o uno in ritardo sulla domanda vecchia) non manda un'altra mossa
     if (!domanda || !momento || !sceltaOra || chiaveMomento === null || risposta.current === firma) return;
@@ -202,11 +208,11 @@ export function GiocoInScena(p: PropsGiocoInScena) {
         // Rifiutata subito (non dovrebbe succedere): la scritta mostra l'errore e la domanda si ripresenta, vuota
         risposta.current = null;
         setScelta(sceltaVuota(chiaveMomento));
+        setRifiutateSubito((n) => n + 1);
       }
     }
   };
   const attivo = momento?.schermo.tipo === 'privata' ? momento.schermo.giocatore : null;
-  const schermo = momento?.schermo;
 
   // La scena arriva in un pacchetto a parte: finché non c'è, il prato vuoto; se non arriva, "Riprova".
   // Recita gli eventi della vista del tavolo (mai una vista privata)
@@ -218,7 +224,7 @@ export function GiocoInScena(p: PropsGiocoInScena) {
       sospesa={coperta || p.sospesa}
       rifTeatro={p.rifTeatro}
       onOccupato={p.onOccupato}
-      domanda={domanda}
+      domanda={domandaInScena}
       suGesto={suGesto}
       pensiero={p.pensiero}
       onPronto={setScenaPronta}
@@ -261,12 +267,6 @@ export function GiocoInScena(p: PropsGiocoInScena) {
         )}
         {p.inStriscia}
       </div>
-      {/* Il colpo della Testata: il riquadro di mira di sempre, sopra la scena e sotto la striscia */}
-      {domanda?.testata && momento && schermo?.tipo === 'pubblica' && (
-        <div className="riquadro-testata" style={{ '--spazio-alto': `${spazioAlto}px` } as React.CSSProperties}>
-          <Testata key={chiaveMomento} v={momento.vista} giocatore={schermo.giocatore} azioni={momento.azioni} invia={invia} />
-        </div>
-      )}
       {/* In basso, sopra il prato: la riserva di chi lo usa, finché la scena non è pronta */}
       <div
         className={`fondo-scena${!scenaPronta && p.riservaATuttaAltezza ? ' a-tutta-altezza' : ''}`}

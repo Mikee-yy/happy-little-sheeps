@@ -37,5 +37,15 @@ Riferimento visivo: `Happy Little Sheeps - Tavola di stile v2.dc.html`. Colori e
 - Croci rosse o altri emblemi sanitari protetti: la medicina si racconta con specchietto e stetoscopio.
 - Qualsiasi elemento che ricordi personaggi, carte o loghi di giochi esistenti.
 
+## Scena di gioco
+Le regole qui sopra valgono per le carte, senza eccezioni. Il prato in 2,5D (approvato il 21 ottobre 2026) aggiunge queste:
+- **Ombre:** pecore, agnellini e staccionate proiettano la loro sagoma a terra, dalla parte opposta al sole, e verso sera si allungano. Sempre Notte trasparente, a tinta unita, con bordi netti. Le carte sulla tovaglia hanno una piccola ombra netta sotto.
+- **Luce:** il sole ha raggi animati; una nuvola che gli passa davanti abbassa un poco la tinta di tutto il prato. Niente riflessi né puntini di luce sui personaggi.
+- **Colori dell'ambiente:** rosso tovaglia (semitrasparente sul Gesso, diverso dal Vermiglio e mai su carte o interfaccia: il Vermiglio resta per gli avvisi), sabbia (Limone 48% + Fango), fondo dei recinti (Fango 42% + Prato), colline ed erba (Prato con Nebbia o Notte), cielo e prato per ora del giorno (Celeste, Lilla e Albicocca, scuriti con Notte verso sera).
+- **Pastelli:** il prato intero ne usa più di 3; il limite di 3 vale per ogni carta e per ogni singolo oggetto della scena.
+- **Meteo:** effetti brevi, legati a un Guaio, che spariscono da soli, sempre con forme piene e tratto unico: nebbia a banchi di cerchi chiari semitrasparenti, cielo scuro per qualche secondo nel temporale, velo celeste con brina e ghiaccioli nella gelata, pozze Celeste con contorno Notte e mulinello, fulmine Limone con lampo bianco di un attimo e fumo grigio, personaggio bruciacchiato per qualche secondo.
+- **Prospettiva:** le postazioni lontane sono più piccole e hanno il tratto più sottile in proporzione; lo zoom le riporta al tratto normale.
+- **Animazioni:** i personaggi si muovono solo con trasformazioni (spostamento, rotazione, scala, inclinazione), senza ridisegnare le forme; movimenti morbidi con un piccolo rimbalzo all'arrivo; niente lampeggi rapidi tranne il lampo del fulmine (meno di un secondo). Con "riduci movimento" attivo restano solo le animazioni che spiegano la partita.
+
 ## Contenuto della cartella
 `design-tokens.css` · `guida-stile.md` · `svg/` (sprite.svg con tutti i simboli, pecore + avatar, agnellino, montone, dado, icone, retri, logo) · `carte/modelli/` (zone commentate) · `carte/esempi/` (7 carte + 2 extra).

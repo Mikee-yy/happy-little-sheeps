@@ -1,6 +1,8 @@
 // Regia degli eventi (bozza scena.src.html, righe 406–435 e 453–462).
 // La scena sa sempre se un evento è in corso (Guaio, meteo, furto, Beee-NO!, dado, vittoria…): solo allora può
 // accelerare (animazioni veloci) o saltare. Chi è "in viaggio" lo dice chi li muove (`inViaggioValido`): la regia chiede, non duplica.
+import type { IdGiocatore } from '../../../../engine/src';
+import type { Punto, Rett } from '../fionda/tiro';
 import type { Orologio } from '../orologio';
 import { opzioni } from './opzioni';
 
@@ -18,6 +20,14 @@ export interface Regia {
   eventoInCorso(): boolean;
   velocita(): 1 | 2 | 6;
   salta(): void;
+  /**
+   * Il tiro della fionda fatto su questo telefono: lo scrive la mira al lancio (`fionda/mira.ts`), la regia della Testata
+   * lo legge (il volo segue il tiro vero, non quello "di scena") e lo azzera. `recinto`: il recinto del bersaglio com'era al
+   * tiro (una copia: la regia riporta `arrivo` in proporzione sul recinto normale); `partenza`: da dove è partito il Montone
+   * (vicino alla pecora di chi tira, con la variazione di quella mira); `chi`: chi ha tirato (un tiro rimasto lì, se la sua
+   * recita è saltata, non vale per il volo di un altro). null se non c'è.
+   */
+  tiroLocale: { chi: IdGiocatore | null; bersaglio: IdGiocatore; esito: number; arrivo: Punto; recinto: Rett; partenza: Punto } | null;
 }
 
 export function creaRegia(c: { orologio: Orologio; meteoAttivo: () => boolean; inViaggioValido: (g: unknown) => boolean }): Regia {
@@ -25,6 +35,7 @@ export function creaRegia(c: { orologio: Orologio; meteoAttivo: () => boolean; i
     aperti: 0,
     salto: false,
     inViaggio: new Set<unknown>(),
+    tiroLocale: null,
     apriEvento() {
       regia.aperti++;
       let chiuso = false;

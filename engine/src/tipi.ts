@@ -96,8 +96,7 @@ export interface FacciaDado {
 
 export type RegolaEliminazione =
   | { regola: 'uguali'; quanti: number }
-  | { regola: 'diversi'; quanti: number }
-  | { regola: 'perTipo'; quanti: number };
+  | { regola: 'diversi'; quanti: number };
 
 /** Configurazione della partita, copiata nello stato alla creazione: il motore non rilegge setup.json. */
 export interface ConfigPartita {

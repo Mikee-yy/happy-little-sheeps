@@ -126,6 +126,11 @@ export class Agnello {
   quota = 0;
   /** Secondi che mancano alla partenza (stato 'parte'). */
   attesa = 0;
+  /**
+   * L'effetto della regia che lo porta dritto attraverso gli ostacoli (la Testata: scansandosi passa dietro il cartello del
+   * Gregge): finché `fx` è questo, `respingi` non lo sposta. Con un altro effetto, o senza, torna a valere il cartello.
+   */
+  attraversa: ((dt: number) => boolean) | null = null;
   private modoViaggio: 'corre' | 'vola' = 'corre';
   private daViaggio: Area;
   private readonly corpo: CorpoAgnello;
@@ -195,7 +200,7 @@ export class Agnello {
 
   // Se finisce sopra un ostacolo (il cartello del gregge) scivola fuori dal lato più vicino: così ci gira intorno
   respingi(): void {
-    if (this.inViaggio) return;
+    if (this.inViaggio || (this.fx !== null && this.fx === this.attraversa)) return;
     // Dentro un recinto che si restringe, la staccionata spinge dentro chi è rimasto fuori
     const a = this.a;
     if (a.recinto && !this.regia) {
@@ -643,7 +648,7 @@ class CorpoDom implements CorpoAgnello {
       this.extra.brinaG.setAttribute('opacity', '0');
       this.extra.fuliggine.setAttribute('opacity', '0');
     }
-    const sf = g.a.sfumata ? '0' : '';
+    const sf = g.a.sfumata ? '0' : g.a.attenuata !== undefined ? String(g.a.attenuata) : '';
     if (this.el.style.opacity !== sf) this.el.style.opacity = sf;
     const brr = g.brivido > 0 ? Math.sin(ctx.T * 70 + g.x) * 0.9 * g.brivido : 0;
     this.el.style.transform = `translate(${(g.x + g.ox + brr).toFixed(1)}px,${g.y.toFixed(1)}px)`;

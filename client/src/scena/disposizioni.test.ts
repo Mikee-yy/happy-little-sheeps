@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { H, W } from './misure';
-import { conSostituzioni, disposizione, usaVariante, type Disposizione, type Rett, type Variante } from './disposizioni';
+import { conSostituzioni, disposizione, usaVariante, type Disposizione, type Rett, type Sostituzioni, type Variante } from './disposizioni';
 import varianti from './sviluppo/varianti.json';
 
 const dentroSchermo = (x: number, y: number) => x >= 0 && x <= W && y >= 0 && y <= H;
@@ -77,13 +77,14 @@ for (const n of [2, 3, 4] as const) {
   });
 }
 
-// Varianti dei recinti della pagina di sviluppo (compito 10): ognuna passa le stesse prove della base
+// Varianti dei recinti della pagina di sviluppo (compito 10): ognuna passa le stesse prove della base.
+// La A (recinti più profondi) è stata scelta il 21 ottobre ed è diventata la base per 3 e 4 giocatori.
 const VARIANTI = varianti as unknown as Record<string, Variante>;
 describe('varianti dei recinti', () => {
   afterEach(() => usaVariante(null));
 
-  it('ci sono le varianti A e B, per 3 e 4 giocatori', () => {
-    expect(Object.keys(VARIANTI)).toEqual(['A', 'B']);
+  it("c'è la variante B, per 3 e 4 giocatori", () => {
+    expect(Object.keys(VARIANTI)).toEqual(['B']);
     for (const v of Object.values(VARIANTI)) {
       expect(v.nome.length).toBeGreaterThan(0);
       expect(v['3']).toBeDefined();
@@ -93,14 +94,14 @@ describe('varianti dei recinti', () => {
 
   it('usaVariante cambia ciò che disposizione restituisce, sempre lo stesso oggetto finché non cambia', () => {
     const base = disposizione(3);
-    usaVariante(VARIANTI.A!);
+    usaVariante(VARIANTI.B!);
     const a = disposizione(3);
     expect(a).not.toBe(base);
     expect(disposizione(3)).toBe(a);
     // Senza sostituzioni per 2 giocatori resta la base
     usaVariante(null);
     const base2 = disposizione(2);
-    usaVariante(VARIANTI.A!);
+    usaVariante(VARIANTI.B!);
     expect(disposizione(2)).toEqual(base2);
     usaVariante(null);
     expect(disposizione(3)).toBe(base);
@@ -108,30 +109,15 @@ describe('varianti dei recinti', () => {
 
   it('le sostituzioni parziali non toccano la base', () => {
     const prima = JSON.stringify(disposizione(4));
-    const a = conSostituzioni(disposizione(4), VARIANTI.A!['4']!);
+    const a = conSostituzioni(disposizione(4), VARIANTI.B!['4']!);
     expect(JSON.stringify(disposizione(4))).toBe(prima);
     // Ciò che la variante non dice resta com'era
     expect(a.posti[0]).toEqual(disposizione(4).posti[0]);
     expect(a.posti[1]!.targa).toEqual(disposizione(4).posti[1]!.targa);
-    expect(a.prospettiva).toEqual(disposizione(4).prospettiva);
+    expect(a.prospettiva).not.toEqual(disposizione(4).prospettiva);
   });
 
   for (const n of [3, 4] as const) {
-    describe(`A, recinti più profondi (${n} giocatori)`, () => {
-      const base = disposizione(n);
-      const d = conSostituzioni(base, VARIANTI.A![String(n) as '3' | '4']!);
-      proveGeometria(n, d);
-      it('recinti e aree degli avversari più alti verso il basso; il gregge scende e si stringe', () => {
-        for (let i = 1; i < n; i++) {
-          expect(d.posti[i]!.recinto[2]).toBeGreaterThan(base.posti[i]!.recinto[2]);
-          expect(d.posti[i]!.area[3]).toBeGreaterThan(base.posti[i]!.area[3]);
-          expect(d.posti[i]!.area[1]).toBe(base.posti[i]!.area[1]);
-        }
-        expect(d.gregge.area[1]).toBeGreaterThan(base.gregge.area[1]);
-        expect(d.gregge.area[2] - d.gregge.area[0]).toBeLessThan(base.gregge.area[2] - base.gregge.area[0]);
-      });
-    });
-
     describe(`B, agnellini più piccoli lontano (${n} giocatori)`, () => {
       const base = disposizione(n);
       const d = conSostituzioni(base, VARIANTI.B![String(n) as '3' | '4']!);
@@ -146,6 +132,9 @@ describe('varianti dei recinti', () => {
   }
 });
 
+/** I valori della variante A (recinti più profondi), ora la base per 3 e 4 giocatori: sostituiscono quelli della bozza. */
+const EX_A = {"3":{"posti":{"1":{"recinto":[90,146,200,94,0.62],"area":[98,152,176,196]},"2":{"recinto":[206,146,200,94,0.62],"area":[214,152,292,196]}},"gregge":{"area":[104,216,288,258],"evita":[[154,208,238,233]],"cartello":[196,197]},"liberoDaPiante":[[0,95,98,232],[292,95,390,232],[84,126,194,210],[196,126,310,210],[96,206,296,264]]},"4":{"posti":{"1":{"recinto":[56,108,154,70,0.5],"area":[63,114,120,150],"tappetino":[6,162,118,38],"ventaglio":[32,198],"guai":[62,166]},"2":{"recinto":[186,108,154,70,0.5],"area":[193,114,250,150],"tappetino":[136,162,118,38],"ventaglio":[162,198],"guai":[192,166]},"3":{"recinto":[264,108,154,70,0.5],"area":[271,114,328,150],"tappetino":[266,162,118,38],"ventaglio":[358,198],"guai":[278,166]}},"gregge":{"area":[44,214,346,258],"evita":[[156,210,234,236]],"cartello":[195,200]},"liberoDaPiante":[[0,78,390,268]]},"nome":"recinti più profondi"} as unknown as Record<'3' | '4', Sostituzioni>;
+
 describe('confronto con la bozza', () => {
   // Estrae il letterale DISPOSIZIONI da bozze/scena/scena.src.html e lo valuta
   const testo = readFileSync(resolve(process.cwd(), 'bozze/scena/scena.src.html'), 'utf8');
@@ -157,23 +146,52 @@ describe('confronto con la bozza', () => {
   for (const n of [2, 3, 4] as const) {
     it(`n=${n}: posti, gregge, liberoDaPiante e prospettiva coincidono`, () => {
       const d = disposizione(n);
-      const attesi = [{ ...bozza.io, guai: [10, 626] }, ...bozza[n].avversari];
+      // Per 3 e 4 giocatori la base ha i recinti più profondi della bozza (variante A scelta il 21 ottobre)
+      const bz = n === 2 ? bozza[2] : conSostituzioni({ ...bozza[n], posti: [{ ...bozza.io, guai: [10, 626] }, ...bozza[n].avversari] }, EX_A[n]);
+      const attesi = n === 2 ? [{ ...bozza.io, guai: [10, 626] }, ...bozza[2].avversari] : bz.posti;
       expect(d.posti.length).toBe(attesi.length);
       attesi.forEach((a: Record<string, unknown>, i: number) => {
         const p = d.posti[i] as unknown as Record<string, unknown>;
         for (const k of GEOMETRIA) expect(p[k], `posto ${i}, ${k}`).toEqual(a[k]);
       });
-      expect(d.gregge).toEqual(bozza[n].gregge);
-      expect(d.liberoDaPiante).toEqual(bozza[n].liberoDaPiante);
+      expect(d.gregge).toEqual(bz.gregge);
+      expect(d.liberoDaPiante).toEqual(bz.liberoDaPiante);
       expect(d.prospettiva).toEqual(bozza[n].prospettiva);
     });
   }
 });
 
+describe('recinti più profondi (ex variante A, ora la base)', () => {
+  it('3 giocatori: recinto e area del posto 1, gregge', () => {
+    const d = disposizione(3);
+    expect(d.posti[1]!.recinto).toEqual([90, 146, 200, 94, 0.62]);
+    expect(d.posti[1]!.area).toEqual([98, 152, 176, 196]);
+    expect(d.gregge.cartello).toEqual([196, 197]);
+  });
+  it('4 giocatori: recinto, tappetino e guai del posto 1, gregge', () => {
+    const d = disposizione(4);
+    expect(d.posti[1]!.recinto).toEqual([56, 108, 154, 70, 0.5]);
+    expect(d.posti[1]!.tappetino).toEqual([6, 162, 118, 38]);
+    expect(d.posti[1]!.guai).toEqual([62, 166]);
+    expect(d.gregge.cartello).toEqual([195, 200]);
+  });
+  it('la base è la bozza con le sostituzioni della ex variante A', () => {
+    for (const n of [3, 4] as const) {
+      const d = disposizione(n);
+      const s = EX_A[n];
+      for (const [i, p] of Object.entries(s.posti!)) {
+        for (const [k, v] of Object.entries(p)) expect(d.posti[+i]![k as keyof typeof d.posti[number]], `n=${n} posto ${i} ${k}`).toEqual(v);
+      }
+      expect(d.gregge).toEqual(s.gregge);
+      expect(d.liberoDaPiante).toEqual(s.liberoDaPiante);
+    }
+  });
+});
+
 describe('valori della bozza', () => {
   it('3 giocatori: posto 2 specchiato con il recinto di Leo', () => {
     const p = disposizione(3).posti[2]!;
-    expect(p.recinto).toEqual([206, 146, 184, 94, 0.62]);
+    expect(p.recinto).toEqual([206, 146, 200, 94, 0.62]);
     expect(p.specchia).toBe(true);
     expect(disposizione(3).posti[1]!.specchia).toBeUndefined();
   });
@@ -186,9 +204,9 @@ describe('valori della bozza', () => {
   });
   it('4 giocatori: gregge e prospettiva', () => {
     const d = disposizione(4);
-    expect(d.gregge.area).toEqual([26, 200, 364, 246]);
+    expect(d.gregge.area).toEqual([44, 214, 346, 258]);
     expect(d.prospettiva).toEqual([138, 50 / 124]);
-    expect(d.liberoDaPiante).toEqual([[0, 78, 390, 254]]);
+    expect(d.liberoDaPiante).toEqual([[0, 78, 390, 268]]);
     expect(d.posti[3]!.specchia).toBe(true);
   });
   it('i posti non portano dati della partita', () => {

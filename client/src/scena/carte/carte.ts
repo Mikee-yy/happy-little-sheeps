@@ -55,8 +55,8 @@ function testoSVG(testo: string, corsivo: boolean, y0: number, y1: number): stri
   );
 }
 
-const piede = (t: string) =>
-  `<text x="226" y="334" text-anchor="end" style="font:700 10px 'Atkinson Hyperlegible',sans-serif;letter-spacing:.18em;fill:${P.notte}">${t}</text>`;
+const piede = (t: string, x = 226, ancora = 'end') =>
+  `<text x="${x}" y="334" text-anchor="${ancora}" style="font:700 10px 'Atkinson Hyperlegible',sans-serif;letter-spacing:.18em;fill:${P.notte}">${t}</text>`;
 const cornice = (fondo: string) => `<rect x="3" y="3" width="244" height="344" rx="16" fill="${fondo}" stroke="${P.notte}" stroke-width="6"/>`;
 
 const cacheCarte: Record<string, string> = {};
@@ -79,6 +79,7 @@ export function cartaSVG(id: IdCarta, animata = false): string {
     s += `<rect x="14" y="204" width="222" height="40" rx="8" fill="${P.limone}" stroke="${P.notte}" stroke-width="4"/>` + nomeSVG(c.nome, 230);
     // Il testo senza regola (solo battuta) va in corsivo
     s += testoSVG(c.testo, c.effetto === null && !c.gemella, 252, 320) + piede(tc.piede.trovata);
+    if (c.effetto === null && !c.gemella) s += piede(tc.nessunEffetto, 24, 'start');
   } else if (c.famiglia === 'belato') {
     s += cornice(P.gesso) + illustrazioneSVG(tipo, animata, 22, 80, 206, 126, P.gesso);
     s += `<path d="M14 22 Q14 14 22 14 L228 14 Q236 14 236 22 L236 50 Q236 58 228 58 L60 58 L44 72 L46 58 L22 58 Q14 58 14 50 Z" fill="${P.limone}" stroke="${P.notte}" stroke-width="4" stroke-linejoin="round"/>` + nomeSVG(c.nome, 43);

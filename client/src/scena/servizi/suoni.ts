@@ -209,8 +209,9 @@ export class GeneratoreSuoni {
     this.tono(520, 980, 'sine', 0.07, 0.09);
   }
 
-  tonfo(): void {
-    this.tono(150, 48, 'sine', 0.35, 0.35);
+  /** `forza` sotto 1 per un tonfo più leggero (il Montone che atterra sull'erba). */
+  tonfo(forza = 1): void {
+    this.tono(150, 48, 'sine', 0.35 * forza, 0.35);
   }
 
   fanfara(): void {

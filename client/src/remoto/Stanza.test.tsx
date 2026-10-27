@@ -25,7 +25,8 @@ import { durataRecita } from '../scena/regia/durate';
 import type { Fotografia } from '../scena/fotografia';
 import type { Domanda, Gesto, IdPulsante } from '../scena/scelte/tipi';
 import { archivioHost } from './connessione';
-import { ModuloStanza, Stanza, VistaTavolo } from './Stanza';
+import { ModuloStanza, RegoleInStanza, Stanza, VistaTavolo } from './Stanza';
+import { T } from '../testi';
 
 /** Un teatro finto per telefono (lo si riconosce dal contenitore `[data-telefono]` in cui è montato). */
 interface TeatroFinto {
@@ -269,18 +270,15 @@ const premi = (t: Telefono, id: IdPulsante) => gesto(t, { tipo: 'pulsante', id }
 const attivo = (d: Domanda, id: IdPulsante) => d.pulsanti.some((p) => p.id === id && p.attivo);
 const manoDi = (tv: Tavolata, g: IdGiocatore) => tv.host.vista(g).giocatori.find((x) => x.id === g)!.mano ?? [];
 
-/** Il riquadro di mira della Testata sul telefono: un colpo al centro. */
+/**
+ * La fionda della Testata nella scena del telefono: il teatro finto non ha la zona della fionda (la mira vera è provata in
+ * scena/chiedi.test.ts e scena/fionda/), qui arriva il gesto che la mira manda a fine volo, con l'esito più alto permesso.
+ */
 async function tiraTestata(t: Telefono): Promise<boolean> {
-  const arena = t.radice.querySelector('.riquadro-testata svg.arena');
-  if (!arena) return false;
-  await act(async () => {
-    fireEvent.pointerDown(arena, { pointerId: 1, clientX: 10, clientY: 10 });
-  });
-  await act(async () => {
-    fireEvent.pointerMove(arena, { pointerId: 1, clientX: 10, clientY: 10 });
-    fireEvent.pointerUp(arena, { pointerId: 1, clientX: 10, clientY: 10 });
-  });
-  await aspetta(1700);
+  const f = domandaDi(t)?.fionda;
+  if (!f) return false;
+  await gesto(t, { tipo: 'fionda', esito: f.massimo });
+  await aspetta(1800);
   return true;
 }
 
@@ -453,25 +451,280 @@ describe("Schermate sempre con un'uscita", () => {
     host.chiudi(); // l'host chiude il browser
     await aspetta();
     const isc: Iscrizione = { codice: host.codice, ruolo: 'ospite', idGiocatore: 'g2', nome: 'Bea', pecora: 'nerina', gettone: 'b' };
-    render(<Stanza sessione={bea} iscrizione={isc} onEsci={() => {}} onRegole={() => {}} />);
+    const aperte: (readonly string[] | null)[] = [];
+    render(<Stanza sessione={bea} iscrizione={isc} onEsci={() => {}} onRegole={(n) => aperte.push(n)} />);
     await aspetta();
     const velo = document.querySelector('[role=alertdialog]') as HTMLElement;
     expect(velo.textContent).toMatch(/host/);
     expect(pulsanteIn(velo, 'Esci')).toBeDefined();
-    expect(pulsanteIn(velo, 'Regole')).toBeDefined();
+    // Dal velo di pausa le Regole hanno i nomi della partita
+    await clic(pulsanteIn(velo, 'Regole'));
+    expect(aperte).toEqual([['Ada', 'Bea']]);
   });
 
   it("la sala d'attesa mostra il riassunto e il collegamento alle Regole", async () => {
     const r = new ArchivioMemoria();
     const host = await SessioneHost.crea(r.dispositivo('u1'), archivioInMemoria(), { nome: 'Ada', pecora: 'ricciolo', gettone: 'a' });
     await aspetta();
-    let regole = 0;
+    const aperte: (readonly string[] | null)[] = [];
     const isc: Iscrizione = { codice: host.codice, ruolo: 'host', idGiocatore: host.idGiocatore, nome: 'Ada', pecora: 'ricciolo', gettone: 'a' };
-    render(<Stanza sessione={host} iscrizione={isc} onEsci={() => {}} onRegole={() => regole++} />);
+    render(<Stanza sessione={host} iscrizione={isc} onEsci={() => {}} onRegole={(n) => aperte.push(n)} />);
     await aspetta();
     expect(document.querySelector('.sala .riassunto h2')?.textContent).toBe('Come si gioca, in breve');
     await clic(pulsanteIn(document.body, 'Leggi tutte le regole'));
-    expect(regole).toBe(1);
+    // Dalla sala d'attesa: nomi di esempio
+    expect(aperte).toEqual([null]);
+  });
+});
+
+describe('Regole aperte dalla stanza', () => {
+  /** Stato costruito: la scelta segreta, tutti e tre devono ancora scegliere. */
+  const statoAllaScelta = (): Stato =>
+    prosegui(
+      scenario({
+        giocatori: [
+          { id: 'g1', nome: 'Ada', pecora: 'ricciolo' },
+          { id: 'g2', nome: 'Bea', pecora: 'brontolana' },
+          { id: 'g3', nome: 'Cleo', pecora: 'sospirella' },
+        ],
+        guaio: 'tosatura-a-sorpresa',
+        mani: { g1: ['carriola'], g2: ['balla-di-fieno'], g3: ['coperta-di-lana'] },
+      }),
+    );
+  const richiamo = () => document.querySelector<HTMLElement>('.regole-richiamo[role=alert]');
+
+  it("in partita, dal menu: onRegole con i nomi della stanza nell'ordine dei posti", async () => {
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    const aperte: (readonly string[] | null)[] = [];
+    const isc: Iscrizione = { codice: tv.host.codice, ruolo: 'host', idGiocatore: 'g1', nome: 'Ada', pecora: 'ricciolo', gettone: 'a' };
+    render(<Stanza sessione={tv.host} iscrizione={isc} onEsci={() => {}} onRegole={(n) => aperte.push(n)} />);
+    await aspetta();
+    await clic(document.querySelector('.pulsante-menu'));
+    await clic(pulsanteIn(document.querySelector<HTMLElement>('.menu')!, 'Regole'));
+    expect(aperte).toEqual([['Ada', 'Bea', 'Cleo']]);
+  });
+
+  it('la riga "va avanti" in partita; il richiamo solo quando la partita aspetta la tua scelta, e "Torna alla partita"', async () => {
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    await conStato(tv, statoAllaScelta());
+    let tornato = 0;
+    render(<RegoleInStanza sessione={tv.host} nomi={['Ada', 'Bea', 'Cleo']} onIndietro={() => tornato++} />);
+    await aspetta();
+    expect(document.querySelector('.regole h1')?.textContent).toBe('Regole');
+    // La scelta segreta aspetta Ada: il richiamo c'è, al posto della riga
+    expect(richiamo()?.textContent).toContain(T.regole.richiamo);
+    // Un altro sceglie: la partita aspetta ancora Ada, il richiamo resta acceso (non lampeggia)
+    await act(async () => {
+      tv.bea.invia(tv.bea.azioni('g2').find((a) => a.tipo === 'scegliTrovata')!);
+    });
+    await aspetta(50);
+    expect(richiamo()).not.toBeNull();
+    await clic(pulsanteIn(richiamo()!, T.regole.tornaAllaPartita));
+    expect(tornato).toBe(1);
+    // Ada sceglie: non tocca più a lei, il richiamo va via e torna la riga
+    await act(async () => {
+      tv.host.invia(tv.host.azioni('g1').find((a) => a.tipo === 'scegliTrovata')!);
+    });
+    await aspetta(50);
+    expect(richiamo()).toBeNull();
+    expect(document.querySelector('.regole-stanza')?.textContent).toBe(T.regole.stanzaVaAvanti);
+  });
+
+  it('la finestra del Beee-NO! di un altro non accende il richiamo, anche con un Beee-NO! in mano', async () => {
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    await conStato(tv, statoAlDado());
+    render(<RegoleInStanza sessione={tv.bea} nomi={['Ada', 'Bea', 'Cleo']} onIndietro={() => {}} />);
+    await aspetta(50);
+    // Tocca ad Ada (dado): per Bea niente richiamo
+    expect(richiamo()).toBeNull();
+    let finestra = false;
+    for (let i = 0; i < 10 && !finestra; i++) {
+      const a = tv.host.azioni('g1')[0];
+      if (!a) break;
+      await act(async () => {
+        tv.host.invia(a);
+      });
+      await aspetta(50);
+      finestra = tv.bea.vista('g2').finestra !== null && tv.bea.azioni('g2').some((x) => x.tipo === 'giocaBelato' && x.carta.startsWith('beee-no'));
+      expect(richiamo(), JSON.stringify(tv.bea.vista('g2').fase)).toBeNull();
+    }
+    // Bea potrebbe rispondere col suo Beee-NO!, ma la partita non aspetta lei
+    expect(finestra).toBe(true);
+    expect(richiamo()).toBeNull();
+    expect(document.querySelector('.regole-stanza')).not.toBeNull();
+  });
+
+  it('neanche i Belati di punteggio (una finestra col tempo) accendono il richiamo', async () => {
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    await conStato(tv, statoAlPunteggio());
+    render(<RegoleInStanza sessione={tv.host} nomi={['Ada', 'Bea', 'Cleo']} onIndietro={() => {}} />);
+    await aspetta(50);
+    expect(tv.host.vista('g1').fase.nome).toBe('belati_punteggio');
+    expect(tv.host.azioni('g1').length).toBeGreaterThan(0);
+    expect(richiamo()).toBeNull();
+  });
+
+  it('stanza in pausa: per chi aspetta la riga dice che la partita è in pausa, senza richiamo', async () => {
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    await conStato(tv, statoAllaScelta());
+    tv.host.chiudi(); // chi ospita chiude il browser
+    await aspetta(100);
+    render(<RegoleInStanza sessione={tv.bea} nomi={['Ada', 'Bea', 'Cleo']} onIndietro={() => {}} />);
+    await aspetta(50);
+    expect(document.querySelector('.regole-stanza')?.textContent).toBe(T.regole.stanzaInPausa);
+    expect(richiamo()).toBeNull();
+  });
+
+  it('un ospite si scollega: chi ospita ha il richiamo per decidere (stesso posto in cima), chi aspetta la riga della pausa', async () => {
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    await conStato(tv, statoAllaScelta());
+    tv.cleo.chiudi();
+    await aspetta(100);
+    expect(tv.host.pubblico().pausa).toEqual(['g3']);
+    const host = render(<RegoleInStanza sessione={tv.host} nomi={['Ada', 'Bea', 'Cleo']} onIndietro={() => {}} />);
+    await aspetta(50);
+    expect(richiamo()?.textContent).toContain(T.regole.richiamoScollegato);
+    expect(document.querySelector('main.regole > .regole-richiamo:first-child + h1')).not.toBeNull();
+    expect(document.querySelector('.regole-stanza')).toBeNull();
+    host.unmount();
+    render(<RegoleInStanza sessione={tv.bea} nomi={['Ada', 'Bea', 'Cleo']} onIndietro={() => {}} />);
+    await aspetta(50);
+    expect(richiamo()).toBeNull();
+    expect(document.querySelector('.regole-stanza')?.textContent).toBe(T.regole.stanzaInPausa);
+  });
+
+  it('a partita finita la riga dice che è finita, senza richiamo', async () => {
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    await conStato(tv, { ...statoAllaScelta(), fase: { nome: 'fine_partita' }, esito: { modo: 'mazzo_finito', vincitori: ['g1'] } });
+    render(<RegoleInStanza sessione={tv.host} nomi={['Ada', 'Bea', 'Cleo']} onIndietro={() => {}} />);
+    await aspetta(50);
+    expect(document.querySelector('.regole-stanza')?.textContent).toBe(T.regole.stanzaFinita);
+    expect(richiamo()).toBeNull();
+  });
+
+  it('in partita e senza pausa la riga dice che la partita va avanti', async () => {
+    const tv = await tavolata();
+    tv.host.inizia(1);
+    await aspetta();
+    await conStato(tv, statoAllaScelta());
+    render(<RegoleInStanza sessione={tv.bea} nomi={['Ada', 'Bea', 'Cleo']} onIndietro={() => {}} />);
+    await aspetta(50);
+    // Bea ha ancora da scegliere: il richiamo; scelto, la riga
+    expect(richiamo()).not.toBeNull();
+    await act(async () => {
+      tv.bea.invia(tv.bea.azioni('g2').find((a) => a.tipo === 'scegliTrovata')!);
+    });
+    await aspetta(100);
+    expect(richiamo()).toBeNull();
+    expect(document.querySelector('.regole-stanza')?.textContent).toBe(T.regole.stanzaVaAvanti);
+  });
+
+  it("in sala d'attesa: niente riga e niente richiamo", async () => {
+    const tv = await tavolata();
+    render(<RegoleInStanza sessione={tv.host} nomi={null} onIndietro={() => {}} />);
+    await aspetta();
+    expect(document.querySelector('.regole h1')?.textContent).toBe('Regole');
+    expect(document.querySelector('.regole-stanza')).toBeNull();
+    expect(richiamo()).toBeNull();
+  });
+
+  /** Il gioco vero: chi ospita (Ada) rientra con App dopo un ricaricamento, Bea è ospite; si arriva alla scelta segreta. */
+  async function stanzaInApp(): Promise<{ bea: SessioneOspite }> {
+    const r = new ArchivioMemoria();
+    const prima = await SessioneHost.crea(r.dispositivo('u1'), archivioHost(), { nome: 'Ada', pecora: 'ricciolo', gettone: 'a' });
+    const bea = await SessioneOspite.entra(r.dispositivo('u2'), prima.codice, { nome: 'Bea', pecora: 'brontolana', gettone: 'b' });
+    await aspetta();
+    prima.inizia(1);
+    await aspetta();
+    prima.chiudi();
+    localStorage.setItem('hls-iscrizione', JSON.stringify(prima.iscrizione()));
+    sessionStorage.setItem('hls-in-stanza', prima.codice);
+    rete.trasporto = r.dispositivo('u1');
+    render(<App />);
+    await aspetta(100);
+    // La partita arriva alla scelta segreta (le fasi automatiche le fa avanzare chi ospita)
+    for (let i = 0; i < 40 && document.querySelector('.pulsante-menu') === null; i++) await aspetta(500);
+    for (let i = 0; i < 40 && bea.vista('g2').fase.nome !== 'scelta'; i++) await aspetta(500);
+    expect(bea.vista('g2').fase.nome).toBe('scelta');
+    return { bea };
+  }
+
+  it('nel gioco vero (App): dal menu della partita le Regole hanno i nomi, la riga e il richiamo; "Torna alla partita" riporta alla partita', async () => {
+    const { bea } = await stanzaInApp();
+    await clic(document.querySelector('.pulsante-menu'));
+    await clic(pulsanteIn(document.querySelector<HTMLElement>('.menu')!, 'Regole'));
+    expect(document.querySelector('.regole h1')?.textContent).toBe('Regole');
+    expect(richiamo()?.textContent).toContain(T.regole.richiamo);
+    const esempi = [...document.querySelectorAll('.regole h2 button')].find((b) => b.textContent?.includes('Tre esempi'))!;
+    await clic(esempi);
+    const testo = document.getElementById(esempi.getAttribute('aria-controls')!)!.textContent!;
+    expect(testo).toContain('Ada');
+    expect(testo).toContain('Bea');
+    await clic(pulsanteIn(richiamo()!, T.regole.tornaAllaPartita));
+    expect(document.querySelector('.regole')).toBeNull();
+    expect(document.querySelector('.partita')).not.toBeNull();
+    bea.chiudi();
+  });
+
+  it('nel gioco vero (App): lo schermo resta acceso leggendo le Regole; un blocco solo, rilasciato uscendo dalla stanza', async () => {
+    const rilasci = vi.fn(async () => {});
+    const chiesti = vi.fn(async (_tipo: 'screen') => ({ release: rilasci }));
+    Object.defineProperty(globalThis.navigator, 'wakeLock', { value: { request: chiesti }, configurable: true });
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    try {
+      const { bea } = await stanzaInApp();
+      expect(chiesti).toHaveBeenCalledTimes(1);
+      expect(chiesti).toHaveBeenCalledWith('screen');
+      await clic(document.querySelector('.pulsante-menu'));
+      await clic(pulsanteIn(document.querySelector<HTMLElement>('.menu')!, 'Regole'));
+      expect(document.querySelector('.regole h1')).not.toBeNull();
+      await aspetta(1000);
+      // Mentre si leggono le Regole il blocco resta (niente rilascio, niente nuova richiesta)
+      expect(rilasci).not.toHaveBeenCalled();
+      expect(chiesti).toHaveBeenCalledTimes(1);
+      await clic(pulsanteIn(document.body, T.regole.indietro));
+      expect(document.querySelector('.partita')).not.toBeNull();
+      expect(chiesti).toHaveBeenCalledTimes(1);
+      expect(rilasci).not.toHaveBeenCalled();
+      // Uscendo dalla stanza il blocco si rilascia
+      await clic(document.querySelector('.pulsante-menu'));
+      await clic(pulsanteIn(document.querySelector<HTMLElement>('.menu')!, 'Esci'));
+      await aspetta();
+      expect(document.querySelector('.partita')).toBeNull();
+      expect(rilasci).toHaveBeenCalledTimes(1);
+      bea.chiudi();
+    } finally {
+      delete (globalThis.navigator as unknown as { wakeLock?: unknown }).wakeLock;
+    }
+  });
+
+  it('nel gioco vero (App): dal velo di pausa chi ospita ha il richiamo per decidere; al ritorno il punto della tastiera torna sul "Regole" del velo', async () => {
+    const { bea } = await stanzaInApp();
+    bea.chiudi();
+    for (let i = 0; i < 20 && document.querySelector('[role=alertdialog]') === null; i++) await aspetta(500);
+    const velo = document.querySelector<HTMLElement>('[role=alertdialog]')!;
+    expect(velo).not.toBeNull();
+    const regole = pulsanteIn(velo, 'Regole')!;
+    regole.focus();
+    await clic(regole);
+    expect(richiamo()?.textContent).toContain(T.regole.richiamoScollegato);
+    await clic(pulsanteIn(document.body, T.regole.indietro));
+    expect(document.activeElement?.textContent).toBe('Regole');
+    expect(document.activeElement?.closest('[role=alertdialog]')).not.toBeNull();
   });
 });
 
@@ -878,24 +1131,21 @@ describe('Una mossa sola per tiro, anche se chi ospita risponde tardi', () => {
     const bea = telefoni[1]!;
     await aspetta();
     expect(tv.host.vista(null).fase).toMatchObject({ nome: 'risoluzione_dado', passo: 'esito_testata' });
-    const arena = bea.radice.querySelector('.riquadro-testata svg.arena');
-    expect(arena).not.toBeNull();
-    return { tv, bea, arena: arena! };
+    // La mira è nella scena: niente riquadro sopra, la fionda è la domanda del telefono di Bea
+    expect(bea.radice.querySelector('.riquadro-testata')).toBeNull();
+    const fionda = domandaDi(bea)?.fionda;
+    expect(fionda).toMatchObject({ bersaglio: 'g1' });
+    return { tv, bea, telefoni, fionda: fionda! };
   }
-  async function tira(arena: Element) {
-    await act(async () => {
-      fireEvent.pointerDown(arena, { pointerId: 1, clientX: 10, clientY: 10 });
-    });
-    await act(async () => {
-      fireEvent.pointerMove(arena, { pointerId: 1, clientX: 10, clientY: 10 });
-      fireEvent.pointerUp(arena, { pointerId: 1, clientX: 10, clientY: 10 });
-    });
+  /** Il gesto che la fionda della scena manda a fine volo (vedi tiraTestata). */
+  async function tira(bea: Telefono, esito: number) {
+    await gesto(bea, { tipo: 'fionda', esito });
   }
 
   it('Testata nella scena: la risposta di chi ospita arriva dopo 3 s, parte un solo esito e nessun errore', async () => {
-    const { tv, bea, arena } = await testataDiBea();
+    const { tv, bea, fionda } = await testataDiBea();
     const mandate = mosseLente(tv, 3000);
-    await tira(arena);
+    await tira(bea, fionda.massimo);
     await aspetta(1650);
     expect(mandate('esitoTestata')).toBe(1);
     await aspetta(2000);
@@ -909,15 +1159,46 @@ describe('Una mossa sola per tiro, anche se chi ospita risponde tardi', () => {
   });
 
   it('Testata nella scena: un nuovo disegno della pagina durante il colpo non fa ripartire né raddoppiare il tiro', async () => {
-    const { tv, bea, arena } = await testataDiBea();
+    const { tv, bea, fionda } = await testataDiBea();
     const mandate = mosseLente(tv, 3000);
-    await tira(arena);
+    // Il gesto della scena di prima del nuovo disegno: se arriva di nuovo (in ritardo) non manda un altro esito
+    const vecchio = teatroDi(bea)!.suGesto!;
+    await tira(bea, fionda.massimo);
     await aspetta(800);
-    // La pagina si ridisegna (si apre il menu) mentre il montone carica
+    // La pagina si ridisegna (si apre il menu) mentre la risposta non è ancora arrivata
     await clic(bea.radice.querySelector('.pulsante-menu'));
+    await act(async () => {
+      vecchio({ tipo: 'fionda', esito: fionda.massimo });
+    });
     await aspetta(850);
     expect(mandate('esitoTestata')).toBe(1);
     await aspetta(2000);
+    expect(mandate('esitoTestata')).toBe(1);
+  });
+
+  it('Testata a fionda: chi tira manda un solo esito; gli altri telefoni vedono il volo e gli agnellini cadere', async () => {
+    const { tv, bea, telefoni, fionda } = await testataDiBea();
+    const [ada, , cleo] = telefoni;
+    const prima = tv.host.vista(null).giocatori.find((g) => g.id === 'g1')!.agnellini;
+    expect(fionda.massimo).toBeGreaterThan(0);
+    expect(fionda.massimo).toBeLessThanOrEqual(Math.min(3, prima));
+    // Solo Bea mira: gli altri telefoni non hanno la fionda
+    expect(domandaDi(ada!)?.fionda ?? null).toBeNull();
+    expect(domandaDi(cleo!)?.fionda ?? null).toBeNull();
+    const mandate = mosseLente(tv, 0);
+    await tiraTestata(bea);
+    await aspetta(1000);
+    expect(mandate('esitoTestata')).toBe(1);
+    const v = tv.host.vista(null);
+    const evento = v.eventi.filter((e) => e.tipo === 'testata').at(-1);
+    expect(evento).toMatchObject({ giocatore: 'g2', bersaglio: 'g1', esito: fionda.massimo });
+    expect(v.giocatori.find((g) => g.id === 'g1')!.agnellini).toBe(prima - fionda.massimo);
+    // Ada e Cleo recitano l'evento della testata (il volo) e la fotografia dopo ha gli agnellini caduti
+    for (const t of [ada!, cleo!]) {
+      const teatro = teatroDi(t)!;
+      expect(Math.max(...teatro.recitate), t.id).toBeGreaterThanOrEqual(evento!.seq);
+      expect(teatro.foto!.posti.find((p) => p.id === 'g1')!.agnellini, t.id).toBe(prima - fionda.massimo);
+    }
     expect(mandate('esitoTestata')).toBe(1);
   });
 

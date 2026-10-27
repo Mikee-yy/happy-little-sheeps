@@ -3,6 +3,9 @@
 // (ciclo manuale, senza ambiente né giochi, velocità 1, senza salto) arrotondati ai 100 ms, e `durataRecita`
 // somma le voci del copione tenendo conto delle attese (massimo, niente).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// Questo file monta teatri veri: con tutte le prove insieme una prova può superare i 5 s predefiniti (la macchina è
+// carica). Il limite più alto vale per tutto il file, così la prossima prova lenta non fallisce per finta.
+vi.setConfig({ testTimeout: 60_000 });
 import { applica, azioniPossibili, inAttesaDi, nuovaPartita, SETUP, vistaPer } from '../../../../engine/src';
 import type { Evento, NuovoEvento, Vista } from '../../../../engine/src';
 import { casoConSeme } from '../aiuti-prova';
@@ -94,7 +97,7 @@ const MISURE: Record<Battuta['tipo'], (t: Teatro) => Promise<number>> = {
     expect(t.ordini.spostaAgnellini(3, 'gregge', 'g1', 'corre')).toBe(3);
     return finoAdArrivo(t);
   },
-  testata: (t) => finoAllaFine(t, t.ordini.testata('g1', 'g2', 2)),
+  testata: (t) => finoAllaFine(t, t.ordini.testata('g1', 'g2', 2, 5)),
   // Un Guaio senza meteo (Dramma): il volo, la pausa al centro, l'arrivo nell'angolo
   guaio: (t) => finoAllaFine(t, t.ordini.guaio('insonnia', 'g2')),
   eliminata: (t) => finoAllaFine(t, t.ordini.eliminata('g2')),
@@ -178,6 +181,21 @@ describe('durate.json: i valori sono quelli del teatro vero', () => {
     expect(misurata).toBeGreaterThan(0);
     expect(DURATE_NORMALI[tipo], `${tipo}: misurata ${misurata} ms`).toBeGreaterThanOrEqual(misurata);
     expect(DURATE_NORMALI[tipo], `${tipo}: misurata ${misurata} ms`).toBeLessThanOrEqual(misurata * 2);
+    expect(errori).not.toHaveBeenCalled();
+  });
+});
+
+describe('durate.json: la Testata', () => {
+  it('colpo e mancato durano uguale, e il file dice proprio quella durata (arrotondata ai 100 ms in su)', async () => {
+    const t = manuale();
+    t.allinea(fotoQuattro(), 'calmo');
+    const colpo = await finoAllaFine(t, t.ordini.testata('g1', 'g2', 2, 5));
+    const mancato = await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 5));
+    expect(mancato).toBe(colpo);
+    expect(DURATE_NORMALI.testata, `misurata ${colpo} ms`).toBe(Math.ceil(colpo / 100) * 100);
+    // Volo, testata, stordito circa 2 s, scuote la testa, corre via: circa 4–5 s (progetto, "Seconda versione")
+    expect(colpo).toBeGreaterThanOrEqual(4000);
+    expect(colpo).toBeLessThanOrEqual(5000);
     expect(errori).not.toHaveBeenCalled();
   });
 });
@@ -276,7 +294,7 @@ describe('durataRecita: eventi costruiti a mano', () => {
 
 describe('durataRecita: partite vere giocate a caso', () => {
   // Dieci partite intere: col PC carico il tempo vero supera i 5 s predefiniti
-  it('su 10 partite: mai negativa, positiva ogni volta che il copione dà una battuta che fa aspettare', { timeout: 30_000 }, () => {
+  it('su 10 partite: mai negativa, positiva ogni volta che il copione dà una battuta che fa aspettare', () => {
     let mosseConBattute = 0;
     for (let seme = 1; seme <= 10; seme++) {
       let stato = nuovaPartita({

@@ -765,11 +765,11 @@ describe('Dati: mazzo Guai, istanze e catalogo (brief §2 e §4, specifica §2)'
 
 const NORMALE: RegolaEliminazione[] = [
   { regola: 'uguali', quanti: 3 },
-  { regola: 'diversi', quanti: 3 },
+  { regola: 'diversi', quanti: 4 },
 ];
 const DUE_GIOCATORI: RegolaEliminazione[] = [
   { regola: 'uguali', quanti: 4 },
-  { regola: 'perTipo', quanti: 2 },
+  { regola: 'diversi', quanti: 4 },
 ];
 
 interface CasoPreparazione {

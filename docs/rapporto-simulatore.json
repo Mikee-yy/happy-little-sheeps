@@ -7,54 +7,54 @@
     "stalli": 0,
     "esempiErrori": [],
     "round": {
-      "media": 9.68,
+      "media": 9.292,
       "mediana": 10,
       "min": 3,
       "max": 14,
-      "p10": 7,
+      "p10": 6,
       "p90": 12,
-      "quotaNeiLimiti": 0.939
+      "quotaNeiLimiti": 0.911
     },
-    "minutiStimati": 14.52,
+    "minutiStimati": 13.937999999999999,
     "modi": {
-      "ovile_pieno": 0.343,
-      "ultima_pecora": 0.293,
-      "mazzo_finito": 0.364
+      "ovile_pieno": 0.304,
+      "ultima_pecora": 0.394,
+      "mazzo_finito": 0.302
     },
-    "condivise": 0.003,
-    "eliminazioniMedie": 0.293,
-    "quotaConEliminazioni": 0.293,
+    "condivise": 0.004,
+    "eliminazioniMedie": 0.394,
+    "quotaConEliminazioni": 0.394,
     "belatiFinaliMedi": 0,
-    "beeeNoMedi": 2.841,
-    "annullateMedie": 2.613,
-    "guaiPresiMedi": 7.424,
+    "beeeNoMedi": 2.736,
+    "annullateMedie": 2.514,
+    "guaiPresiMedi": 7.142,
     "roundSenzaGuaio": 0,
     "facce": {
-      "pascolo_piccolo": 1377,
-      "testata": 2836,
-      "furto_piccolo": 1456,
-      "pascolo_grande": 1519,
-      "furto_grande": 1448
+      "pascolo_piccolo": 1323,
+      "testata": 2711,
+      "furto_piccolo": 1400,
+      "pascolo_grande": 1474,
+      "furto_grande": 1380
     },
     "vittoriePerPecora": {
       "nerina": {
         "partite": 481,
-        "vittorie": 235.5
+        "vittorie": 248
       },
       "sospirella": {
         "partite": 474,
-        "vittorie": 236
+        "vittorie": 231
       },
       "ricciolo": {
         "partite": 537,
-        "vittorie": 268
+        "vittorie": 262
       },
       "brontolana": {
         "partite": 508,
-        "vittorie": 260.5
+        "vittorie": 259
       }
     },
-    "vittoriePrimoGiocatore": 0.4835,
+    "vittoriePrimoGiocatore": 0.476,
     "ripieghi": 0,
     "criteri": {
       "senzaErrori": true,
@@ -70,54 +70,54 @@
     "stalli": 0,
     "esempiErrori": [],
     "round": {
-      "media": 8.502,
+      "media": 8.676,
       "mediana": 9,
       "min": 3,
-      "max": 14,
+      "max": 15,
       "p10": 6,
       "p90": 11,
-      "quotaNeiLimiti": 0.905
+      "quotaNeiLimiti": 0.902
     },
-    "minutiStimati": 12.753,
+    "minutiStimati": 13.014,
     "modi": {
-      "ovile_pieno": 0.465,
-      "ultima_pecora": 0.285,
-      "mazzo_finito": 0.25
+      "ovile_pieno": 0.49,
+      "ultima_pecora": 0.105,
+      "mazzo_finito": 0.405
     },
-    "condivise": 0.007,
-    "eliminazioniMedie": 0.98,
-    "quotaConEliminazioni": 0.695,
-    "belatiFinaliMedi": 0.77,
-    "beeeNoMedi": 2.96,
-    "annullateMedie": 2.701,
-    "guaiPresiMedi": 7.046,
+    "condivise": 0.01,
+    "eliminazioniMedie": 0.554,
+    "quotaConEliminazioni": 0.449,
+    "belatiFinaliMedi": 0.843,
+    "beeeNoMedi": 3.151,
+    "annullateMedie": 2.871,
+    "guaiPresiMedi": 7.219,
     "roundSenzaGuaio": 0,
     "facce": {
-      "pascolo_grande": 1546,
-      "pascolo_piccolo": 1515,
-      "testata": 2980,
-      "furto_piccolo": 1521,
-      "furto_grande": 1480
+      "pascolo_grande": 1614,
+      "pascolo_piccolo": 1557,
+      "testata": 3115,
+      "furto_piccolo": 1595,
+      "furto_grande": 1529
     },
     "vittoriePerPecora": {
       "nerina": {
         "partite": 753,
-        "vittorie": 242
+        "vittorie": 236
       },
       "sospirella": {
         "partite": 722,
-        "vittorie": 229.5
+        "vittorie": 237
       },
       "ricciolo": {
         "partite": 756,
-        "vittorie": 269
+        "vittorie": 244.5
       },
       "brontolana": {
         "partite": 769,
-        "vittorie": 259.5
+        "vittorie": 282.5
       }
     },
-    "vittoriePrimoGiocatore": 0.3215,
+    "vittoriePrimoGiocatore": 0.349,
     "ripieghi": 0,
     "criteri": {
       "senzaErrori": true,
@@ -133,54 +133,54 @@
     "stalli": 0,
     "esempiErrori": [],
     "round": {
-      "media": 6.191,
+      "media": 6.143,
       "mediana": 7,
       "min": 2,
       "max": 10,
       "p10": 4,
       "p90": 8,
-      "quotaNeiLimiti": 0.723
+      "quotaNeiLimiti": 0.725
     },
-    "minutiStimati": 9.2865,
+    "minutiStimati": 9.2145,
     "modi": {
-      "ovile_pieno": 0.518,
+      "ovile_pieno": 0.5,
       "ultima_pecora": 0,
-      "mazzo_finito": 0.482
+      "mazzo_finito": 0.5
     },
-    "condivise": 0.018,
-    "eliminazioniMedie": 0.331,
-    "quotaConEliminazioni": 0.308,
-    "belatiFinaliMedi": 0.875,
-    "beeeNoMedi": 3.3,
-    "annullateMedie": 2.927,
-    "guaiPresiMedi": 5.108,
+    "condivise": 0.013,
+    "eliminazioniMedie": 0.152,
+    "quotaConEliminazioni": 0.149,
+    "belatiFinaliMedi": 0.876,
+    "beeeNoMedi": 3.319,
+    "annullateMedie": 2.943,
+    "guaiPresiMedi": 5.08,
     "roundSenzaGuaio": 0,
     "facce": {
-      "pascolo_grande": 1225,
-      "testata": 2388,
-      "pascolo_piccolo": 1200,
+      "pascolo_grande": 1207,
+      "testata": 2382,
+      "pascolo_piccolo": 1191,
       "furto_grande": 1160,
-      "furto_piccolo": 1195
+      "furto_piccolo": 1201
     },
     "vittoriePerPecora": {
       "nerina": {
         "partite": 1000,
-        "vittorie": 212.83333333333334
+        "vittorie": 218.33333333333334
       },
       "sospirella": {
         "partite": 1000,
-        "vittorie": 257.33333333333337
+        "vittorie": 246.16666666666669
       },
       "ricciolo": {
         "partite": 1000,
-        "vittorie": 256.83333333333337
+        "vittorie": 272.1666666666667
       },
       "brontolana": {
         "partite": 1000,
-        "vittorie": 273
+        "vittorie": 263.33333333333337
       }
     },
-    "vittoriePrimoGiocatore": 0.25633333333333336,
+    "vittoriePrimoGiocatore": 0.26766666666666666,
     "ripieghi": 0,
     "criteri": {
       "senzaErrori": true,
@@ -196,54 +196,54 @@
     "stalli": 0,
     "esempiErrori": [],
     "round": {
-      "media": 10.952,
-      "mediana": 12,
+      "media": 10.763,
+      "mediana": 11,
       "min": 4,
       "max": 16,
       "p10": 7,
       "p90": 14,
-      "quotaNeiLimiti": 0.635
+      "quotaNeiLimiti": 0.637
     },
-    "minutiStimati": 16.428,
+    "minutiStimati": 16.1445,
     "modi": {
-      "ovile_pieno": 0.51,
-      "ultima_pecora": 0.168,
-      "mazzo_finito": 0.322
+      "ovile_pieno": 0.482,
+      "ultima_pecora": 0.21,
+      "mazzo_finito": 0.308
     },
-    "condivise": 0.007,
-    "eliminazioniMedie": 0.168,
-    "quotaConEliminazioni": 0.168,
+    "condivise": 0.006,
+    "eliminazioniMedie": 0.21,
+    "quotaConEliminazioni": 0.21,
     "belatiFinaliMedi": 0,
-    "beeeNoMedi": 2.729,
-    "annullateMedie": 2.312,
-    "guaiPresiMedi": 8.184,
+    "beeeNoMedi": 2.7,
+    "annullateMedie": 2.287,
+    "guaiPresiMedi": 8.022,
     "roundSenzaGuaio": 0,
     "facce": {
-      "pascolo_piccolo": 1466,
-      "testata": 2987,
-      "furto_piccolo": 1520,
-      "pascolo_grande": 1622,
-      "furto_grande": 1515
+      "pascolo_piccolo": 1431,
+      "testata": 2952,
+      "furto_piccolo": 1498,
+      "pascolo_grande": 1602,
+      "furto_grande": 1492
     },
     "vittoriePerPecora": {
       "nerina": {
         "partite": 481,
-        "vittorie": 245.5
+        "vittorie": 238.5
       },
       "sospirella": {
         "partite": 474,
-        "vittorie": 214.5
+        "vittorie": 216.5
       },
       "ricciolo": {
         "partite": 537,
-        "vittorie": 256.5
+        "vittorie": 274
       },
       "brontolana": {
         "partite": 508,
-        "vittorie": 283.5
+        "vittorie": 271
       }
     },
-    "vittoriePrimoGiocatore": 0.5065,
+    "vittoriePrimoGiocatore": 0.494,
     "ripieghi": 0,
     "criteri": {
       "senzaErrori": true,
@@ -259,54 +259,54 @@
     "stalli": 0,
     "esempiErrori": [],
     "round": {
-      "media": 9.28,
+      "media": 9.364,
       "mediana": 10,
       "min": 3,
-      "max": 14,
+      "max": 15,
       "p10": 6,
-      "p90": 12,
-      "quotaNeiLimiti": 0.905
+      "p90": 11,
+      "quotaNeiLimiti": 0.923
     },
-    "minutiStimati": 13.919999999999998,
+    "minutiStimati": 14.046000000000001,
     "modi": {
-      "ovile_pieno": 0.496,
-      "ultima_pecora": 0.089,
-      "mazzo_finito": 0.415
+      "ovile_pieno": 0.481,
+      "ultima_pecora": 0.025,
+      "mazzo_finito": 0.494
     },
-    "condivise": 0.008,
-    "eliminazioniMedie": 0.55,
-    "quotaConEliminazioni": 0.461,
-    "belatiFinaliMedi": 0.887,
-    "beeeNoMedi": 2.861,
-    "annullateMedie": 2.487,
-    "guaiPresiMedi": 7.708,
+    "condivise": 0.013,
+    "eliminazioniMedie": 0.268,
+    "quotaConEliminazioni": 0.243,
+    "belatiFinaliMedi": 0.922,
+    "beeeNoMedi": 2.951,
+    "annullateMedie": 2.548,
+    "guaiPresiMedi": 8.164,
     "roundSenzaGuaio": 0,
     "facce": {
-      "pascolo_grande": 1799,
-      "pascolo_piccolo": 1739,
-      "testata": 3527,
-      "furto_piccolo": 1773,
-      "furto_grande": 1702
+      "pascolo_grande": 1827,
+      "pascolo_piccolo": 1779,
+      "testata": 3598,
+      "furto_piccolo": 1857,
+      "furto_grande": 1744
     },
     "vittoriePerPecora": {
       "nerina": {
         "partite": 753,
-        "vittorie": 242.5
+        "vittorie": 252
       },
       "sospirella": {
         "partite": 722,
-        "vittorie": 247.5
+        "vittorie": 249
       },
       "ricciolo": {
         "partite": 756,
-        "vittorie": 249.5
+        "vittorie": 247
       },
       "brontolana": {
         "partite": 769,
-        "vittorie": 260.5
+        "vittorie": 252
       }
     },
-    "vittoriePrimoGiocatore": 0.3265,
+    "vittoriePrimoGiocatore": 0.3165,
     "ripieghi": 0,
     "criteri": {
       "senzaErrori": true,
@@ -322,54 +322,54 @@
     "stalli": 0,
     "esempiErrori": [],
     "round": {
-      "media": 7.159,
+      "media": 7.133,
       "mediana": 7,
       "min": 2,
-      "max": 11,
+      "max": 10,
       "p10": 5,
       "p90": 8,
-      "quotaNeiLimiti": 0.882
+      "quotaNeiLimiti": 0.881
     },
-    "minutiStimati": 10.7385,
+    "minutiStimati": 10.6995,
     "modi": {
-      "ovile_pieno": 0.382,
+      "ovile_pieno": 0.371,
       "ultima_pecora": 0,
-      "mazzo_finito": 0.618
+      "mazzo_finito": 0.629
     },
-    "condivise": 0.042,
-    "eliminazioniMedie": 0.181,
-    "quotaConEliminazioni": 0.173,
-    "belatiFinaliMedi": 1.041,
-    "beeeNoMedi": 2.909,
-    "annullateMedie": 2.468,
-    "guaiPresiMedi": 6.466,
+    "condivise": 0.034,
+    "eliminazioniMedie": 0.077,
+    "quotaConEliminazioni": 0.077,
+    "belatiFinaliMedi": 1.053,
+    "beeeNoMedi": 2.907,
+    "annullateMedie": 2.493,
+    "guaiPresiMedi": 6.603,
     "roundSenzaGuaio": 0,
     "facce": {
-      "pascolo_grande": 1588,
-      "testata": 3073,
-      "furto_piccolo": 1571,
-      "furto_grande": 1483,
-      "pascolo_piccolo": 1528
+      "pascolo_grande": 1600,
+      "testata": 3040,
+      "furto_piccolo": 1566,
+      "furto_grande": 1487,
+      "pascolo_piccolo": 1515
     },
     "vittoriePerPecora": {
       "nerina": {
         "partite": 1000,
-        "vittorie": 241.83333333333331
+        "vittorie": 239.16666666666666
       },
       "sospirella": {
         "partite": 1000,
-        "vittorie": 271.66666666666663
+        "vittorie": 238.16666666666666
       },
       "ricciolo": {
         "partite": 1000,
-        "vittorie": 262.33333333333337
+        "vittorie": 286.5
       },
       "brontolana": {
         "partite": 1000,
-        "vittorie": 224.16666666666666
+        "vittorie": 236.16666666666669
       }
     },
-    "vittoriePrimoGiocatore": 0.25216666666666665,
+    "vittoriePrimoGiocatore": 0.25566666666666665,
     "ripieghi": 0,
     "criteri": {
       "senzaErrori": true,

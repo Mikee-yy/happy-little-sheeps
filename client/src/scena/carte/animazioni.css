@@ -1,0 +1,288 @@
+/* Animazioni delle carte disegnate (carte/illustrazioni.ts): si muovono solo le carte con la classe "anima"
+   (`cartaSVG(id, true)`), nella scena (carta in primo piano, mano, lettura) e fuori (le figure della schermata Regole).
+   Le regole valgono per ogni `.anima`, non solo dentro `.teatro`: questo file lo caricano la scena (Scena.tsx, insieme a
+   scena.css) e le carte delle Regole (regole/carte.tsx). `.anima .an` dà il riquadro della parte, l'origine al centro e
+   il ciclo infinito; sotto, le parti e i fotogrammi. Con il movimento ridotto tutto si ferma (in fondo al file).
+   Dove serve un perno preciso (ciliegie, scopa, orecchino, capriola, carriola, tappi) il disegno mette nel gruppo
+   un cerchio invisibile centrato sul perno (`perno` in illustrazioni.ts): l'origine resta al 50% 50%. */
+
+/* Comuni (le carte dello sprite, il meteo, e i fotogrammi riusati dalle altre) */
+.anima .an { transform-box: fill-box; transform-origin: 50% 50%; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+.anima .an-germoglio { transform-origin: 50% 100%; animation-name: an-oscilla; animation-duration: 2.6s; }
+.anima .an-luccica { animation-name: an-luccica; animation-duration: 2.2s; }
+.anima .an-calza { transform-origin: 55% 4%; animation-name: an-oscilla-piccola; animation-duration: 1.9s; }
+.anima .an-r2 { animation-delay: -1s; }
+.anima .an-ondeggia { transform-origin: 50% 100%; animation-name: an-oscilla-piccola; animation-duration: 3s; }
+.anima .an-gocce { animation-name: an-cade; animation-duration: 1.3s; animation-timing-function: ease-in; }
+.anima .an-campana { transform-origin: 50% 0%; animation-name: an-campana; animation-duration: 1.4s; }
+.anima .an-batacchio { transform-origin: 50% -140%; animation-name: an-campana; animation-duration: 1.4s; animation-direction: reverse; }
+.anima .an-onde { animation-name: an-onde; animation-duration: .7s; animation-timing-function: ease-out; }
+.anima .an-urlo { animation-name: an-urlo; animation-duration: 1.6s; }
+.anima .an-pop { transform-origin: 50% 80%; animation-name: an-pop; animation-duration: 2.4s; animation-timing-function: ease-out; }
+.anima .an-tratteggio { animation-name: an-tratteggio; animation-duration: .8s; animation-timing-function: linear; }
+.anima .an-zampe { transform-origin: 50% 100%; animation-name: an-zampe; animation-duration: 1.2s; }
+.anima .an-stella { animation-name: an-stella; animation-duration: 2.2s; animation-timing-function: linear; }
+.anima .an-nuvola { animation-name: an-galleggia; animation-duration: 3s; }
+.anima .an-chicco { animation-name: an-chicco; animation-duration: 1.6s; animation-timing-function: cubic-bezier(.5,0,.8,.6); }
+.anima .an-cespuglio { transform-origin: 50% 100%; animation-name: an-fruscia; animation-duration: 2.8s; }
+.anima .an-occhi { animation-name: an-palpebra; animation-duration: 3.4s; }
+.anima .an-pupille { animation-name: an-pupille; animation-duration: 3.4s; }
+.anima .an-lampo { animation-name: an-lampo; animation-duration: 2.2s; animation-timing-function: steps(1); }
+.anima .an-pioggia { animation-name: an-pioggia; animation-duration: .45s; animation-timing-function: linear; }
+.anima .an-banco { animation-name: an-banco; animation-duration: 4s; }
+.anima .an-vortice { animation-name: an-vortice; animation-duration: 1s; animation-timing-function: linear; }
+.anima .an-ciuffo { animation-name: an-ciuffo; animation-duration: 1.8s; }
+.anima .an-ruota { animation-name: an-ruota; animation-duration: 14s; animation-timing-function: linear; }
+.anima .an-pulsa { animation-name: an-pulsa; animation-duration: 2s; }
+.anima .an-increspa { animation-name: an-increspa; animation-duration: 2s; animation-timing-function: ease-out; }
+@keyframes an-oscilla { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes an-oscilla-piccola { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes an-luccica { 0%, 55%, 100% { transform: scale(0) rotate(0); } 70% { transform: scale(1.2) rotate(45deg); } 85% { transform: scale(.9) rotate(80deg); } }
+@keyframes an-cade { 0% { transform: translateY(-10px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(34px); opacity: 0; } }
+@keyframes an-campana { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(13deg); } }
+@keyframes an-onde { 0% { transform: scale(.8); opacity: .2; } 45% { opacity: 1; } 100% { transform: scale(1.18); opacity: 0; } }
+@keyframes an-urlo { 0%, 58%, 100% { transform: scale(1) rotate(0); } 64% { transform: scale(1.09) rotate(-2.5deg); } 70% { transform: scale(1.07) rotate(2.5deg); } 76% { transform: scale(1.08) rotate(-1.5deg); } 84% { transform: scale(1) rotate(0); } }
+@keyframes an-pop { 0%, 30%, 100% { transform: scale(1); } 8% { transform: scale(1.14); } 16% { transform: scale(.95); } 22% { transform: scale(1.02); } }
+@keyframes an-tratteggio { to { stroke-dashoffset: -12; } }
+@keyframes an-zampe { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-7deg); } 80% { transform: rotate(6deg); } 90% { transform: rotate(-3deg); } }
+@keyframes an-stella { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.3); } 100% { transform: rotate(360deg) scale(1); } }
+@keyframes an-galleggia { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes an-chicco { 0% { transform: translateY(-48px); opacity: 0; } 15% { opacity: 1; } 68% { transform: translateY(0); } 78% { transform: translateY(-7px); } 88% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(0); opacity: 0; } }
+@keyframes an-fruscia { 0%, 40%, 100% { transform: rotate(0); } 46% { transform: rotate(-2deg); } 52% { transform: rotate(2deg); } 58% { transform: rotate(-1deg); } 64% { transform: rotate(0); } }
+/* an-palpebra serve anche agli occhi del lupo nella pozza (scena.css, `.teatro .pozza .occhi-lupo`) */
+@keyframes an-palpebra { 0%, 42%, 50%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.08); } }
+@keyframes an-pupille { 0%, 15% { transform: translateX(0); } 25%, 38% { transform: translateX(-4px); } 55%, 80% { transform: translateX(4px); } 92%, 100% { transform: translateX(0); } }
+@keyframes an-lampo { 0%, 100% { opacity: 1; } 8% { opacity: .25; } 12% { opacity: 1; } 16% { opacity: .35; } 20% { opacity: 1; } }
+@keyframes an-pioggia { to { stroke-dashoffset: -22; } }
+@keyframes an-banco { 0%, 100% { transform: translateX(-10px); } 50% { transform: translateX(12px); } }
+@keyframes an-vortice { to { stroke-dashoffset: -35; } }
+@keyframes an-ciuffo { 0%, 100% { transform: translate(0, 0) rotate(-10deg); } 50% { transform: translate(10px, -10px) rotate(14deg); } }
+@keyframes an-ruota { to { transform: rotate(360deg); } }
+@keyframes an-pulsa { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes an-increspa { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+
+/* La carta appena pescata (mano.ts, classe "una-volta" sulla carta della mano): ogni parte fa un giro solo, poi si ferma */
+.teatro .cm.una-volta .anima .an { animation-iteration-count: 1; }
+
+/* Scorta nel vello: la carta nascosta sbuca un poco dalla lana e rientra */
+.anima .an-sbuca { animation-name: an-sbuca; animation-duration: 3.2s; }
+/* Agnellino smarrito: la testa si gira a guardarsi intorno */
+.anima .an-guarda { animation-name: an-guarda; animation-duration: 4s; }
+/* Agnellino smarrito: le gocce di sudore scivolano giù e svaniscono */
+.anima .an-sudore { animation-name: an-sudore; animation-duration: 1.8s; animation-timing-function: ease-in; }
+/* Fischietto: a intervalli trema e si gonfia un poco, come se ci soffiassero dentro */
+.anima .an-soffia { animation-name: an-soffia; animation-duration: 2.4s; }
+/* Balla di fieno: la pecorella sparisce tutta giù nella tana e risbuca; quando entra e quando esce cadono
+   fili di paglia dal bordo (nella carta ferma sono trasparenti: opacity 0 in linea, l'animazione la sovrascrive) */
+.anima .an-sbircia { animation-name: an-sbircia; animation-duration: 4.4s; }
+.anima .an-pagliuzze { animation-name: an-pagliuzze; animation-duration: 4.4s; animation-timing-function: ease-in; }
+/* Coperta di lana: la testa della pecora addormentata ondeggia piano (perno sul collo), la "z" sale e svanisce */
+.anima .an-sonnecchia { animation-name: an-sonnecchia; animation-duration: 3.6s; }
+.anima .an-sospiro { animation-name: an-nota; animation-duration: 3.6s; animation-timing-function: ease-out; }
+/* Ciliegie e orecchino: dondolano appesi al perno */
+.anima .an-dondola { animation-name: an-oscilla-piccola; animation-duration: 2.6s; }
+/* Onde del suono (fischietto, megafono, tappi): pulsano piano, sfasate con animation-delay nel disegno */
+.anima .an-onda-lenta { animation-name: an-onde; animation-duration: 1.6s; animation-timing-function: ease-out; }
+/* Fischietto: la nota sale e svanisce */
+.anima .an-nota { animation-name: an-nota; animation-duration: 2.4s; animation-timing-function: ease-out; }
+/* Pantofola: il pon pon fa un saltello (si schiaccia a terra) */
+.anima .an-saltella { transform-origin: 50% 100%; animation-name: an-saltella; animation-duration: 2.2s; }
+/* Pulizie di primavera: la scopa spazza avanti e indietro, la polvere si alza */
+.anima .an-spazza { animation-name: an-spazza; animation-duration: 1.6s; }
+.anima .an-sbuffo { animation-name: an-sbuffo; animation-duration: 1.6s; animation-timing-function: ease-out; }
+/* Trifoglio qualunque: la lente gira qua e là a cercare */
+.anima .an-cerca { animation-name: an-cerca; animation-duration: 5s; }
+/* Capriola: la pecorella fa il giro intero lungo la freccia, poi si ferma un momento */
+.anima .an-capriola { animation-name: an-capriola; animation-duration: 3.6s; }
+/* Carriola: beccheggia sulla ruota, e la ruota gira (i raggi si vedono solo quando gira) */
+.anima .an-beccheggia { animation-name: an-beccheggia; animation-duration: 1.4s; }
+.anima .an-girella { animation-name: an-ruota; animation-duration: 1.4s; animation-timing-function: linear; animation-direction: reverse; }
+.anima .an-girella .raggi { opacity: 1; }
+/* Tappi per le orecchie: la testa dondola beata */
+.anima .an-beato { animation-name: an-oscilla-piccola; animation-duration: 3.6s; }
+
+@keyframes an-sbuca { 0%, 55%, 100% { transform: translateY(0); } 20%, 38% { transform: translateY(-12px); } }
+@keyframes an-guarda { 0%, 100% { transform: rotate(0); } 20%, 38% { transform: rotate(-10deg); } 58%, 78% { transform: rotate(8deg); } }
+@keyframes an-sudore { 0% { transform: translateY(-3px); opacity: 0; } 20% { opacity: 1; } 75% { opacity: 1; } 100% { transform: translateY(14px); opacity: 0; } }
+@keyframes an-soffia {
+  0%, 30%, 100% { transform: rotate(0) scale(1); }
+  5% { transform: translateX(-2px) rotate(-4deg) scale(1.04); }
+  10% { transform: translateX(2px) rotate(3deg) scale(1.06); }
+  15% { transform: translateX(-1px) rotate(-2deg) scale(1.04); }
+  22% { transform: rotate(0) scale(1); }
+}
+@keyframes an-sbircia { 0%, 40%, 100% { transform: translateY(0); } 50%, 72% { transform: translateY(40px); } 80% { transform: translateY(-3px); } 86% { transform: translateY(0); } }
+@keyframes an-pagliuzze {
+  0%, 41% { transform: translateY(0); opacity: 0; }
+  44% { transform: translateY(0); opacity: 1; }
+  58% { transform: translateY(14px); opacity: 0; }
+  73% { transform: translateY(0); opacity: 0; }
+  76% { transform: translateY(0); opacity: 1; }
+  90%, 100% { transform: translateY(14px); opacity: 0; }
+}
+@keyframes an-sonnecchia { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-4deg); } }
+@keyframes an-nota { 0% { transform: translate(0, 6px); opacity: 0; } 20% { transform: translate(0, 0); opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(4px, -18px); opacity: 0; } }
+@keyframes an-saltella {
+  0%, 50%, 100% { transform: translateY(0) scale(1); }
+  12% { transform: translateY(0) scale(1.08, .9); }
+  26% { transform: translateY(-10px) scale(.96, 1.06); }
+  40% { transform: translateY(0) scale(1.06, .92); }
+}
+@keyframes an-spazza { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(6deg); } }
+@keyframes an-sbuffo { 0% { transform: translateY(0) scale(.85); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-16px) scale(1.25); opacity: 0; } }
+@keyframes an-cerca {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(-22px, -14px) rotate(-6deg); }
+  50% { transform: translate(-40px, 4px) rotate(4deg); }
+  75% { transform: translate(-16px, 14px) rotate(-3deg); }
+}
+@keyframes an-capriola { 0%, 35% { transform: rotate(0); } 75%, 100% { transform: rotate(360deg); } }
+@keyframes an-beccheggia { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+
+/* --- Belati e Guai --- */
+/* Riusati: an-dondola (cerotto, pecora appesa, chiave, coda della faina), an-stella, an-banco (nuvoletta),
+   an-onda-lenta (righe dello sbuffo), an-occhi, an-sudore, an-ondeggia, an-pulsa, an-zampe */
+/* Faccio finta di niente: la carta del Guaio scivola verso il mazzo, sparisce e ricomincia */
+.anima .an-scivola { animation-name: an-scivola; animation-duration: 3.6s; }
+/* Faccio finta di niente: le note salgono poco (sopra c'è il bordo del riquadro) */
+.anima .an-nota-corta { animation-name: an-nota-corta; animation-duration: 2.4s; animation-timing-function: ease-out; }
+/* Visita di Garzina: lo specchietto luccica */
+.anima .an-scintilla { animation-name: an-scintilla; animation-duration: 2.4s; }
+/* Code che scodinzolano (pernacchia, lupo travestito): perno alla base */
+.anima .an-scodinzola { animation-name: an-scodinzola; animation-duration: .7s; }
+/* Pernacchia: lo sbuffo esce a ondate dalla bocca */
+.anima .an-sbuffata { transform-origin: 0% 50%; animation-name: an-sbuffata; animation-duration: 1.4s; animation-timing-function: ease-out; }
+/* Volpe gentile: strizza l'occhio */
+.anima .an-strizza { animation-name: an-strizza; animation-duration: 3.2s; }
+/* Aquila: batte piano le ali (perno sulle spalle), la matita scrive */
+.anima .an-ala-sx { animation-name: an-ala-sx; animation-duration: 1.8s; }
+.anima .an-ala-dx { animation-name: an-ala-dx; animation-duration: 1.8s; }
+.anima .an-scrive { animation-name: an-scrive; animation-duration: .7s; }
+/* Tremori (maschera del lupo, riflesso nello specchio, pecore tosate) */
+.anima .an-brivido { transform-origin: 50% 100%; animation-name: an-brivido; animation-duration: 1.6s; }
+/* Invito nel bosco: la zampa fa "vieni, vieni" (perno sulla spalla), la fiamma tremola */
+.anima .an-chiama { animation-name: an-chiama; animation-duration: 2.2s; }
+.anima .an-fiamma { transform-origin: 50% 100%; animation-name: an-fiamma; animation-duration: .9s; }
+/* Faina con la lista: la zampa scorre lungo la lista */
+.anima .an-segna { animation-name: an-segna; animation-duration: 4s; }
+/* Figuraccia al pascolo: la nota rotta vola via */
+.anima .an-volavia { animation-name: an-volavia; animation-duration: 3s; animation-timing-function: ease-out; }
+/* Gregge senza di te: le pecorelle lontane si muovono appena */
+.anima .an-pascola { animation-name: an-pascola; animation-duration: 2.4s; }
+/* Compleanno dimenticato: il fumo delle candeline sale, un coriandolo cade */
+.anima .an-fumo { animation-name: an-fumo; animation-duration: 2.1s; animation-timing-function: ease-out; }
+.anima .an-coriandolo { animation-name: an-coriandolo; animation-duration: 3.2s; animation-timing-function: linear; }
+/* Insonnia: le pecorelle saltano lo steccato */
+.anima .an-salta { animation-name: an-salta; animation-duration: 2.8s; animation-timing-function: linear; }
+/* Inciampo al ruscello: gli spruzzi saltano, l'acqua si increspa */
+.anima .an-spruzzo { transform-origin: 50% 100%; animation-name: an-spruzzo; animation-duration: 1.1s; }
+.anima .an-increspa-piano { animation-name: an-increspa-piano; animation-duration: 1.8s; }
+/* Spuntatina: le lame fanno "zac zac" (perno nel perno delle forbici), i ciuffi cadono */
+.anima .an-lama-su { animation-name: an-lama-su; animation-duration: 1.4s; }
+.anima .an-lama-giu { animation-name: an-lama-giu; animation-duration: 1.4s; }
+.anima .an-cade-ciuffo { animation-name: an-cade-ciuffo; animation-duration: 2.4s; animation-timing-function: ease-in; }
+/* Rasatura integrale: il tratteggio della lana che non c'è più pulsa */
+.anima .an-respiro { animation-name: an-respiro; animation-duration: 2.4s; }
+
+@keyframes an-scivola {
+  0% { transform: translate(0, 0); opacity: 1; }
+  35% { transform: translate(-14px, 16px); opacity: 1; }
+  50% { transform: translate(-18px, 22px); opacity: 0; }
+  60% { transform: translate(0, 0); opacity: 0; }
+  75%, 100% { transform: translate(0, 0); opacity: 1; }
+}
+@keyframes an-nota-corta { 0% { transform: translate(0, 4px); opacity: 0; } 20% { transform: translate(0, 0); opacity: 1; } 65% { opacity: 1; } 100% { transform: translate(3px, -10px); opacity: 0; } }
+@keyframes an-scintilla { 0%, 55%, 100% { transform: scale(1); opacity: 1; } 70% { transform: scale(1.8); opacity: .3; } 85% { transform: scale(1); } }
+@keyframes an-scodinzola { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
+@keyframes an-sbuffata { 0%, 100% { transform: scale(.82); opacity: .6; } 30% { transform: scale(1.08); opacity: 1; } 60% { transform: scale(1); opacity: 1; } }
+@keyframes an-strizza { 0%, 62%, 82%, 100% { transform: scale(1); } 68%, 76% { transform: scale(1.1, .15); } }
+@keyframes an-ala-sx { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(7deg); } }
+@keyframes an-ala-dx { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-7deg); } }
+@keyframes an-scrive { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(-2px, 2px); } 40% { transform: translate(1px, 0); } 60% { transform: translate(-2px, -1px); } 80% { transform: translate(1px, 2px); } }
+@keyframes an-brivido {
+  0%, 45%, 100% { transform: translateX(0) scale(1); }
+  10% { transform: translateX(-1px) scale(.97, 1.01); }
+  20% { transform: translateX(1px) scale(.98, 1); }
+  30% { transform: translateX(-1px) scale(.97, 1.01); }
+  40% { transform: translateX(1px) scale(1); }
+}
+@keyframes an-chiama { 0%, 40%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(16deg); } 20% { transform: rotate(2deg); } }
+@keyframes an-fiamma { 0%, 100% { transform: scale(1); } 25% { transform: scale(.85, 1.12) rotate(-4deg); } 50% { transform: scale(1.06, .92); } 75% { transform: scale(.92, 1.08) rotate(3deg); } }
+@keyframes an-segna { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(2px, 2px); } 30%, 45% { transform: translate(0, 16px); } 50% { transform: translate(2px, 18px); } 60%, 80% { transform: translate(0, 32px); } }
+@keyframes an-volavia { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 55% { transform: translate(18px, -14px) rotate(20deg); opacity: 0; } 70% { transform: translate(0, 0); opacity: 0; } 100% { transform: translate(0, 0); opacity: 1; } }
+@keyframes an-pascola { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(2px, -1.5px); } }
+@keyframes an-fumo { 0% { transform: translateY(3px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-8px); opacity: 0; } }
+@keyframes an-coriandolo { 0% { transform: translate(0, -6px) rotate(0); opacity: 0; } 15% { opacity: 1; } 80% { transform: translate(4px, 34px) rotate(200deg); opacity: 1; } 100% { transform: translate(4px, 40px) rotate(240deg); opacity: 0; } }
+@keyframes an-salta {
+  0% { transform: translate(-24px, 16px); opacity: 0; }
+  15% { opacity: 1; }
+  30% { transform: translate(-12px, 4px); }
+  50% { transform: translate(0, 0); }
+  70% { transform: translate(12px, 4px); }
+  85% { opacity: 1; }
+  100% { transform: translate(24px, 16px); opacity: 0; }
+}
+@keyframes an-spruzzo { 0%, 100% { transform: translateY(0) scale(1); } 30% { transform: translateY(-6px) scale(1.1); } 60% { transform: translateY(0) scale(.95); } }
+@keyframes an-increspa-piano { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: .5; } }
+@keyframes an-lama-su { 0%, 30%, 60%, 100% { transform: rotate(0); } 15%, 45% { transform: rotate(13deg); } }
+@keyframes an-lama-giu { 0%, 30%, 60%, 100% { transform: rotate(0); } 15%, 45% { transform: rotate(-13deg); } }
+@keyframes an-cade-ciuffo { 0% { transform: translateY(-26px) rotate(-20deg); opacity: 0; } 15% { opacity: 1; } 55% { transform: translateY(0) rotate(0); } 85% { opacity: 1; } 100% { transform: translateY(0); opacity: 0; } }
+@keyframes an-respiro { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.04); opacity: .55; } }
+
+/* Le 7 modifiche chieste dall'utente il 21 ottobre */
+/* Visita di Garzina: a intervalli l'occhio destro si chiude nell'occhiolino e accanto spunta un luccichio
+   (nella carta ferma il luccichio è trasparente: opacity 0 in linea, l'animazione la sovrascrive) */
+.anima .an-occhiolino { animation-name: an-occhiolino; animation-duration: 3.6s; }
+.anima .an-occhiolino-luce { animation-name: an-occhiolino-luce; animation-duration: 3.6s; }
+/* Crisi esistenziale: lo zoccolo sotto il mento batte piano (perno sulla spalla) */
+.anima .an-pensa { animation-name: an-pensa; animation-duration: 3s; }
+/* Gregge senza di te: la lacrimuccia si forma sotto l'occhio e scivola giù */
+.anima .an-lacrima { transform-origin: 50% 0%; animation-name: an-lacrima; animation-duration: 3.2s; animation-timing-function: ease-in; }
+/* Compleanno dimenticato: la torta si affloscia un poco (perno alla base), la glassa cola piano */
+.anima .an-affloscia { transform-origin: 50% 100%; animation-name: an-affloscia; animation-duration: 6s; }
+.anima .an-cola { transform-origin: 50% 0%; animation-name: an-cola; animation-duration: 4s; }
+/* Insonnia: a intervalli la pecora alza gli occhi al cielo (le pupille girano in su e tornano) */
+.anima .an-alza-occhi { animation-name: an-alza-occhi; animation-duration: 4.4s; }
+/* Inciampo al ruscello: il montone ridacchia (due saltelli della testa), il sorriso si allarga, gli occhi si socchiudono */
+.anima .an-ridacchia { animation-name: an-ridacchia; animation-duration: 3.4s; }
+.anima .an-socchiude { animation-name: an-socchiude; animation-duration: 3.4s; }
+.anima .an-ghigno { animation-name: an-ghigno; animation-duration: 3.4s; }
+/* Tosatura a sorpresa: il rasoio passa avanti e indietro sulla lana e ronza (i ciuffi cadono con an-cade-ciuffo) */
+.anima .an-rasoio { animation-name: an-rasoio; animation-duration: 2.6s; }
+.anima .an-ronza { animation-name: an-ronza; animation-duration: .16s; animation-timing-function: linear; }
+
+@keyframes an-occhiolino { 0%, 64%, 82%, 100% { transform: scale(1); } 68%, 78% { transform: scale(1.1, .12); } }
+@keyframes an-occhiolino-luce {
+  0%, 64% { transform: scale(.3) rotate(0); opacity: 0; }
+  70% { transform: scale(1.2) rotate(45deg); opacity: 1; }
+  78% { transform: scale(.9) rotate(80deg); opacity: 1; }
+  86%, 100% { transform: scale(.3) rotate(90deg); opacity: 0; }
+}
+@keyframes an-pensa { 0%, 45%, 100% { transform: rotate(0); } 55% { transform: rotate(8deg); } 63% { transform: rotate(0); } 71% { transform: rotate(8deg); } 79% { transform: rotate(0); } }
+@keyframes an-lacrima {
+  0% { transform: translateY(0) scale(.2); opacity: 0; }
+  20% { transform: translateY(0) scale(1); opacity: 1; }
+  40% { transform: translateY(0) scale(1); }
+  80% { transform: translateY(11px) scale(1); opacity: 1; }
+  100% { transform: translateY(14px) scale(1); opacity: 0; }
+}
+@keyframes an-affloscia { 0%, 100% { transform: scale(1); } 50%, 80% { transform: scale(1.03, .96); } }
+@keyframes an-cola { 0% { transform: scaleY(.2); opacity: 0; } 10% { opacity: 1; } 80% { transform: scaleY(1); } 90% { opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
+@keyframes an-alza-occhi {
+  0%, 55% { transform: translate(0, 0); }
+  61% { transform: translate(-3px, -1.4px); }
+  67% { transform: translate(-1px, -2.8px); }
+  73% { transform: translate(1px, -2px); }
+  80%, 86% { transform: translate(-1px, -2.8px); }
+  94%, 100% { transform: translate(0, 0); }
+}
+@keyframes an-ridacchia { 0%, 55%, 100% { transform: translateY(0); } 62% { transform: translateY(-2px); } 68% { transform: translateY(0); } 74% { transform: translateY(-2px); } 80% { transform: translateY(0); } }
+@keyframes an-socchiude { 0%, 52%, 88%, 100% { transform: scaleY(1); } 58%, 82% { transform: scaleY(.35); } }
+@keyframes an-ghigno { 0%, 52%, 88%, 100% { transform: scale(1); } 58%, 82% { transform: scale(1.3, 1.5); } }
+@keyframes an-rasoio { 0%, 100% { transform: translate(0, 0); } 45%, 55% { transform: translate(14px, 5px); } }
+@keyframes an-ronza { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(-.8px, .6px); } 75% { transform: translate(.8px, -.6px); } }
+
+/* Movimento ridotto: ogni parte di ogni carta animata, nella scena e fuori, sta ferma sul disegno della carta */
+@media (prefers-reduced-motion: reduce) {
+  .anima .an { animation: none !important; }
+}

@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import '../../../../design/design-tokens.css';
 import '../scena.css';
+import '../carte/animazioni.css';
 import { applica, nuovaPartita, SETUP, vistaPer } from '../../../../engine/src';
 import type { IdGiocatore, Stato } from '../../../../engine/src';
 import { Sprite } from '../../grafica';
@@ -14,7 +15,9 @@ import { casoConSeme, mossaDelBot } from '../aiuti-prova';
 import { usaVariante, type Variante } from '../disposizioni';
 import { fotografia, inBassoIniziale, type Fotografia } from '../fotografia';
 import { OpzioniScena } from '../OpzioniScena';
+import { vuota } from '../scelte/tavolo';
 import { creaTeatro, type Teatro } from '../teatro';
+import { T } from '../../testi';
 import { eseguiEvento, LUPO, METEO_PROVA, TESTI_SVILUPPO as TS, type EventoProva } from './eventi';
 import { installaProve, type BancoProve } from './prove';
 import varianti from './varianti.json';
@@ -115,8 +118,40 @@ class Banco implements BancoProve {
   /** Un bot con la strategia "semplice" fa la mossa di chi è in attesa (o la fase di sistema prosegue). */
   prossimaMossa(): void {
     if (this.stato.esito) return;
-    this.stato = applica(this.stato, mossaDelBot(this.stato, 'semplice', this.casoBot));
+    this.stato = applica(this.stato, mossaDelBot(this.stato, 'normale', this.casoBot));
     this.allinea('calmo');
+  }
+
+  private seqFionda = 1;
+
+  /**
+   * Prova della Testata a fionda: la domanda vera nella scena verso `scelto` se è un avversario con agnellini,
+   * altrimenti verso il primo che ne ha. Al rilascio il volo vero, poi gli agnellini passano al gregge anche nella partita.
+   */
+  provaFionda(scelto: IdGiocatore): void {
+    const teatro = this.teatro;
+    if (!teatro) return;
+    const avversari = this.stato.giocatori.filter((g) => g.id !== this.inBasso && g.agnellini > 0);
+    const vittima = avversari.find((g) => g.id === scelto) ?? avversari[0];
+    if (!vittima) return;
+    const bersaglio = vittima.id;
+    const massimo = Math.min(3, vittima.agnellini);
+    const d = vuota('prova-fionda', T.testata.fionda.scritta(vittima.nome));
+    d.fionda = { bersaglio, massimo, tentativo: String(Date.now()) };
+    teatro.chiedi(d, (g) => {
+      if (g.tipo !== 'fionda') return;
+      teatro.smettiDiChiedere();
+      const esito = Math.max(0, Math.min(Math.trunc(g.esito), massimo));
+      void teatro.ordini.testata(this.inBasso, bersaglio, esito, this.seqFionda++).then(() => {
+        const quanti = Math.min(esito, this.stato.giocatori.find((x) => x.id === bersaglio)?.agnellini ?? 0);
+        this.stato = {
+          ...this.stato,
+          gregge: this.stato.gregge + quanti,
+          giocatori: this.stato.giocatori.map((x) => (x.id === bersaglio ? { ...x, agnellini: x.agnellini - quanti } : x)),
+        };
+        this.allinea('calmo');
+      });
+    });
   }
 
   /** Mette in prova una variante dei recinti e ricostruisce la scena. */
@@ -182,6 +217,9 @@ function PannelloEventi({ onChiudi }: { onChiudi: () => void }) {
           </button>
         ))}
       </div>
+      <button className="btn" type="button" onClick={azione(() => banco.provaFionda(chi))}>
+        {TS.fionda}
+      </button>
       <button className="btn" type="button" onClick={evento({ tipo: 'beeeNo' })}>
         {TS.beeeNo}
       </button>

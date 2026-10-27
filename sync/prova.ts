@@ -2,7 +2,7 @@
 // le fasi di sistema aspettano il "Continua" dell'umano, e niente viene salvato.
 import { azioniPossibili, inAttesaDi, nuovaPartita, PROVA, tentaApplica, vistaPer } from '../engine/src';
 import type { Azione, IdGiocatore, Stato, Vista } from '../engine/src';
-import { semplice } from '../engine/sim/politiche';
+import { normale, semplice } from '../engine/sim/politiche';
 import { esitoTestataCasuale } from '../engine/sim/simulatore';
 import { casuale } from '../engine/src/rng';
 import type { EsitoInvio, Sessione } from './sessione';
@@ -11,6 +11,9 @@ const PAUSA_BOT_MS = 1000;
 // Seme fisso: la storia dei tre round guidati è sempre quella controllata da engine/test/prova.test.ts
 const SEME_PROVA = 7;
 const SEME_BOT = 1;
+// Nei round guidati (fino al terzo, come provaGuidataFinita in client/src/prova/guida.ts) i bot giocano con la strategia
+// "semplice": la storia preparata è stata scritta con quella. Dal quarto round usano "normale", come nelle stanze (D47).
+const ROUND_GUIDATI = 3;
 
 
 export interface OpzioniProva {
@@ -107,7 +110,7 @@ export class SessioneProva implements Sessione {
   }
 
   /**
-   * Come i bot delle stanze (sync/host.ts): Testata a caso, altrimenti la strategia "semplice". Se la mossa scelta non c'è
+   * Come i bot delle stanze (sync/host.ts): Testata a caso, altrimenti la strategia "normale" (D47; "semplice" nei round guidati). Se la mossa scelta non c'è
    * tra le azioni, non è del bot, il motore la rifiuta o la strategia si rompe, si ripiega su un'altra azione valida: il bot
    * non si ferma.
    */
@@ -123,7 +126,8 @@ export class SessioneProva implements Sessione {
       candidate.push({ tipo: 'esitoTestata', giocatore: id, esito: esitoTestataCasuale(massimo, this.casuale) });
     } else {
       try {
-        candidate.push(semplice.scegli(this.stato, id, azioni, this.casuale));
+        const politica = this.stato.round <= ROUND_GUIDATI ? semplice : normale;
+        candidate.push(politica.scegli(this.stato, id, azioni, this.casuale));
       } catch {
         // La strategia si è rotta: si ripiega sulle azioni possibili
       }

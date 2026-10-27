@@ -1,4 +1,4 @@
-// Schermate fuori dalla partita: Home, preparazione della partita locale, Regole.
+// Schermate fuori dalla partita: Home e preparazione della partita locale (le Regole stanno in regole/Regole.tsx).
 import { useState } from 'react';
 import { CATALOGO, SETUP } from '../../engine/src';
 import type { IdPecora } from '../../engine/src';
@@ -7,7 +7,7 @@ import type { Iscrizione } from '../../sync/stanza';
 import logo from '../../design/svg/logo-chiaro.svg';
 import { Avatar, IconaGuaio, Pecora } from './grafica';
 import { Pulsante } from './partita/componenti';
-import { REGOLE, T } from './testi';
+import { T } from './testi';
 
 export function Home(p: {
   salvata: boolean;
@@ -209,37 +209,6 @@ export function Preparazione(p: {
         {T.preparazione.indietro}
       </Pulsante>
       <Riassunto onRegole={p.onRegole} />
-    </main>
-  );
-}
-
-export function Regole({ onIndietro }: { onIndietro: () => void }) {
-  return (
-    <main className="regole">
-      <h1>{T.home.regole}</h1>
-      {REGOLE.map((s) => (
-        <section key={s.titolo}>
-          <h2>{s.titolo}</h2>
-          <ul>
-            {s.righe.map((r) => (
-              <li key={r}>{r}</li>
-            ))}
-          </ul>
-        </section>
-      ))}
-      <section>
-        <h2>{T.tipiGuaio.meteo}, {T.tipiGuaio.predatori}, {T.tipiGuaio.drammi}</h2>
-        <p className="legenda">
-          {(['meteo', 'predatori', 'drammi', 'tosatura'] as const).map((t) => (
-            <span key={t}>
-              <IconaGuaio tipo={t} size={24} /> {T.tipiGuaio[t]}
-            </span>
-          ))}
-        </p>
-      </section>
-      <Pulsante largo onClick={onIndietro}>
-        {T.preparazione.indietro}
-      </Pulsante>
     </main>
   );
 }

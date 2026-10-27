@@ -221,7 +221,7 @@ describe('attivabilità valutata quando la voce diventa corrente (§4.4, tabella
   });
 });
 
-describe('ordine della coda a parità di gruppo, valore e agnellini (brief 3 punto 4; §4.4, D10)', () => {
+describe('ordine della coda a parità di gruppo e valore (brief 3 punto 4; §4.4, D10)', () => {
   it('tre Scorte nel vello con gli stessi agnellini: al variare del seme compaiono tutti e 6 gli ordini, ciascuno riproducibile', () => {
     const scelte: Scelte = { g1: ['scorta-nel-vello'], g2: ['scorta-nel-vello'], g3: ['scorta-nel-vello'], g4: ['carriola'] };
     const visti = new Set<string>();
@@ -243,19 +243,20 @@ describe('ordine della coda a parità di gruppo, valore e agnellini (brief 3 pun
     expect(visti.size).toBe(6);
   });
 
-  it('gli agnellini decidono prima del caso anche quando i pari sono tre: chi ne ha meno resta sempre primo', () => {
+  it('a parità di valore gli agnellini non decidono (D10, 21/10/2026): con agnellini diversi compaiono tutti e 6 gli ordini', () => {
     const scelte: Scelte = { g1: ['scorta-nel-vello'], g2: ['scorta-nel-vello'], g3: ['scorta-nel-vello'] };
-    for (let seme = 1; seme <= 20; seme++) {
-      const s = finoAgliEffetti(
-        {
-          seme,
-          agnellini: { g1: 4, g2: 4, g3: 1 },
-          mani: { g1: ['scorta-nel-vello', 'sasso-comodo'], g2: ['scorta-nel-vello', 'sasso-comodo'], g3: ['scorta-nel-vello', 'sasso-comodo'] },
-        },
-        scelte,
-      );
-      expect(corrente(s).giocatore).toBe('g3');
+    const visti = new Set<string>();
+    for (let seme = 1; seme <= 80; seme++) {
+      const o: OpzioniScenario = {
+        seme,
+        agnellini: { g1: 4, g2: 4, g3: 1 },
+        mani: { g1: ['scorta-nel-vello', 'sasso-comodo'], g2: ['scorta-nel-vello', 'sasso-comodo'], g3: ['scorta-nel-vello', 'sasso-comodo'] },
+      };
+      const a = finoAgliEffetti(o, scelte);
+      expect(finoAgliEffetti(o, scelte)).toEqual(a);
+      visti.add(ordine(a).join(' '));
     }
+    expect(visti.size).toBe(6);
   });
 });
 

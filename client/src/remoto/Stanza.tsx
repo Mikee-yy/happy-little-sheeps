@@ -36,11 +36,12 @@ import {
 import { FinePartita, Menu, useAggiornamenti } from '../partita/Partita';
 import { Intestazione, Tavolo } from '../partita/Tavolo';
 import { Testata } from '../partita/Testata';
+import { Regole } from '../regole/Regole';
 import { Riassunto } from '../schermate';
 import { T } from '../testi';
 import { archivioHost, connetti, leggiIscrizione, linkStanza, linkTavolo, salvaIscrizione, segnaInStanza } from './connessione';
 import { ospita, precaricaStanza } from './durataStanza';
-import { momentoRemoto, scenaRemota, scrittaAttesa } from './regiaRemota';
+import { momentoRemoto, scenaRemota, scrittaAttesa, toccaAMe } from './regiaRemota';
 import type { ScenaRemota } from './regiaRemota';
 
 type SessioneStanza = SessioneHost | SessioneOspite;
@@ -257,7 +258,7 @@ function SalaAttesa({
   sessione: SessioneStanza;
   iscrizione: Iscrizione;
   onEsci: () => void;
-  onRegole: () => void;
+  onRegole: (nomi: readonly string[] | null) => void;
 }) {
   const pub = sessione.pubblico()!;
   const host = sessione instanceof SessioneHost ? sessione : null;
@@ -356,7 +357,8 @@ function SalaAttesa({
       <Pulsante largo secondario onClick={onEsci}>
         {T.stanza.esci}
       </Pulsante>
-      <Riassunto onRegole={onRegole} />
+      {/* Dalla sala d'attesa gli esempi hanno i nomi di esempio: la partita non c'è ancora */}
+      <Riassunto onRegole={() => onRegole(null)} />
     </main>
   );
 }
@@ -439,7 +441,7 @@ function situazioneDi(v: Vista, io: IdGiocatore, sc: ScenaRemota, azioni: Azione
 /** Tempo massimo di una mossa in attesa di chi ospita: poi la scelta si sblocca comunque (ultima risorsa). */
 const ATTESA_MASSIMA_MS = 4000;
 
-function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: () => void; onRegole: () => void }) {
+function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: () => void; onRegole: (nomi: readonly string[] | null) => void }) {
   const { sessione, io } = p;
   const host = sessione instanceof SessioneHost ? sessione : null;
   const ospite = sessione instanceof SessioneOspite ? sessione : null;
@@ -538,6 +540,8 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
 
   const hostAssente = ospite !== null && !ospite.hostOnline();
   const scollegato = !sessione.online();
+  /** Le Regole dalla partita: gli esempi con i nomi della stanza, nell'ordine dei posti. */
+  const apriRegole = () => p.onRegole(pub.giocatori.map((g) => g.nome));
   const inPausa = pub.pausa.length > 0 || hostAssente || scollegato;
   const fine = sc.tipo === 'fine';
 
@@ -694,13 +698,13 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
         situazione={situazione}
       />
       {inPausa && (
-        <Pausa pub={pub} host={host} hostAssente={hostAssente} scollegato={scollegato} onRegole={p.onRegole} onEsci={p.onEsci} />
+        <Pausa pub={pub} host={host} hostAssente={hostAssente} scollegato={scollegato} onRegole={apriRegole} onEsci={p.onEsci} />
       )}
       {menu && (
         <Menu
           onRegole={() => {
             setMenu(false);
-            p.onRegole();
+            apriRegole();
           }}
           onEsci={p.onEsci}
           onChiudi={() => setMenu(false)}
@@ -719,21 +723,23 @@ function PartitaRemota(p: { sessione: SessioneStanza; io: IdGiocatore; onEsci: (
 
 // ─── Contenitore ────────────────────────────────────────────────────────────
 
-/** Tiene acceso lo schermo finché si è nella stanza, dove il browser lo permette: se il telefono dell'host
- * si spegne, il browser sospende il gioco per tutti. */
-function useSchermoAcceso(): void {
+/** Tiene acceso lo schermo finché `attivo` (si è nella stanza, anche leggendo le Regole: la partita va avanti), dove il
+ * browser lo permette: se il telefono dell'host si spegne, il browser sospende il gioco per tutti. Lo usa App, sopra la
+ * stanza e le Regole, così passando dall'una alle altre il blocco resta lo stesso. */
+export function useSchermoAcceso(attivo: boolean): void {
   useEffect(() => {
+    if (!attivo) return;
     type Blocco = { release(): Promise<void> };
     const wl = (globalThis.navigator as unknown as { wakeLock?: { request(t: 'screen'): Promise<Blocco> } }).wakeLock;
     if (!wl) return;
     let blocco: Blocco | null = null;
-    let attivo = true;
+    let acceso = true;
     const chiedi = () => {
       if (document.visibilityState !== 'visible') return;
       void wl
         .request('screen')
         .then((b) => {
-          if (attivo) blocco = b;
+          if (acceso) blocco = b;
           else void b.release();
         })
         .catch(() => undefined);
@@ -741,17 +747,22 @@ function useSchermoAcceso(): void {
     chiedi();
     document.addEventListener('visibilitychange', chiedi);
     return () => {
-      attivo = false;
+      acceso = false;
       document.removeEventListener('visibilitychange', chiedi);
       void blocco?.release().catch(() => undefined);
     };
-  }, []);
+  }, [attivo]);
 }
 
-export function Stanza(p: { sessione: SessioneStanza; iscrizione: Iscrizione; onEsci: () => void; onRegole: () => void }) {
+export function Stanza(p: {
+  sessione: SessioneStanza;
+  iscrizione: Iscrizione;
+  onEsci: () => void;
+  /** Le Regole: con i nomi della partita in corso, o null dalla sala d'attesa. */
+  onRegole: (nomi: readonly string[] | null) => void;
+}) {
   const { sessione } = p;
   useAggiornamenti(sessione);
-  useSchermoAcceso();
   const [iscrizione, setIscrizione] = useState(p.iscrizione);
   const io = sessione instanceof SessioneHost ? sessione.idGiocatore : sessione.io;
 
@@ -786,6 +797,41 @@ export function Stanza(p: { sessione: SessioneStanza; iscrizione: Iscrizione; on
   if (pub.fase === 'attesa' || !io) return <SalaAttesa sessione={sessione} iscrizione={iscrizione} onEsci={p.onEsci} onRegole={p.onRegole} />;
   if (sessione instanceof SessioneOspite && !sessione.pronta()) return messaggio(T.stanza.collegamento);
   return <PartitaRemota sessione={sessione} io={io} onEsci={p.onEsci} onRegole={p.onRegole} />;
+}
+
+/**
+ * Le Regole aperte da una stanza. La stanza intanto non è montata ma la partita va avanti (chi ospita fa correre i tempi):
+ * a partita in corso la riga in cima dice com'è la stanza (va avanti, in pausa, finita), e il richiamo prende il suo posto
+ * quando la partita aspetta te: una tua scelta (`toccaAMe`, lo stesso calcolo della partita) o, per chi ospita, una
+ * decisione su chi si è scollegato. Tutto si legge dalla sessione, che resta aperta.
+ */
+export function RegoleInStanza(p: { sessione: SessioneStanza; nomi: readonly string[] | null; onIndietro: () => void }) {
+  const { sessione } = p;
+  useAggiornamenti(sessione);
+  const pub = sessione.pubblico();
+  const host = sessione instanceof SessioneHost ? sessione : null;
+  const ospite = sessione instanceof SessioneOspite ? sessione : null;
+  const io = host ? host.idGiocatore : (ospite?.io ?? null);
+  const inPartita = pub?.fase === 'partita' && io !== null && pub.giocatori.some((g) => g.id === io);
+  // Come nella stanza: in pausa chi è scollegato, chi ospita assente o il proprio collegamento perso
+  const inPausa = !!pub && (pub.pausa.length > 0 || !sessione.online() || (ospite !== null && !ospite.hostOnline()));
+  // La vista c'è per chi ospita sempre, per un ospite quando è pronto
+  const vista = inPartita && (host || ospite?.pronta()) ? sessione.vista(null) : null;
+  const finita = vista !== null && (vista.esito !== null || vista.fase.nome === 'fine_partita');
+  // Chi ospita è l'unico che può sostituire chi si è scollegato: la stanza aspetta lui
+  const deveDecidere = host !== null && inPartita && !finita && pub!.pausa.length > 0 && sessione.online();
+  const sceltaMia =
+    io !== null && vista !== null && !finita && !inPausa && toccaAMe(io, sessione.vista(io), vista, sessione.azioni(io));
+  return (
+    <Regole
+      nomi={p.nomi}
+      inStanza={inPartita}
+      rigaStanza={finita ? T.regole.stanzaFinita : inPausa ? T.regole.stanzaInPausa : T.regole.stanzaVaAvanti}
+      richiamo={deveDecidere || sceltaMia}
+      testoRichiamo={deveDecidere ? T.regole.richiamoScollegato : T.regole.richiamo}
+      onIndietro={p.onIndietro}
+    />
+  );
 }
 
 /** Il proiettore non ha chi tocca "Riprova" (è sotto il tavolo di prima): se la scena non arriva ritenta da solo. */

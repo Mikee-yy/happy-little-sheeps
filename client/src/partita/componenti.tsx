@@ -57,6 +57,7 @@ export function Carta(p: {
         )}
         <span className="carta-nome">{d.nome}</span>
         <span className={d.effetto ? 'carta-testo' : 'carta-testo colore'}>{d.testo}</span>
+        {d.effetto === null && !d.gemella && <span className="carta-senza-effetto">{T.carte.nessunEffetto}</span>}
       </>
     ) : d.famiglia === 'belato' ? (
       <>

@@ -4,12 +4,21 @@ import { useEffect, useRef, useState } from 'react';
 import { SessioneProva } from '../../../sync/prova';
 import { Partita, useAggiornamenti } from '../partita/Partita';
 import type { Pensiero } from '../scena/scelte/tipi';
-import { T } from '../testi';
+import { T, nomiPerEsempi } from '../testi';
 import { prossimoConsiglio, provaGuidataFinita } from './guida';
 import type { IdConsiglio } from './guida';
 
 /** `nascosta`: la prova resta montata mentre si leggono le Regole, e intanto la scena non consuma. */
-export function PartitaProva({ onHome, onRegole, nascosta }: { onHome: () => void; onRegole: () => void; nascosta?: boolean }) {
+export function PartitaProva({
+  onHome,
+  onRegole,
+  nascosta,
+}: {
+  onHome: () => void;
+  /** Le Regole dal menu, con i nomi dei bot (Bea, Leo): "Tu" non fa da nome negli esempi, il terzo è un nome di esempio. */
+  onRegole: (nomi: readonly string[]) => void;
+  nascosta?: boolean;
+}) {
   const [sessione, setSessione] = useState(() => SessioneProva.nuova());
   const [visti, setVisti] = useState<ReadonlySet<IdConsiglio>>(() => new Set());
   const [fineMostrata, setFineMostrata] = useState(false);
@@ -61,7 +70,8 @@ export function PartitaProva({ onHome, onRegole, nascosta }: { onHome: () => voi
         sessione.pausa(occupata || !!nascosta);
       }}
       onHome={onHome}
-      onRegole={onRegole}
+      // Tre nomi come i giocatori della prova (la regola di eliminazione degli esempi dipende da quanti sono)
+      onRegole={() => onRegole(nomiPerEsempi(v.giocatori.filter((g) => g.id !== umano).map((g) => g.nome)))}
       onRigioca={() => {
         setSessione(SessioneProva.nuova());
         setVisti(new Set());

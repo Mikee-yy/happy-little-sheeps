@@ -167,7 +167,7 @@ describe('scena caricata a parte', () => {
 
   it('passa alla scena la domanda, chi riceve i gesti, il pensiero e chi vuole sapere quando la scena è pronta', async () => {
     usaCaricatoreDiProva(() => Promise.resolve(moduloFinto));
-    const domanda = { chiave: 'k', scritta: 'Continua', avvisi: [], carte: [], sollevate: [], trascinabili: [], pecore: [], dado: false, guai: [], guaioScelto: null, grandi: [], centro: null, furto: null, pulsanti: [], testata: false };
+    const domanda = { chiave: 'k', scritta: 'Continua', avvisi: [], carte: [], sollevate: [], trascinabili: [], pecore: [], dado: false, guai: [], guaioScelto: null, grandi: [], centro: null, furto: null, pulsanti: [], fionda: null };
     const suGesto = () => {};
     const pensiero = { testo: 'Bea sta pensando…', pulsanti: [] };
     const onPronto = () => {};

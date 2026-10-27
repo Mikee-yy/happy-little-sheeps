@@ -3,6 +3,9 @@
 // La prova di ogni Guaio con effetto per ogni posto (`provaCompleta` di bozze/scena/prove.js resa prova automatica) sta in
 // meteo-guai-2/3/4.test.ts, un file per numero di giocatori, con gli aiuti di aiuti-meteo.ts.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// Questo file monta teatri veri: con tutte le prove insieme una prova può superare i 5 s predefiniti (la macchina è
+// carica). Il limite più alto vale per tutto il file, così la prossima prova lenta non fallisce per finta.
+vi.setConfig({ testTimeout: 60_000 });
 import { casoConSeme } from '../aiuti-prova';
 import type { Fotografia } from '../fotografia';
 import { creaTeatro, type Teatro } from '../teatro';
@@ -31,7 +34,7 @@ const manuale = (ambiente = false) => (teatro = creaTeatro(radice, { ciclo: 'man
 
 describe('ordini: salto, vibrazione, dado, spostamenti', () => {
   // La scena con l'ambiente è pesante in jsdom: col PC carico il tempo vero supera i 5 s predefiniti
-  it('salto: un Guaio nebbia saltato dopo 1 s finisce entro 4 s', { timeout: 30_000 }, async () => {
+  it('salto: un Guaio nebbia saltato dopo 1 s finisce entro 4 s', async () => {
     const t = manuale(true);
     t.allinea(fotoIniziale(3), 'calmo');
     void t.ordini.guaio('nebbia-fitta', 'g1');
@@ -48,7 +51,7 @@ describe('ordini: salto, vibrazione, dado, spostamenti', () => {
     expect(errori).not.toHaveBeenCalled();
   });
 
-  it('vibrazione: guaio su chi sta in basso vibra [60, 50, 60], su un avversario no; beeeNo vibra [140]', { timeout: 30_000 }, async () => {
+  it('vibrazione: guaio su chi sta in basso vibra [60, 50, 60], su un avversario no; beeeNo vibra [140]', async () => {
     const vibrate = vi.fn();
     vi.stubGlobal('navigator', { userAgent: 'jsdom', vibrate });
     const t = manuale();
@@ -99,7 +102,7 @@ describe('ordini: salto, vibrazione, dado, spostamenti', () => {
     expect(radice.querySelectorAll('.montone')).toHaveLength(0);
   });
 
-  it('meteo: un Guaio senza effetto non ferma il meteo in corso', { timeout: 30_000 }, async () => {
+  it('meteo: un Guaio senza effetto non ferma il meteo in corso', async () => {
     const t = manuale();
     t.allinea(fotoIniziale(3), 'calmo');
     void t.ordini.meteo('lupo-vegetariano', 'g1');
@@ -133,7 +136,7 @@ describe('ordini: salto, vibrazione, dado, spostamenti', () => {
     expect(finito).toBe(true);
     expect(dado.dataset.faccia).toBe('d-testata');
   });
-  it('inquadra e sgancia: zoom, tutti gli elementi degli altri avversari nascosti (anche quelli nuovi), poi tutto come prima', { timeout: 30_000 }, async () => {
+  it('inquadra e sgancia: zoom, tutti gli elementi degli altri avversari nascosti (anche quelli nuovi), poi tutto come prima', async () => {
     const t = manuale();
     const f = fotoIniziale(4);
     t.allinea(f, 'calmo');
@@ -166,7 +169,7 @@ describe('ordini: salto, vibrazione, dado, spostamenti', () => {
 });
 
 describe('ricostruzione del tavolo a metà di un Guaio', () => {
-  it('allinea con un altro giocatore in basso ferma meteo, camera, voli ed eventi', { timeout: 30_000 }, async () => {
+  it('allinea con un altro giocatore in basso ferma meteo, camera, voli ed eventi', async () => {
     const t = manuale();
     const f = fotoIniziale(3);
     t.allinea(f, 'calmo');

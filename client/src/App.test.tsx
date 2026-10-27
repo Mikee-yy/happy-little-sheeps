@@ -193,8 +193,20 @@ async function premiPensiero(i = 0) {
   });
 }
 
-/** Il riquadro di mira della Testata sopra la scena: un colpo al centro (esito permesso, lo decide il riquadro). */
-async function tiraTestata(dove = '.riquadro-testata svg.arena'): Promise<boolean> {
+/**
+ * La fionda della Testata nella scena: il teatro finto non ha la zona della fionda (la mira vera è provata in
+ * scena/chiedi.test.ts e scena/fionda/), qui arriva il gesto che la mira manda a fine volo, con l'esito più alto permesso.
+ */
+async function tiraTestata(): Promise<boolean> {
+  const f = domandaOra()?.fionda;
+  if (!f) return false;
+  await gesto({ tipo: 'fionda', esito: f.massimo });
+  await aspetta(1800);
+  return true;
+}
+
+/** Il riquadro di mira della Testata nei pannelli di riserva: un colpo al centro (esito permesso, lo decide il riquadro). */
+async function tiraTestataRiserva(dove = 'svg.arena'): Promise<boolean> {
   const arena = document.querySelector(dove);
   if (!arena) return false;
   await act(async () => {
@@ -877,25 +889,23 @@ describe('Partita di prova completa', () => {
     controllaChieste();
   }, 120_000);
 
-  it('nel tiro del montone il riquadro di mira sta sopra la scena, sotto la striscia, fuori dal cassetto', async () => {
+  it('nel tiro del montone la mira è sul prato: niente riquadro sopra la scena, zona della fionda presente', async () => {
     render(<App />);
     await clic(pulsante('Partita di prova'));
-    for (let i = 0; i < 4000 && !document.querySelector('.riquadro-testata'); i++) {
-      const d = domandaOra();
-      if (d?.testata) break;
-      await passoProva([]);
-    }
-    const riquadro = document.querySelector<HTMLElement>('.riquadro-testata')!;
-    expect(riquadro).not.toBeNull();
-    expect(domandaOra()?.testata).toBe(true);
-    expect(riquadro.querySelector('svg.arena')).not.toBeNull();
+    for (let i = 0; i < 4000 && !domandaOra()?.fionda; i++) await passoProva([]);
+    // La zona della fionda è la domanda della scena (il teatro finto la riceve): bersaglio, massimo e tentativo
+    const f = domandaOra()?.fionda;
+    expect(f).toMatchObject({ bersaglio: expect.any(String), massimo: expect.any(Number), tentativo: expect.any(String) });
+    expect(f!.massimo).toBeGreaterThan(0);
+    expect(document.querySelector('.riquadro-testata')).toBeNull();
+    expect(document.querySelector('svg.arena')).toBeNull();
     expect(document.querySelector('.cassetto')).toBeNull();
-    expect(riquadro.closest('.testata-scena')).toBeNull();
-    // Parte subito sotto la striscia in cima (in jsdom l'altezza di riserva)
-    expect(riquadro.style.getPropertyValue('--spazio-alto')).toBe('67px');
-    expect(scrittaOra()).toContain(T.testata.titolo);
-    // Il colpo manda l'esito: il riquadro se ne va
+    expect(scrittaOra()).toContain(T.testata.fionda.scritta('Bea'));
+    // Il tiro manda l'esito: la fionda se ne va e il motore registra la testata con quell'esito
     await tiraTestata();
+    expect(domandaOra()?.fionda ?? null).toBeNull();
+    const evento = scena.chiamate.flatMap((c) => c.vista?.eventi ?? []).filter((e) => e.tipo === 'testata').at(-1);
+    expect(evento).toMatchObject({ bersaglio: f!.bersaglio, esito: f!.massimo });
     expect(document.querySelector('.riquadro-testata')).toBeNull();
   }, 120_000);
 
@@ -1202,7 +1212,7 @@ async function passoPannelli(): Promise<boolean> {
     await aspetta(1000);
     return true;
   }
-  if (await tiraTestata('svg.arena')) return true;
+  if (await tiraTestataRiserva()) return true;
   if (document.querySelector('.furto')) {
     for (let k = 0; k < 10; k++) {
       const piu = [...document.querySelectorAll('.furto button')].find((x) => x.textContent === '+' && !(x as HTMLButtonElement).disabled);
@@ -1263,7 +1273,7 @@ async function passoProvaPannelli(consigli: string[]): Promise<'fine-prova' | 'f
     await aspetta(1000);
     return 'avanti';
   }
-  if (await tiraTestata('svg.arena')) return 'avanti';
+  if (await tiraTestataRiserva()) return 'avanti';
   if (document.querySelector('.area-azione .furto')) {
     for (let k = 0; k < 10; k++) {
       const piu = [...document.querySelectorAll('.area-azione .furto button')].find((x) => x.textContent === '+' && !(x as HTMLButtonElement).disabled);
@@ -1516,5 +1526,156 @@ describe('Riassunto e regole', () => {
     expect(document.querySelectorAll('.giocatore-prep')).toHaveLength(4);
     expect((document.querySelector('input[aria-label="Nome 1"]') as HTMLInputElement).value).toBe('Ada');
     expect(document.querySelectorAll('.giocatore-prep')[0]!.querySelectorAll('[role=radio]')[2]!.getAttribute('aria-checked')).toBe('true');
+  });
+});
+
+describe('Regole: da dove si aprono, nomi della partita e ritorno', () => {
+  /** Apre la sezione delle Regole col titolo `titolo` e ne restituisce il testo. */
+  async function apriSezione(titolo: string): Promise<string> {
+    const b = [...document.querySelectorAll('.regole h2 button')].find((x) => x.textContent?.includes(titolo));
+    if (!b) throw new Error(`sezione mancante: ${titolo}`);
+    if (b.getAttribute('aria-expanded') !== 'true') await clic(b);
+    return document.getElementById(b.getAttribute('aria-controls')!)?.textContent ?? '';
+  }
+
+  it('dalla Home gli esempi usano i nomi di esempio', async () => {
+    render(<App />);
+    await clic(pulsante('Regole'));
+    const esempi = await apriSezione('Tre esempi');
+    for (const n of ['Ada', 'Bea', 'Cleo']) expect(esempi).toContain(n);
+    expect(document.querySelector('.regole-stanza')).toBeNull();
+    expect(document.querySelector('.regole-richiamo')).toBeNull();
+  });
+
+  it('dalla preparazione gli esempi usano i nomi di esempio, non quelli scritti nei campi', async () => {
+    render(<App />);
+    await clic(pulsante('Gioca su questo dispositivo'));
+    await clic([...document.querySelectorAll('button')].find((b) => b.textContent === '2'));
+    fireEvent.change(document.querySelector('input[aria-label="Nome 1"]')!, { target: { value: 'Zoe' } });
+    fireEvent.change(document.querySelector('input[aria-label="Nome 2"]')!, { target: { value: 'Ugo' } });
+    await clic(pulsante('Leggi tutte le regole'));
+    const esempi = await apriSezione('Tre esempi');
+    for (const n of ['Ada', 'Bea', 'Cleo']) expect(esempi).toContain(n);
+    expect(esempi).not.toContain('Zoe');
+    expect(esempi).not.toContain('Ugo');
+    await clic(pulsante('Indietro'));
+    expect((document.querySelector('input[aria-label="Nome 1"]') as HTMLInputElement).value).toBe('Zoe');
+  });
+
+  it('dal menu della partita: i nomi dei giocatori, nessuna mano a schermo, e "Indietro" riporta al "Passa a" con la partita ferma', async () => {
+    const nuova = vi.spyOn(SessioneLocale, 'nuova');
+    render(<App />);
+    await clic(pulsante('Gioca su questo dispositivo'));
+    await clic([...document.querySelectorAll('button')].find((b) => b.textContent === '2'));
+    fireEvent.change(document.querySelector('input[aria-label="Nome 1"]')!, { target: { value: 'Zoe' } });
+    fireEvent.change(document.querySelector('input[aria-label="Nome 2"]')!, { target: { value: 'Ugo' } });
+    await clic(pulsante('Inizia la partita'));
+    const sessione = nuova.mock.results[0]!.value as SessioneLocale;
+    await premi('continua');
+    // La scelta segreta: "Sono io", poi la mano è scoperta
+    expect(document.querySelector('.passaggio h1')?.textContent).toMatch(/^Passa il dispositivo a /);
+    await clic(pulsante('Sono '));
+    expect(ultimaFoto()?.mano).not.toBeNull();
+    expect(domandaOra()?.scritta).toMatch(/scegli in segreto/);
+    const prima = JSON.stringify(sessione.vista(null));
+
+    await clic(document.querySelector('.pulsante-menu'));
+    pulsante('Regole')!.focus();
+    await clic(pulsante('Regole'));
+    expect(document.querySelector('.regole h1')?.textContent).toBe('Regole');
+    // Della partita non resta niente a schermo: né la scena, né la mano, né i pannelli
+    for (const sel of ['.partita', '.teatro', '.mano', '.area-azione', '.cassetto', '.passaggio', '.menu', '.testata-scena']) {
+      expect(document.querySelector(sel), sel).toBeNull();
+    }
+    const esempi = await apriSezione('Tre esempi');
+    // In due l'esempio del round è a due: nessun nome di esempio in più
+    expect(esempi).toContain('Zoe e Ugo fanno 7 e 4.');
+    expect(esempi).not.toContain('Bea');
+    // In due l'eliminazione è a 4 Guai dello stesso tipo
+    expect(esempi).toContain('4 Guai dello stesso tipo e Zoe è fuori');
+    expect(document.querySelector('.regole-stanza')).toBeNull();
+    await aspetta(10_000);
+
+    await clic(pulsante('Indietro'));
+    expect(document.querySelector('.passaggio h1')?.textContent).toMatch(/^Passa il dispositivo a /);
+    expect(ultimaFoto()?.mano).toBeNull();
+    expect(domandaOra()).toBeNull();
+    expect(JSON.stringify(sessione.vista(null))).toBe(prima);
+    // Il menu non c'è sotto la copertura: il punto della tastiera va sul suo "Sono io"
+    expect(document.activeElement?.closest('.passaggio')).not.toBeNull();
+    expect(document.activeElement?.textContent).toMatch(/^Sono /);
+  });
+
+  describe('al ritorno il punto della tastiera e lo scorrimento tornano dove erano', () => {
+    const pagina = () => document.scrollingElement ?? document.documentElement;
+
+    it('dalla preparazione: su "Leggi tutte le regole", allo scorrimento di prima', async () => {
+      render(<App />);
+      await clic(pulsante('Gioca su questo dispositivo'));
+      const link = pulsante('Leggi tutte le regole')!;
+      // Come con la tastiera: il collegamento ha il punto della tastiera, la pagina è scorsa fino in fondo
+      link.focus();
+      pagina().scrollTop = 640;
+      await clic(link);
+      expect(pagina().scrollTop).toBe(0);
+      await clic(pulsante('Indietro'));
+      expect(pagina().scrollTop).toBe(640);
+      expect(document.activeElement?.textContent).toMatch(/^Leggi tutte le regole/);
+      expect(document.activeElement?.closest('.riassunto')).not.toBeNull();
+    });
+
+    it('dalla Home: sul pulsante "Regole"', async () => {
+      render(<App />);
+      pulsante('Regole')!.focus();
+      await clic(pulsante('Regole'));
+      await clic(pulsante('Indietro'));
+      expect(document.activeElement?.textContent).toBe('Regole');
+      expect(document.activeElement?.closest('.home')).not.toBeNull();
+    });
+
+    it('dal menu della prova: il menu si è chiuso, il punto della tastiera va sul pulsante del menu', async () => {
+      render(<App />);
+      await clic(pulsante('Partita di prova'));
+      await clic(document.querySelector('.pulsante-menu'));
+      pulsante('Regole')!.focus();
+      await clic(pulsante('Regole'));
+      await clic(pulsante('Indietro'));
+      expect(document.activeElement).toBe(document.querySelector('.pulsante-menu'));
+    });
+
+    it('se nessun comando aveva il punto della tastiera, al ritorno non lo si sposta', async () => {
+      render(<App />);
+      await clic(pulsante('Regole'));
+      await clic(pulsante('Indietro'));
+      expect(document.activeElement).toBe(document.body);
+    });
+  });
+
+  it('dal menu della prova: gli esempi nominano i bot Bea e Leo, più un nome di esempio', async () => {
+    render(<App />);
+    await clic(pulsante('Partita di prova'));
+    await clic(document.querySelector('.pulsante-menu'));
+    await clic(pulsante('Regole'));
+    const esempi = await apriSezione('Tre esempi');
+    expect(esempi).toContain('Bea, Leo e Ada fanno 7, 7 e 4.');
+    // La prova è a 3: l'eliminazione segue la regola di 3–4 giocatori, non quella di 2
+    expect(esempi).toContain('3 Guai dello stesso tipo e Bea è fuori');
+    expect(document.querySelector('.regole-stanza')).toBeNull();
+  });
+
+  it('dal menu della prova: "Tu" non fa mai da nome negli esempi né nel Beee-NO!', async () => {
+    render(<App />);
+    await clic(pulsante('Partita di prova'));
+    await clic(document.querySelector('.pulsante-menu'));
+    await clic(pulsante('Regole'));
+    const esempi = await apriSezione('Tre esempi');
+    const beeeno = await apriSezione('Il Beee-NO!');
+    for (const testo of [esempi, beeeno]) {
+      expect(testo).not.toMatch(/\bTu /);
+      expect(testo).not.toMatch(/\bdi Tu\b/);
+    }
+    // Neanche come didascalia delle figure
+    const didascalie = [...document.querySelectorAll('main.regole figcaption')].map((f) => f.textContent);
+    expect(didascalie).not.toContain('Tu');
   });
 });

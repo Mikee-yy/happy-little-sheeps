@@ -11,9 +11,8 @@ function soddisfa(r: RegolaEliminazione, conta: Record<TipoGuaio, number>, jolly
     case 'uguali':
       return TIPI_GUAIO.some((t) => conta[t] + jolly >= r.quanti);
     case 'diversi':
+      // Ogni Tosatura conta come un tipo in più: "4 diversi" = un Guaio per tipo e una Tosatura, o due tipi e due Tosature (D46).
       return TIPI_GUAIO.filter((t) => conta[t] >= 1).length + jolly >= r.quanti;
-    case 'perTipo':
-      return TIPI_GUAIO.reduce((somma, t) => somma + Math.max(0, r.quanti - conta[t]), 0) <= jolly;
     default:
       return false;
   }

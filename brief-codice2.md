@@ -98,7 +98,7 @@ La partita finisce in uno di questi tre modi:
 
 La vittoria per Ovile pieno si controlla dopo ogni spostamento di agnellini, non a fine round.
 
-Gli effetti delle Trovate sono facoltativi e valgono una volta per carta per round. A parità di valore, risolve prima chi ha meno agnellini; a ulteriore parità, ordine casuale.
+Gli effetti delle Trovate sono facoltativi e valgono una volta per carta per round. A parità di valore, l'ordine si estrae a caso. *(Cambiata il 21 ottobre 2026, prima risolveva prima chi aveva meno agnellini: decisione D10 in `docs/motore.md`.)*
 
 ### Il Dado del Pastore
 
@@ -128,7 +128,7 @@ Nell'interfaccia ogni azione annullabile apre una breve finestra di reazione (se
 
 ### Eliminazione
 
-Una pecora è eliminata quando nell'Angolo dei Guai ha **3 Guai dello stesso tipo** oppure **3 Guai di tre tipi diversi**. La Tosatura a Sorpresa vale come qualsiasi tipo, quindi completa entrambe le combinazioni. Chi è eliminato scarta la mano e i suoi agnellini tornano nel Gregge.
+Una pecora è eliminata quando nell'Angolo dei Guai ha **3 Guai dello stesso tipo** oppure **4 Guai di tipi diversi** (un Meteo, un Predatore, un Dramma e una Tosatura). La Tosatura a Sorpresa fa da jolly: vale come un Guaio del tipo che manca, quindi può completare l'una o l'altra combinazione (ogni Tosatura ne completa una sola, D29). *(Regola cambiata il 21 ottobre 2026, prima erano 3 Guai di tre tipi diversi: decisione D46 in `docs/motore.md`.)* Chi è eliminato scarta la mano e i suoi agnellini tornano nel Gregge.
 
 ### Parità
 
@@ -146,7 +146,7 @@ Alcune carte scambiano il punteggio più alto con il più basso. Sono coinvolti 
 
 - Togli dal mazzo tutte le Trovate di valore 1, 2 e 3.
 - Ovile da 15 posti (vedi tabella di preparazione).
-- L'eliminazione scatta con **4 Guai dello stesso tipo** oppure **2 Guai per ciascuno dei tre tipi**.
+- L'eliminazione scatta con **4 Guai dello stesso tipo** oppure **4 Guai di tipi diversi**, come sopra. *(Prima: 2 Guai per ciascuno dei tre tipi; cambiata il 21 ottobre 2026, D46.)*
 
 ### Casi limite (decisioni prese)
 
@@ -297,7 +297,7 @@ Ogni fase è completa solo se il suo criterio di accettazione è soddisfatto. Al
 - Testata con esito maggiore degli agnellini del bersaglio (va rifiutata).
 - Beee-NO! su effetto di Trovata, su Belato, su dado; Beee-NO! annullato da un altro Beee-NO!.
 - Trovate Gemelle giocate in coppia, e non ammesse nel Belato Finale.
-- Tre Guai uguali, tre diversi, e ogni combinazione con la Tosatura a Sorpresa; agnellini dell'eliminato che tornano nel Gregge.
+- Tre Guai uguali, quattro diversi, e ogni combinazione con la Tosatura a Sorpresa; agnellini dell'eliminato che tornano nel Gregge.
 - Parità per il più alto (più lanci di dado), per il più basso e totale.
 - Belato Finale ripetuto, e con uno o più giocatori senza Trovate.
 - Scambio dei punteggi con pari merito a un estremo.

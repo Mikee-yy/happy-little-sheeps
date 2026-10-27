@@ -26,7 +26,8 @@ export type Battuta =
       modo: 'corre' | 'vola';
       attesa: Attesa;
     }
-  | { tipo: 'testata'; chi: IdGiocatore; bersaglio: IdGiocatore; quanti: number; attesa: Attesa }
+  /** `seq` dell'evento `testata`: sceglie il punto d'arrivo "di scena", lo stesso su tutti i telefoni. */
+  | { tipo: 'testata'; chi: IdGiocatore; bersaglio: IdGiocatore; quanti: number; seq: number; attesa: Attesa }
   | { tipo: 'guaio'; carta: IdCarta; chi: IdGiocatore; deviatoDa: IdGiocatore | null; attesa: Attesa }
   | { tipo: 'eliminata'; chi: IdGiocatore; attesa: Attesa }
   | { tipo: 'festa'; vincitori: IdGiocatore[]; attesa: Attesa };
@@ -76,9 +77,10 @@ function chiHaDeviato(eventi: Evento[], v: Vista, seq: number, chi: IdGiocatore)
  * gli eventi `agnellini` di causa furto verso il ladro, nello stesso lotto, prima della dichiarazione successiva.
  * `null` se non ce ne sono (la dichiarazione è ancora in pila, o è stata annullata): vale allora ciò che dichiara il dado.
  * Di solito è così: il furto si dichiara e si risolve in azioni diverse (in mezzo c'è la finestra delle reazioni), quindi
- * in lotti diversi, e il fumetto (che va detto alla dichiarazione, prima che si sappia com'è finita) dice il dichiarato.
- * Il conto vero vale solo quando dichiarazione e spostamenti arrivano insieme: un telefono che recupera più mosse in una
- * volta, o la scena che riprende dopo essere rimasta indietro.
+ * in lotti diversi, e il fumetto (che va detto alla dichiarazione, prima che si sappia com'è finita) dice il dichiarato;
+ * se poi ne arrivano meno, lo dice un secondo fumetto dopo la corsa (`furtoDichiaratoPrima`).
+ * Il conto vero vale qui solo quando dichiarazione e spostamenti arrivano insieme: un telefono che recupera più mosse in una
+ * volta, o la scena che riprende dopo essere rimasta indietro. Allora il primo fumetto è già giusto e il secondo non c'è.
  */
 function furtoEffettivo(eventi: Evento[], i: number): number | null {
   const ladro = (eventi[i] as Extract<Evento, { tipo: 'dichiarazione' }>).autore;
@@ -88,6 +90,28 @@ function furtoEffettivo(eventi: Evento[], i: number): number | null {
     if (f.tipo === 'agnellini' && f.causa === 'furto' && f.a === ladro) spostati = (spostati ?? 0) + f.quanti;
   }
   return spostati;
+}
+
+/**
+ * Quanti agnellini aveva annunciato il furto che si risolve con gli spostamenti in `eventi[i]`, se la dichiarazione è
+ * arrivata in un lotto precedente (sta solo nello storico della vista); `null` altrimenti. Il motore emette `risolta`
+ * della voce subito prima degli spostamenti: si prende l'ultima `risolta` prima di `i` e la sua dichiarazione,
+ * che dev'essere un furto del dado di questo ladro. Un furto annullato non sposta niente, quindi qui non arriva.
+ */
+function furtoDichiaratoPrima(eventi: Evento[], v: Vista, i: number): number | null {
+  const ladro = (eventi[i] as Extract<Evento, { tipo: 'agnellini' }>).a;
+  let voce: number | null = null;
+  for (let j = i - 1; j >= 0 && voce === null; j--) {
+    const e = eventi[j]!;
+    if (e.tipo === 'risolta') voce = e.voce;
+  }
+  if (voce === null) return null;
+  // Dichiarata in questo lotto: il primo fumetto ha già contato gli spostamenti veri
+  if (eventi.some((e) => e.tipo === 'dichiarazione' && e.voce === voce)) return null;
+  const dich = v.eventi.find((e): e is Extract<Evento, { tipo: 'dichiarazione' }> => e.tipo === 'dichiarazione' && e.voce === voce);
+  if (!dich || dich.autore !== ladro || dich.dettagli.tipo !== 'dado' || dich.dettagli.dichiarazione.effetto !== 'furto') return null;
+  const d = dich.dettagli.dichiarazione;
+  return Object.values(d.daAvversari).reduce((t, q) => t + q, 0) + d.dalGregge;
 }
 
 export function copione(eventi: Evento[], vista: Vista): Battuta[] {
@@ -173,6 +197,12 @@ export function copione(eventi: Evento[], vista: Vista): Battuta[] {
             if (f.quanti > 0) spostamenti.push({ da: f.da, a: f.a, quanti: f.quanti });
           }
           battute.push({ tipo: 'agnellini', spostamenti, ladro: e.a, modo: 'corre', attesa: FINE });
+          // Ne sono arrivati meno di quanti ne diceva il fumetto della dichiarazione: il ladro lo ammette
+          const annunciati = furtoDichiaratoPrima(eventi, vista, i);
+          const arrivati = spostamenti.reduce((t, s) => t + s.quanti, 0);
+          if (annunciati !== null && arrivati < annunciati) {
+            battute.push({ tipo: 'fumetti', testi: { [e.a]: T.scena.fumetti.furtoSolo(arrivati) }, attesa: BREVE });
+          }
           i = j - 1;
         } else if (e.causa === 'testata') {
           // Di norma lo racconta la battuta della Testata, che segue subito
@@ -200,7 +230,7 @@ export function copione(eventi: Evento[], vista: Vista): Battuta[] {
         break;
       }
       case 'testata':
-        battute.push({ tipo: 'testata', chi: e.giocatore, bersaglio: e.bersaglio, quanti: e.esito, attesa: FINE });
+        battute.push({ tipo: 'testata', chi: e.giocatore, bersaglio: e.bersaglio, quanti: e.esito, seq: e.seq, attesa: FINE });
         break;
       case 'belato_finale': {
         const carte: Partial<Record<IdGiocatore, IdCarta[]>> = {};

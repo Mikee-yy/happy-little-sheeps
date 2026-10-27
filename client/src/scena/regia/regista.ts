@@ -150,7 +150,7 @@ export function creaRegista(d: DipendenzeRegista): Regista {
       case 'agnellini':
         return agnellini(b, mio);
       case 'testata':
-        return ordini.testata(b.chi, b.bersaglio, b.quanti);
+        return ordini.testata(b.chi, b.bersaglio, b.quanti, b.seq);
       case 'guaio':
         // Chi ha deviato il Guaio fa la finta svenuta mentre la carta vola verso l'altra pecora
         if (b.deviatoDa !== null) ordini.reagisci(b.deviatoDa, 'svenuta');

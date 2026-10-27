@@ -35,19 +35,6 @@ describe('Testata a tutto schermo', () => {
     expect(r).toMatch(/min-height:\s*0/);
     expect(r).toMatch(/aspect-ratio:\s*360 \/ 440/);
   });
-
-  it("nel riquadro sopra la scena: sotto la striscia fino in fondo, l'arena prende l'altezza che resta e mantiene le proporzioni", () => {
-    const riquadro = regola('.riquadro-testata');
-    expect(riquadro).toMatch(/position:\s*fixed/);
-    expect(riquadro).toMatch(/top:\s*var\(--spazio-alto/);
-    expect(riquadro).toMatch(/bottom:\s*0/);
-    expect(riquadro).toMatch(/display:\s*flex/);
-    const arena = regola('.riquadro-testata .testata .arena');
-    expect(arena).toMatch(/flex:\s*1 1 0/);
-    expect(arena).toMatch(/min-height:\s*0/);
-    expect(arena).toMatch(/aspect-ratio:\s*360 \/ 440/);
-    expect(regola('.riquadro-testata .pannello.testata')).toMatch(/flex:\s*1 1 0/);
-  });
 });
 
 describe('dal punto toccato alle coordinate dell\'arena', () => {

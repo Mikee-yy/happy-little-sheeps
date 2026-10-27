@@ -6,7 +6,9 @@ import { act, cleanup, render } from '@testing-library/react';
 import { useState } from 'react';
 import { flushSync } from 'react-dom';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { azioniPossibili, nuovaPartita, tentaApplica, vistaPer } from '../../../engine/src';
+import { applica, azioniPossibili, nuovaPartita, tentaApplica, vistaPer } from '../../../engine/src';
+import { chiudiPunteggio, conFaccia, nessunaReazione, prosegui, scegli, scenario } from '../../../engine/test/aiuti';
+import { momentoRemoto, scenaRemota } from '../remoto/regiaRemota';
 import type { Azione, Stato } from '../../../engine/src';
 import { fotografia } from '../scena/fotografia';
 import type { Domanda, Gesto, Momento } from '../scena/scelte/tipi';
@@ -249,5 +251,70 @@ describe("GiocoInScena: l'errore del motore non resta sulla domanda nuova", () =
     }
     await act(async () => {});
     expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+});
+
+// ─── La fionda della Testata: il tentativo ───────────────────────────────────
+
+/** g1 ha lanciato la Testata e ha scelto il bersaglio; nessuno ha risposto: tocca alla fionda. */
+function allaFionda(): Stato {
+  let s = prosegui(
+    scenario({ guaio: 'tosatura-a-sorpresa', mani: { g1: ['carriola'], g2: ['balla-di-fieno', 'beee-no'], g3: ['coperta-di-lana'] } }),
+  );
+  s = prosegui(scegli(s, { g1: ['carriola'], g2: ['balla-di-fieno'], g3: ['coperta-di-lana'] }));
+  if (s.fase.nome === 'belati_punteggio') s = chiudiPunteggio(s);
+  const lanciata = applica(conFaccia(s, 'testata'), { tipo: 'lanciaDado', giocatore: 'g1' });
+  const dichiara = azioniPossibili(lanciata, 'g1').find((a) => a.tipo === 'dichiaraDado' && a.bersaglio !== undefined)!;
+  return nessunaReazione(applica(lanciata, dichiara));
+}
+
+/** Le props del telefono di g1 in una stanza, alla fionda. */
+function propsFionda(s: Stato) {
+  const io = 'g1';
+  const vistaIo = vistaPer(s, io);
+  const tavolo = vistaPer(s, null);
+  const azioni = azioniPossibili(s, io);
+  const momento = momentoRemoto(scenaRemota(vistaIo, io, azioni), io, vistaIo, tavolo, azioni)!;
+  const mano = vistaIo.giocatori.find((g) => g.id === io)?.mano ?? null;
+  return {
+    tavolo,
+    foto: fotografia(tavolo, io, mano),
+    momento,
+    conAzioni: true,
+    errore: null,
+    togliErrore: () => {},
+    onMenu: () => {},
+    riserva: null,
+    situazione: '1',
+  };
+}
+
+describe('GiocoInScena: la fionda ha un tentativo che cambia con lo sblocco', () => {
+  it('stesso disegno, stesso tentativo; sblocco o mossa rifiutata subito: tentativo nuovo e si tira di nuovo', async () => {
+    const base = propsFionda(allaFionda());
+    let accetta = true;
+    const invia = vi.fn((_a: Azione) => accetta);
+    const { rerender } = render(<GiocoInScena {...base} invia={invia} sblocca={0} />);
+    await act(async () => {});
+    const primo = finto.domanda?.fionda?.tentativo;
+    expect(primo, 'la scena chiede la fionda con un tentativo').toEqual(expect.any(String));
+    await gesto({ tipo: 'fionda', esito: 1 });
+    expect(invia).toHaveBeenCalledTimes(1);
+    // Ridisegnata senza novità: lo stesso tentativo (la mira resta "già tirato")
+    rerender(<GiocoInScena {...base} invia={invia} sblocca={0} />);
+    await act(async () => {});
+    expect(finto.domanda!.fionda!.tentativo).toBe(primo);
+    await gesto({ tipo: 'fionda', esito: 1 });
+    expect(invia).toHaveBeenCalledTimes(1);
+    // Chi ospita rifiuta: sblocco nuovo, tentativo nuovo, il tiro torna valido
+    rerender(<GiocoInScena {...base} invia={invia} sblocca={1} />);
+    await act(async () => {});
+    const secondo = finto.domanda!.fionda!.tentativo;
+    expect(secondo).not.toBe(primo);
+    // Rifiutata subito (invia falso): ancora un tentativo nuovo
+    accetta = false;
+    await gesto({ tipo: 'fionda', esito: 1 });
+    expect(invia).toHaveBeenCalledTimes(2);
+    expect(finto.domanda!.fionda!.tentativo).not.toBe(secondo);
   });
 });

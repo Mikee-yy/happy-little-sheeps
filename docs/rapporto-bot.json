@@ -1,0 +1,353 @@
+{
+  "miste": [
+    {
+      "tavolo": [
+        "normale",
+        "semplice"
+      ],
+      "numeroGiocatori": 2,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "roundMedi": 10.475,
+      "perPolitica": {
+        "normale": {
+          "posti": 1,
+          "vittorie": 0.553,
+          "atteso": 0.5,
+          "eliminatiPerPosto": 0.092
+        },
+        "semplice": {
+          "posti": 1,
+          "vittorie": 0.447,
+          "atteso": 0.5,
+          "eliminatiPerPosto": 0.116
+        }
+      }
+    },
+    {
+      "tavolo": [
+        "normale",
+        "normale",
+        "semplice"
+      ],
+      "numeroGiocatori": 3,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "roundMedi": 9.357,
+      "perPolitica": {
+        "normale": {
+          "posti": 2,
+          "vittorie": 0.7303333333333335,
+          "atteso": 0.6666666666666666,
+          "eliminatiPerPosto": 0.069
+        },
+        "semplice": {
+          "posti": 1,
+          "vittorie": 0.2696666666666666,
+          "atteso": 0.3333333333333333,
+          "eliminatiPerPosto": 0.082
+        }
+      }
+    },
+    {
+      "tavolo": [
+        "normale",
+        "semplice",
+        "semplice"
+      ],
+      "numeroGiocatori": 3,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "roundMedi": 9.328,
+      "perPolitica": {
+        "normale": {
+          "posti": 1,
+          "vittorie": 0.4195,
+          "atteso": 0.3333333333333333,
+          "eliminatiPerPosto": 0.07
+        },
+        "semplice": {
+          "posti": 2,
+          "vittorie": 0.5805,
+          "atteso": 0.6666666666666666,
+          "eliminatiPerPosto": 0.0825
+        }
+      }
+    },
+    {
+      "tavolo": [
+        "normale",
+        "normale",
+        "normale",
+        "semplice"
+      ],
+      "numeroGiocatori": 4,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "roundMedi": 7.038,
+      "perPolitica": {
+        "normale": {
+          "posti": 3,
+          "vittorie": 0.768,
+          "atteso": 0.75,
+          "eliminatiPerPosto": 0.011
+        },
+        "semplice": {
+          "posti": 1,
+          "vittorie": 0.232,
+          "atteso": 0.25,
+          "eliminatiPerPosto": 0.013
+        }
+      }
+    },
+    {
+      "tavolo": [
+        "normale",
+        "normale",
+        "semplice",
+        "semplice"
+      ],
+      "numeroGiocatori": 4,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "roundMedi": 7.053,
+      "perPolitica": {
+        "normale": {
+          "posti": 2,
+          "vittorie": 0.5538333333333333,
+          "atteso": 0.5,
+          "eliminatiPerPosto": 0.01
+        },
+        "semplice": {
+          "posti": 2,
+          "vittorie": 0.44616666666666666,
+          "atteso": 0.5,
+          "eliminatiPerPosto": 0.0145
+        }
+      }
+    },
+    {
+      "tavolo": [
+        "normale",
+        "semplice",
+        "semplice",
+        "semplice"
+      ],
+      "numeroGiocatori": 4,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "roundMedi": 7.048,
+      "perPolitica": {
+        "normale": {
+          "posti": 1,
+          "vittorie": 0.30866666666666664,
+          "atteso": 0.25,
+          "eliminatiPerPosto": 0.013
+        },
+        "semplice": {
+          "posti": 3,
+          "vittorie": 0.6913333333333332,
+          "atteso": 0.75,
+          "eliminatiPerPosto": 0.018666666666666668
+        }
+      }
+    }
+  ],
+  "pure": [
+    {
+      "politica": "normale",
+      "numeroGiocatori": 2,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "esempiErrori": [],
+      "round": {
+        "media": 10.088,
+        "mediana": 10,
+        "min": 4,
+        "max": 15,
+        "p10": 6,
+        "p90": 13,
+        "quotaNeiLimiti": 0.741
+      },
+      "minutiStimati": 15.131999999999998,
+      "modi": {
+        "ovile_pieno": 0.529,
+        "ultima_pecora": 0.224,
+        "mazzo_finito": 0.247
+      },
+      "condivise": 0.001,
+      "eliminazioniMedie": 0.224,
+      "quotaConEliminazioni": 0.224,
+      "belatiFinaliMedi": 0,
+      "beeeNoMedi": 2.651,
+      "annullateMedie": 2.319,
+      "guaiPresiMedi": 8.857,
+      "roundSenzaGuaio": 0,
+      "facce": {
+        "pascolo_piccolo": 1550,
+        "testata": 3209,
+        "furto_piccolo": 1629,
+        "pascolo_grande": 1692,
+        "furto_grande": 1583
+      },
+      "vittoriePerPecora": {
+        "nerina": {
+          "partite": 481,
+          "vittorie": 232
+        },
+        "sospirella": {
+          "partite": 474,
+          "vittorie": 243
+        },
+        "ricciolo": {
+          "partite": 537,
+          "vittorie": 266.5
+        },
+        "brontolana": {
+          "partite": 508,
+          "vittorie": 258.5
+        }
+      },
+      "vittoriePrimoGiocatore": 0.5175,
+      "ripieghi": 0,
+      "criteri": {
+        "senzaErrori": true,
+        "durata": true,
+        "equilibrio": true
+      }
+    },
+    {
+      "politica": "normale",
+      "numeroGiocatori": 3,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "esempiErrori": [],
+      "round": {
+        "media": 9.257,
+        "mediana": 10,
+        "min": 3,
+        "max": 13,
+        "p10": 6,
+        "p90": 11,
+        "quotaNeiLimiti": 0.938
+      },
+      "minutiStimati": 13.8855,
+      "modi": {
+        "ovile_pieno": 0.454,
+        "ultima_pecora": 0.013,
+        "mazzo_finito": 0.533
+      },
+      "condivise": 0.024,
+      "eliminazioniMedie": 0.208,
+      "quotaConEliminazioni": 0.195,
+      "belatiFinaliMedi": 0.661,
+      "beeeNoMedi": 2.935,
+      "annullateMedie": 2.525,
+      "guaiPresiMedi": 8.456,
+      "roundSenzaGuaio": 0,
+      "facce": {
+        "pascolo_grande": 1829,
+        "pascolo_piccolo": 1751,
+        "testata": 3529,
+        "furto_piccolo": 1789,
+        "furto_grande": 1716
+      },
+      "vittoriePerPecora": {
+        "nerina": {
+          "partite": 753,
+          "vittorie": 269.8333333333333
+        },
+        "sospirella": {
+          "partite": 722,
+          "vittorie": 220.83333333333331
+        },
+        "ricciolo": {
+          "partite": 756,
+          "vittorie": 260.5
+        },
+        "brontolana": {
+          "partite": 769,
+          "vittorie": 248.83333333333331
+        }
+      },
+      "vittoriePrimoGiocatore": 0.3278333333333333,
+      "ripieghi": 0,
+      "criteri": {
+        "senzaErrori": true,
+        "durata": true,
+        "equilibrio": true
+      }
+    },
+    {
+      "politica": "normale",
+      "numeroGiocatori": 4,
+      "partite": 1000,
+      "errori": 0,
+      "stalli": 0,
+      "esempiErrori": [],
+      "round": {
+        "media": 7.036,
+        "mediana": 7,
+        "min": 2,
+        "max": 10,
+        "p10": 5,
+        "p90": 8,
+        "quotaNeiLimiti": 0.875
+      },
+      "minutiStimati": 10.553999999999998,
+      "modi": {
+        "ovile_pieno": 0.322,
+        "ultima_pecora": 0,
+        "mazzo_finito": 0.678
+      },
+      "condivise": 0.029,
+      "eliminazioniMedie": 0.059,
+      "quotaConEliminazioni": 0.058,
+      "belatiFinaliMedi": 0.706,
+      "beeeNoMedi": 2.823,
+      "annullateMedie": 2.402,
+      "guaiPresiMedi": 6.669,
+      "roundSenzaGuaio": 0,
+      "facce": {
+        "testata": 2869,
+        "pascolo_grande": 1455,
+        "pascolo_piccolo": 1443,
+        "furto_grande": 1423,
+        "furto_piccolo": 1474
+      },
+      "vittoriePerPecora": {
+        "nerina": {
+          "partite": 1000,
+          "vittorie": 259
+        },
+        "sospirella": {
+          "partite": 1000,
+          "vittorie": 245
+        },
+        "ricciolo": {
+          "partite": 1000,
+          "vittorie": 239
+        },
+        "brontolana": {
+          "partite": 1000,
+          "vittorie": 257
+        }
+      },
+      "vittoriePrimoGiocatore": 0.243,
+      "ripieghi": 0,
+      "criteri": {
+        "senzaErrori": true,
+        "durata": true,
+        "equilibrio": true
+      }
+    }
+  ]
+}

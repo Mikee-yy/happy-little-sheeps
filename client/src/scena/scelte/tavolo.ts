@@ -30,7 +30,7 @@ export function vuota(chiave: string, scritta: string): Domanda {
     centro: null,
     furto: null,
     pulsanti: [],
-    testata: false,
+    fionda: null,
   };
 }
 
@@ -174,10 +174,18 @@ function testataBersaglio(m: Momento, chiave: string): Domanda | null {
   return d;
 }
 
-/** Il riquadro di mira: la mossa la manda Testata.tsx, nella scena non c'è niente da toccare. */
-function testataMira(chiave: string): Domanda {
-  const d = vuota(chiave, T.testata.titolo);
-  d.testata = true;
+/** La mira della Testata: la fionda nella scena. Il bersaglio sta nella dichiarazione, il massimo nelle mosse permesse. */
+function testataMira(m: Momento, chiave: string): Domanda {
+  const f = m.vista.fase;
+  const dich = f.nome === 'risoluzione_dado' ? f.dichiarazione : null;
+  const bersaglio = dich && 'bersaglio' in dich ? dich.bersaglio : undefined;
+  const esiti = filtra(m.azioni, 'esitoTestata').map((a) => a.esito);
+  if (bersaglio === undefined || esiti.length === 0) return vuota(chiave, T.testata.titolo);
+  // Sul dispositivo condiviso la scritta dice anche chi tira: dopo le reazioni il telefono può essere in mano a un altro
+  const lanciatore = f.nome === 'risoluzione_dado' && m.condiviso ? nome(m.vista, f.lanciatore) : undefined;
+  const d = vuota(chiave, T.testata.fionda.scritta(nome(m.vista, bersaglio), lanciatore));
+  // Chi tira è il lanciatore del dado (con "Passa il telefono" spesso non sta in basso: il Montone parte vicino alla sua pecora)
+  d.fionda = { ...(f.nome === 'risoluzione_dado' ? { chi: f.lanciatore } : {}), bersaglio, massimo: Math.max(...esiti) };
   return d;
 }
 
@@ -193,7 +201,7 @@ export function domandaTavolo(m: Momento, chiave: string, s: Scelta): Domanda | 
       return chiRisponde(m, chiave, sc.contesto, sc.candidati);
     case 'pubblica': {
       if (sc.pannello === 'lancio') return lancio(m, chiave, sc.giocatore);
-      if (sc.pannello === 'testata') return testataMira(chiave);
+      if (sc.pannello === 'testata') return testataMira(m, chiave);
       const f = datiFurto(m);
       return f ? furto(chiave, s, f) : testataBersaglio(m, chiave);
     }
@@ -228,6 +236,11 @@ export function avanzaTavolo(m: Momento, s: Scelta, g: Gesto, d: Domanda): Risul
       if (f) return avanzaFurto(s, g, d, f);
       if (g.tipo !== 'pecora' || !d.pecore.includes(g.chi)) return senzaEsito(s);
       const azione = filtra(m.azioni, 'dichiaraDado').find((a) => a.bersaglio === g.chi);
+      return azione ? conMossa(s, azione) : senzaEsito(s);
+    }
+    if (sc.pannello === 'testata' && g.tipo === 'fionda' && d.fionda) {
+      const esito = Math.max(0, Math.min(Math.trunc(g.esito), d.fionda.massimo));
+      const azione = filtra(m.azioni, 'esitoTestata').find((a) => a.esito === esito);
       return azione ? conMossa(s, azione) : senzaEsito(s);
     }
   }

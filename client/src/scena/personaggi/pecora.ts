@@ -109,6 +109,11 @@ export class Pecora {
   readonly svg: SVGSVGElement;
   /** 1, oppure −1 se la pecora è specchiata (il vento per lei va al contrario). */
   readonly verso: 1 | -1;
+  /**
+   * −1 se adesso guarda dall'altra parte (si gira solo il disegno, con `gira`: l'ombra al sole e il vento restano dalla
+   * parte giusta, mentre girare la cornice li specchierebbe).
+   */
+  girata: 1 | -1 = 1;
   azione: Azione | null = null;
   arricciata = 0;
   bagnata = 0;
@@ -295,10 +300,21 @@ export class Pecora {
     );
   }
 
+  /** Il verso in cui guarda adesso il disegno: quello della disposizione, girato se è girata. */
+  private get versoOra(): 1 | -1 {
+    return this.verso === this.girata ? 1 : -1;
+  }
+
+  /** Guarda dall'altra parte (−1) o di nuovo nel suo verso (1): si gira solo il disegno, l'ombra e il vento seguono. */
+  gira(girata: 1 | -1): void {
+    this.girata = girata;
+    this.svg.style.transform = this.versoOra < 0 ? 'scaleX(-1)' : '';
+  }
+
   /** Dove sta la testa sul prato (bozza, riga 2303): da qui escono il fiato e il vapore. */
   puntoTesta(): { x: number; y: number } {
     const g = this.g, h = this.testa;
-    const x = this.verso > 0 ? h.x : 200 - h.x;
+    const x = this.versoOra > 0 ? h.x : 200 - h.x;
     return { x: g.x + (x / 200) * g.w, y: g.y + (h.y / 170) * g.w * 0.85 };
   }
 
@@ -409,7 +425,7 @@ export class Pecora {
       if (q >= 1) this.batt = rand(1.8, 5);
     }
     // Vento sul vello (la pecora specchiata: il vento per lei va al contrario)
-    const w = amb.ventoIn(g.x + g.w / 2) * this.verso;
+    const w = amb.ventoIn(g.x + g.w / 2) * this.versoOra;
     piega += -w * 4;
     const brr = this.brivido > 0 ? Math.sin(T * 60) * 1.4 * this.brivido : 0;
     const sx = 1 + 0.01 * b;
@@ -437,7 +453,7 @@ export class Pecora {
     // Ombra che segue il sole (in coordinate della pecora, già specchiate per chi è specchiata)
     // Proiezione a terra: un punto alto h sopra le zampe (y = 158) finisce h·(a, b) più in là, verso chi guarda
     const LUCE = amb.LUCE;
-    const a = LUCE.dx * LUCE.lung * this.verso;
+    const a = LUCE.dx * LUCE.lung * this.versoOra;
     const bb = 0.42 * LUCE.lung;
     this.ombra.setAttribute('transform', `matrix(1 0 ${(-a).toFixed(4)} ${(-bb).toFixed(4)} ${(158 * a).toFixed(2)} ${(158 * (1 + bb)).toFixed(2)})`);
     // Fulminata: resta sbigottita e bruciacchiata per qualche secondo, poi si scrolla la fuliggine

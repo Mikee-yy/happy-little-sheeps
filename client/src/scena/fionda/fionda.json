@@ -1,0 +1,20 @@
+{
+  "cerchi": { "centro": 0.3 },
+  "fasciaBordo": { "x": 0.25, "y": 0.45 },
+  "variazionePartenza": 16,
+  "basePartenza": { "basso": { "x": 1.58, "y": 0.61 }, "alto": { "x": 0.5, "y": 0.95 } },
+  "spazioTiro": { "lati": 30, "alto": 60, "basso": 10 },
+  "atterraggio": { "lati": 20, "alto": 90, "prato": 162 },
+  "tiroMinimo": 14,
+  "tiroMassimo": 150,
+  "margine": 1,
+  "ingrandimento": 1.35,
+  "attenuati": 0.3,
+  "tastiera": { "passoAngolo": 5, "passiPerProfondita": 4, "bordo": 1.2 },
+  "bollini": { "corpo": 12, "corpoMassimo": 16 },
+  "scia": 0.4,
+  "puntiScia": 7,
+  "altezzaArco": 0.35,
+  "fuori": 18,
+  "scansa": { "raggio": 0.5, "margine": 0.05, "ventaglio": 0.35 }
+}

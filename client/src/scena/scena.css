@@ -82,6 +82,7 @@
 .teatro .pozza .cerchio { transform-box: fill-box; transform-origin: 50% 50%; animation: increspa 1.8s ease-out infinite; }
 .teatro .pozza .cerchio.due { animation-delay: -.9s; }
 @keyframes increspa { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+/* Gli occhi del lupo ammiccano con an-palpebra, che sta in carte/animazioni.css insieme agli altri fotogrammi delle carte */
 .teatro .pozza .occhi-lupo { transform-box: fill-box; transform-origin: 50% 50%; animation: an-palpebra 2.6s ease-in-out infinite; }
 .teatro .lampo { position: absolute; left: -1400px; top: -600px; width: 3190px; height: 1700px; background: var(--gesso); z-index: 3250; pointer-events: none; opacity: 0; }
 .teatro .gelo { position: absolute; left: -1400px; top: -600px; width: 3190px; height: 1700px; background: var(--celeste); z-index: 1940; pointer-events: none; opacity: 0; mix-blend-mode: multiply; }
@@ -98,59 +99,7 @@
 .teatro .terreno { position: absolute; overflow: visible; z-index: 290; pointer-events: none; }
 .teatro .mano.ventoso .cm svg { transform-origin: 50% 100%; animation: svolazza .32s ease-in-out infinite alternate; }
 @keyframes svolazza { from { transform: rotate(-2deg) skewX(-2deg); } to { transform: rotate(2.5deg) skewX(2deg); } }
-/* Illustrazioni delle carte in primo piano */
-.teatro .anima .an { transform-box: fill-box; transform-origin: 50% 50%; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
-.teatro .anima .an-germoglio { transform-origin: 50% 100%; animation-name: an-oscilla; animation-duration: 2.6s; }
-.teatro .anima .an-luccica { animation-name: an-luccica; animation-duration: 2.2s; }
-.teatro .anima .an-calza { transform-origin: 55% 4%; animation-name: an-oscilla-piccola; animation-duration: 1.9s; }
-.teatro .anima .an-r2 { animation-delay: -1s; }
-.teatro .anima .an-ondeggia { transform-origin: 50% 100%; animation-name: an-oscilla-piccola; animation-duration: 3s; }
-.teatro .anima .an-gocce { animation-name: an-cade; animation-duration: 1.3s; animation-timing-function: ease-in; }
-.teatro .anima .an-campana { transform-origin: 50% 0%; animation-name: an-campana; animation-duration: 1.4s; }
-.teatro .anima .an-batacchio { transform-origin: 50% -140%; animation-name: an-campana; animation-duration: 1.4s; animation-direction: reverse; }
-.teatro .anima .an-onde { animation-name: an-onde; animation-duration: .7s; animation-timing-function: ease-out; }
-.teatro .anima .an-urlo { animation-name: an-urlo; animation-duration: 1.6s; }
-.teatro .anima .an-pop { transform-origin: 50% 80%; animation-name: an-pop; animation-duration: 2.4s; animation-timing-function: ease-out; }
-.teatro .anima .an-tratteggio { animation-name: an-tratteggio; animation-duration: .8s; animation-timing-function: linear; }
-.teatro .anima .an-zampe { transform-origin: 50% 100%; animation-name: an-zampe; animation-duration: 1.2s; }
-.teatro .anima .an-stella { animation-name: an-stella; animation-duration: 2.2s; animation-timing-function: linear; }
-.teatro .anima .an-nuvola { animation-name: an-galleggia; animation-duration: 3s; }
-.teatro .anima .an-chicco { animation-name: an-chicco; animation-duration: 1.6s; animation-timing-function: cubic-bezier(.5,0,.8,.6); }
-.teatro .anima .an-cespuglio { transform-origin: 50% 100%; animation-name: an-fruscia; animation-duration: 2.8s; }
-.teatro .anima .an-occhi { animation-name: an-palpebra; animation-duration: 3.4s; }
-.teatro .anima .an-pupille { animation-name: an-pupille; animation-duration: 3.4s; }
-.teatro .anima .an-lampo { animation-name: an-lampo; animation-duration: 2.2s; animation-timing-function: steps(1); }
-.teatro .anima .an-pioggia { animation-name: an-pioggia; animation-duration: .45s; animation-timing-function: linear; }
-.teatro .anima .an-banco { animation-name: an-banco; animation-duration: 4s; }
-.teatro .anima .an-vortice { animation-name: an-vortice; animation-duration: 1s; animation-timing-function: linear; }
-.teatro .anima .an-ciuffo { animation-name: an-ciuffo; animation-duration: 1.8s; }
-.teatro .anima .an-ruota { animation-name: an-ruota; animation-duration: 14s; animation-timing-function: linear; }
-.teatro .anima .an-pulsa { animation-name: an-pulsa; animation-duration: 2s; }
-.teatro .anima .an-increspa { animation-name: an-increspa; animation-duration: 2s; animation-timing-function: ease-out; }
-@keyframes an-oscilla { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
-@keyframes an-oscilla-piccola { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
-@keyframes an-luccica { 0%, 55%, 100% { transform: scale(0) rotate(0); } 70% { transform: scale(1.2) rotate(45deg); } 85% { transform: scale(.9) rotate(80deg); } }
-@keyframes an-cade { 0% { transform: translateY(-10px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(34px); opacity: 0; } }
-@keyframes an-campana { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(13deg); } }
-@keyframes an-onde { 0% { transform: scale(.8); opacity: .2; } 45% { opacity: 1; } 100% { transform: scale(1.18); opacity: 0; } }
-@keyframes an-urlo { 0%, 58%, 100% { transform: scale(1) rotate(0); } 64% { transform: scale(1.09) rotate(-2.5deg); } 70% { transform: scale(1.07) rotate(2.5deg); } 76% { transform: scale(1.08) rotate(-1.5deg); } 84% { transform: scale(1) rotate(0); } }
-@keyframes an-pop { 0%, 30%, 100% { transform: scale(1); } 8% { transform: scale(1.14); } 16% { transform: scale(.95); } 22% { transform: scale(1.02); } }
-@keyframes an-tratteggio { to { stroke-dashoffset: -12; } }
-@keyframes an-zampe { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-7deg); } 80% { transform: rotate(6deg); } 90% { transform: rotate(-3deg); } }
-@keyframes an-stella { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.3); } 100% { transform: rotate(360deg) scale(1); } }
-@keyframes an-galleggia { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes an-chicco { 0% { transform: translateY(-48px); opacity: 0; } 15% { opacity: 1; } 68% { transform: translateY(0); } 78% { transform: translateY(-7px); } 88% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(0); opacity: 0; } }
-@keyframes an-fruscia { 0%, 40%, 100% { transform: rotate(0); } 46% { transform: rotate(-2deg); } 52% { transform: rotate(2deg); } 58% { transform: rotate(-1deg); } 64% { transform: rotate(0); } }
-@keyframes an-palpebra { 0%, 42%, 50%, 100% { transform: scaleY(1); } 46% { transform: scaleY(.08); } }
-@keyframes an-pupille { 0%, 15% { transform: translateX(0); } 25%, 38% { transform: translateX(-4px); } 55%, 80% { transform: translateX(4px); } 92%, 100% { transform: translateX(0); } }
-@keyframes an-lampo { 0%, 100% { opacity: 1; } 8% { opacity: .25; } 12% { opacity: 1; } 16% { opacity: .35; } 20% { opacity: 1; } }
-@keyframes an-pioggia { to { stroke-dashoffset: -22; } }
-@keyframes an-banco { 0%, 100% { transform: translateX(-10px); } 50% { transform: translateX(12px); } }
-@keyframes an-vortice { to { stroke-dashoffset: -35; } }
-@keyframes an-ciuffo { 0%, 100% { transform: translate(0, 0) rotate(-10deg); } 50% { transform: translate(10px, -10px) rotate(14deg); } }
-@keyframes an-ruota { to { transform: rotate(360deg); } }
-@keyframes an-pulsa { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
-@keyframes an-increspa { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+/* Illustrazioni delle carte in primo piano: i decori (fumetti, "z"); le parti animate delle carte stanno in carte/animazioni.css */
 .teatro .decoro { position: absolute; z-index: 1500; pointer-events: none; }
 .teatro .decoro svg { display: block; overflow: visible; }
 .teatro .belino { display: block; transform: translate(-50%, -100%); font: 800 11px/1 var(--font-titoli); background: var(--gesso); border: 1.8px solid var(--notte); border-radius: 999px; padding: 3px 7px 2px; white-space: nowrap; }
@@ -219,6 +168,20 @@
 .teatro .consiglio { position: absolute; left: 50%; top: 646px; height: 14px; box-sizing: border-box; transform: translateX(-50%); z-index: 3900; white-space: nowrap; font: 700 10px/10px var(--font-testo);
   /* In coordinate della scena (scalata con S, senza ingrandimento della mano): tra la staccionata davanti del recinto in basso (paletti fino a ~644) e la cima delle carte (690 a riposo con ingrandimento 1,25) */
   background: var(--gesso); border: 1.5px solid var(--notte); border-radius: 999px; padding: 1px 9px 0; transition: opacity .4s; }
+/* Mentre si mira con la fionda della Testata (fionda/mira.ts, classe fionda-in-mira) la mano e il consiglio scendono sotto il
+   bordo dello schermo e lì si nascondono: il prato resta libero per tirare indietro il Montone. Al lancio tornano su mentre
+   lui vola. `translate` si somma al transform che hanno già (ingrandimento --kd della mano, centratura del consiglio) */
+.teatro .ui .mano,
+.teatro .ui .consiglio { transition: opacity .4s, translate .35s cubic-bezier(.3,1.15,.5,1), visibility 0s; }
+.teatro .ui.fionda-in-mira .mano,
+.teatro .ui.fionda-in-mira .consiglio { translate: 0 320px; visibility: hidden; transition: opacity .4s, translate .3s ease-in, visibility 0s .3s; }
+/* Movimento ridotto: la mano e il consiglio spariscono e tornano senza scivolare */
+@media (prefers-reduced-motion: reduce) {
+  .teatro .ui .mano,
+  .teatro .ui .consiglio,
+  .teatro .ui.fionda-in-mira .mano,
+  .teatro .ui.fionda-in-mira .consiglio { transition: opacity .4s, translate 0s, visibility 0s; }
+}
 /* Le scelte nella scena (chiedi.ts): zone di tocco sulle pecore, luci, pulsanti della domanda e nuvoletta del pensiero.
    Le zone e i pulsanti stanno nello strato .ui (coordinate della scena); i pulsanti crescono di --kd come la mano. */
 .teatro .zona { position: absolute; z-index: 1000; pointer-events: auto; cursor: pointer; border-radius: 16px; touch-action: manipulation; }
@@ -281,10 +244,15 @@
 .teatro .pensiero .testo { margin: 0; }
 .teatro .pensiero .azioni-nuvola { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; }
 .teatro .pensiero .btn { pointer-events: auto; padding: 8px 12px 7px; font-size: 12px; }
+/* Mentre c'è la fionda della Testata la nuvola sta sotto la pecora (chiedi.ts, posizionaPensiero) e cresce verso il basso */
+.teatro .pensiero .nuvola.sotto { transform: scale(var(--kd, 1)); transform-origin: 0 0; animation-name: nuvola-appare-sotto; }
+/* Mentre si carica il tiro (fionda/mira.ts) il Montone tirato indietro scende verso la nuvola: lei si nasconde, restano i pallini */
+.teatro .ui.fionda-in-carica .pensiero .nuvola { visibility: hidden; }
 .teatro .pensiero.ferma .pallino,
 .teatro .pensiero.ferma .nuvola { animation: none; }
 @keyframes pallino-sale { 0% { opacity: 0; transform: translateY(14px) scale(.3); } 100% { opacity: 1; transform: none; } }
 @keyframes nuvola-appare { 0% { opacity: 0; transform: translateY(-100%) scale(calc(var(--kd, 1) * .6)); } 100% { opacity: 1; transform: translateY(-100%) scale(var(--kd, 1)); } }
+@keyframes nuvola-appare-sotto { 0% { opacity: 0; transform: scale(calc(var(--kd, 1) * .6)); } 100% { opacity: 1; transform: scale(var(--kd, 1)); } }
 /* Menu Opzioni: sotto il pulsante a sinistra, nello stile del pannello di prova */
 .teatro .opzioni { position: absolute; left: 12px; top: 56px; z-index: 4100; background: var(--gesso); border: 2.5px solid var(--notte); border-radius: 14px;
   box-shadow: 0 6px 0 var(--notte); padding: 12px; display: grid; gap: 9px; width: 210px; }
@@ -335,7 +303,6 @@
   width: max-content; max-width: 330px; text-align: center; overflow-wrap: break-word; box-sizing: border-box;
   background: var(--limone); border: 3px solid var(--notte); border-radius: 18px; box-shadow: 0 6px 0 var(--notte); padding: 12px 20px 9px; }
 @media (prefers-reduced-motion: reduce) {
-  .teatro .an,
   .teatro .pecora.illuminata,
   .teatro .dado-pos.illuminata::before,
   .teatro .pensiero .pallino,
@@ -360,3 +327,261 @@
 .teatro .carta-round svg { display: block; width: 100%; height: 100%; }
 .teatro .guaio-round { position: absolute; left: 290px; top: 60px; width: 56px; height: 78px; transform: translateZ(10px) rotate(6deg); }
 .teatro .guaio-round svg { display: block; width: 100%; height: 100%; }
+/* La fionda della Testata (fionda/mira.ts): nel mondo i cerchi sul recinto del bersaglio, la scia di puntini, l'elastico e il Montone,
+   sopra il prato e i recinti (che stanno tra 100 e ~1000) e sotto la mano; la zona di tocco sta nello strato .ui, sopra il Montone a riposo. */
+.teatro .fionda-cerchi,
+.teatro .fionda-scia,
+.teatro .fionda-elastico { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.teatro .fionda-cerchi { z-index: 1550; }
+/* Le zone come le conta il tiro (fionda/cerchi.ts): la fascia fuori dalla staccionata (1) tratteggiata, il recinto (2) velato
+   di gesso, l'ellisse del centro (3) di limone */
+.teatro .fionda-cerchi ellipse,
+.teatro .fionda-cerchi rect.fascia,
+.teatro .fionda-cerchi rect.dentro { stroke: var(--notte); stroke-width: 2.5; }
+.teatro .fionda-cerchi rect.fascia { fill: rgba(251,250,245,.22); stroke-width: 2; stroke-dasharray: 5 4; }
+.teatro .fionda-cerchi rect.dentro { fill: rgba(251,250,245,.45); }
+.teatro .fionda-cerchi ellipse.centro { fill: rgba(242,226,122,.75); }
+/* I numeri in bollini, come .belino: pillola di gesso con il bordo notte (fionda/cerchi.ts) */
+.teatro .bollino rect { fill: var(--gesso); stroke: var(--notte); stroke-width: 1.8; }
+.teatro .bollino text { font-family: var(--font-titoli); font-weight: 800; fill: var(--notte); text-anchor: middle; dominant-baseline: central; }
+/* La scia sopra il Montone tirato indietro (che altrimenti copre i primi puntini) */
+.teatro .fionda-scia { z-index: 1610; }
+.teatro .fionda-scia circle { fill: var(--gesso); stroke: var(--notte); stroke-width: 2.2; }
+/* Lo sbuffo di polvere dove atterra il Montone (ordini.ts) */
+.teatro .sbuffo-testata { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.teatro .sbuffo-testata circle { fill: var(--gesso); stroke: var(--notte); stroke-width: 1.6; }
+.teatro .fionda-elastico { z-index: 1580; }
+.teatro .fionda-elastico line { stroke: var(--notte); stroke-width: 3; stroke-linecap: round; }
+.teatro .fionda-montone { z-index: 1600; pointer-events: none; }
+.teatro .zona-fionda { position: absolute; z-index: 1000; pointer-events: auto; cursor: grab; border-radius: 50%; touch-action: none; }
+.teatro .zona-fionda:active { cursor: grabbing; }
+.teatro .zona-fionda:focus-visible { outline: 3px solid var(--notte); outline-offset: -3px; background: rgba(242,226,122,.28); }
+
+/* ---------- Montone animato ----------
+   Il Montone della Testata disegnato a pezzi (fionda/montone.ts) e le sue pose: classi `posa-…` sull'elemento che contiene il
+   disegno (riposo, carica, volo, botta, stordito, scuote, corre). Ogni parte ha il perno nell'origine del suo gruppo (zampe
+   all'anca, testa al collo, coda alla radice), quindi qui l'origine è sempre 0 0; i ciuffi del vello girano attorno al loro centro.
+   L'aspetto fermo di ogni posa sta nelle proprietà `rotate`, `translate` e `scale`; le animazioni muovono `transform`, che si
+   somma a quelle: con il movimento ridotto (o la classe "ferma") le animazioni si spengono e la posa resta.
+   Le parti di una posa sola (spirale, scia, sbuffi, stelline, polvere) sono nascoste nel disegno e si mostrano qui. */
+.teatro .mt g { transform-origin: 0 0; transform-box: view-box; transition: rotate .18s ease-out, translate .18s ease-out, scale .18s ease-out; }
+.teatro .mt .mt-ciuffo,
+.teatro .mt .mt-riccioli { transform-box: fill-box; transform-origin: center; }
+/* Gli stessi ciuffi nei due strati del vello (contorno e colore) partono insieme, sfasati tra un ciuffo e l'altro.
+   Specificità più alta delle regole di posa (che usano lo shorthand `animation` e rimetterebbero il ritardo a 0) */
+.teatro .mt .mt-ciuffo.mt-c2 { animation-delay: -.08s; }
+.teatro .mt .mt-ciuffo.mt-c3 { animation-delay: -.16s; }
+.teatro .mt .mt-ciuffo.mt-c4 { animation-delay: -.04s; }
+.teatro .mt .mt-ciuffo.mt-c5 { animation-delay: -.12s; }
+.teatro .mt .mt-ciuffo.mt-c6 { animation-delay: -.2s; }
+.teatro .mt .mt-ciuffo.mt-c7 { animation-delay: -.06s; }
+
+/* A riposo: respira piano; ogni tanto muove la coda e l'orecchio */
+.teatro .posa-riposo .mt-tutto { animation: mt-respira 3.2s ease-in-out infinite; }
+.teatro .posa-riposo .mt-coda { animation: mt-coda-ogni-tanto 4.4s ease-in-out infinite; }
+.teatro .posa-riposo .mt-orecchio { animation: mt-orecchio-ogni-tanto 5.6s ease-in-out infinite; }
+
+/* Mentre carichi: si dimena e scalcia per liberarsi, più l'elastico è tirato (--carica da 0 a 1 sull'elemento del Montone,
+   messa dalla mira): tutte e quattro le zampe pedalano veloci e sfasate (davanti e dietro in controfase), la testa si abbassa
+   con le corna avanti e il ciglio si aggrotta. Anche a elastico appena tirato si agita un poco (--mt-k). */
+.teatro .posa-carica { --mt-k: calc(.2 + .8 * var(--carica, 0)); }
+.teatro .posa-carica .mt-tutto { animation: mt-dimena .3s ease-in-out infinite; }
+.teatro .posa-carica .mt-testa { rotate: calc(var(--carica, 0) * 16deg); animation: mt-annuisce .3s ease-in-out infinite; }
+.teatro .posa-carica .mt-ciglio { rotate: calc(var(--carica, 0) * 14deg); }
+.teatro .posa-carica .mt-occhio { scale: 1 calc(1 - var(--carica, 0) * .35); }
+.teatro .posa-carica .mt-zampa { animation: mt-scalcia .26s ease-in-out infinite; }
+.teatro .posa-carica .mt-zampe-dt .mt-zampa { rotate: calc(var(--carica, 0) * 12deg); }
+/* Sfasate di un quarto di giro l'una dall'altra (specificità più alta della regola con lo shorthand) */
+.teatro .posa-carica .mt-zampa.mt-av-1 { animation-delay: -.065s; }
+.teatro .posa-carica .mt-zampa.mt-dt-2 { animation-delay: -.13s; }
+.teatro .posa-carica .mt-zampa.mt-av-2 { animation-delay: -.195s; }
+.teatro .posa-carica .mt-coda { animation: mt-scodinzola .22s ease-in-out infinite; }
+
+/* In volo: si allunga, zampe tutte all'indietro, testa avanti con le corna, il vello e la coda al vento, la scia dietro.
+   L'ombra sotto i piedi sparisce: in volo quella a terra la disegna chi lo fa volare. */
+.teatro .posa-volo .mt-ombra { opacity: 0; }
+.teatro .posa-volo .mt-scia { visibility: visible; }
+.teatro .posa-volo .mt-tutto { scale: 1.06 .94; animation: mt-plana .5s ease-in-out infinite; }
+.teatro .posa-volo .mt-testa { rotate: 10deg; translate: 3px 0; }
+.teatro .posa-volo .mt-ciglio { rotate: 8deg; }
+.teatro .posa-volo .mt-orecchio { rotate: 16deg; animation: mt-sventola .2s ease-in-out infinite alternate; }
+.teatro .posa-volo .mt-dt-1 { rotate: 16deg; }
+.teatro .posa-volo .mt-dt-2 { rotate: 36deg; }
+.teatro .posa-volo .mt-av-1 { rotate: 68deg; }
+.teatro .posa-volo .mt-av-2 { rotate: 88deg; }
+.teatro .posa-volo .mt-zampa { animation: mt-sventola .3s ease-in-out infinite alternate; }
+.teatro .posa-volo .mt-zampe-av .mt-zampa { animation-delay: -.15s; }
+.teatro .posa-volo .mt-coda { rotate: 10deg; animation: mt-scodinzola .18s ease-in-out infinite; }
+.teatro .posa-volo .mt-ciuffo,
+.teatro .posa-volo .mt-riccioli { animation: mt-al-vento .26s ease-in-out infinite alternate; }
+.teatro .posa-volo .mt-filo { animation: mt-soffio .5s linear infinite; }
+.teatro .posa-volo .mt-f2 { animation-delay: -.17s; }
+.teatro .posa-volo .mt-f3 { animation-delay: -.34s; }
+.teatro .posa-volo .mt-f4 { animation-delay: -.25s; }
+
+/* La botta: arriva allungato e sbatte di testa contro il recinto come contro un muro: si schiaccia nel verso della corsa
+   (stretto e alto) con il perno sul muso all'altezza dei piedi (86,0 dal perno dei piedi = punta del muso, x 196), così la
+   testa resta sulla staccionata, i piedi a terra e il corpo si comprime verso di lei; resta schiacciato un attimo, rimbalza
+   un poco largo e basso e si assesta. Testa giù e avanti, occhi strizzati, il corno vibra dopo il colpo.
+   Un colpo solo (.75s): poi resta appena schiacciato finché non cambia posa. */
+.teatro .posa-botta .mt-tutto { transform-origin: 86px 0; scale: .96 1.04; animation: mt-urto .75s ease-out both; }
+.teatro .posa-botta .mt-testa { rotate: 14deg; translate: 7px 2px; scale: .8 1.1; animation: mt-urto-testa .75s ease-out both; }
+.teatro .posa-botta .mt-corna { animation: mt-vibra .5s ease-out .1s both; }
+.teatro .posa-botta .mt-occhio { scale: 1 .2; }
+.teatro .posa-botta .mt-ciglio { rotate: 18deg; }
+.teatro .posa-botta .mt-orecchio { rotate: 22deg; }
+.teatro .posa-botta .mt-zampe-av .mt-zampa { rotate: -14deg; animation: mt-puntella-av .75s ease-out both; }
+.teatro .posa-botta .mt-zampe-dt .mt-zampa { rotate: 10deg; animation: mt-puntella-dt .75s ease-out both; }
+.teatro .posa-botta .mt-coda { rotate: 30deg; }
+
+/* Stordito: occhi a spirale che girano, ondeggia sulle zampe molli, la testa ciondola, il ciglio su (confuso),
+   orecchio e coda giù, le stelline girano sopra la testa. */
+.teatro .posa-stordito .mt-occhio { visibility: hidden; }
+.teatro .posa-stordito .mt-spirale,
+.teatro .posa-stordito .mt-stelline { visibility: visible; }
+.teatro .posa-stordito .mt-gira { animation: mt-gira 1.1s linear infinite; }
+.teatro .posa-stordito .mt-tutto { animation: mt-barcolla 1.8s ease-in-out infinite; }
+.teatro .posa-stordito .mt-testa { rotate: 8deg; animation: mt-ciondola 2.4s ease-in-out infinite; }
+.teatro .posa-stordito .mt-ciglio { rotate: -14deg; }
+.teatro .posa-stordito .mt-orecchio { rotate: -26deg; }
+.teatro .posa-stordito .mt-coda { rotate: -35deg; }
+.teatro .posa-stordito .mt-dt-1 { rotate: -16deg; }
+.teatro .posa-stordito .mt-dt-2 { rotate: -6deg; }
+.teatro .posa-stordito .mt-av-1 { rotate: 10deg; }
+.teatro .posa-stordito .mt-av-2 { rotate: 22deg; }
+.teatro .posa-stordito .mt-zampa { animation: mt-vacilla 1.8s ease-in-out infinite; }
+.teatro .posa-stordito .mt-zampe-av .mt-zampa { animation-delay: -.9s; }
+.teatro .posa-stordito .mt-stella { animation: mt-orbita 1.5s linear infinite; }
+.teatro .posa-stordito .mt-st2 { animation-delay: -.5s; }
+.teatro .posa-stordito .mt-st3 { animation-delay: -1s; }
+
+/* Scuote la testa: tre scrollate veloci (la testa si stringe un poco, come se si girasse), poi una pausa; occhi strizzati,
+   l'orecchio sbatte, il vello trema con la testa. */
+.teatro .posa-scuote .mt-testa { animation: mt-scrolla .8s ease-in-out infinite; }
+.teatro .posa-scuote .mt-tutto { animation: mt-scrolla-corpo .8s ease-in-out infinite; }
+.teatro .posa-scuote .mt-occhio { scale: 1 .35; }
+.teatro .posa-scuote .mt-orecchio { animation: mt-sbatte .8s ease-in-out infinite; }
+.teatro .posa-scuote .mt-coda { animation: mt-scodinzola .2s ease-in-out infinite; }
+
+/* Corre via arrabbiato: galoppa a testa bassa, ciglio aggrottato, occhi stretti, sbuffi dalle narici e polvere dietro */
+.teatro .posa-corre .mt-sbuffi,
+.teatro .posa-corre .mt-polvere { visibility: visible; }
+.teatro .posa-corre .mt-tutto { rotate: 4deg; animation: mt-galoppa .38s ease-in-out infinite; }
+.teatro .posa-corre .mt-testa { rotate: 14deg; animation: mt-annuisce .38s ease-in-out infinite; }
+.teatro .posa-corre .mt-ciglio { rotate: 18deg; }
+.teatro .posa-corre .mt-occhio { scale: 1 .7; }
+.teatro .posa-corre .mt-orecchio { rotate: 14deg; animation: mt-sventola .19s ease-in-out infinite alternate; }
+.teatro .posa-corre .mt-zampa { animation: mt-passo .38s ease-in-out infinite; }
+.teatro .posa-corre .mt-dt-2 { animation-delay: -.05s; }
+.teatro .posa-corre .mt-av-1 { animation-delay: -.19s; }
+.teatro .posa-corre .mt-av-2 { animation-delay: -.24s; }
+.teatro .posa-corre .mt-coda { rotate: 15deg; animation: mt-scodinzola .19s ease-in-out infinite; }
+.teatro .posa-corre .mt-ciuffo { animation: mt-sobbalza .38s ease-in-out infinite; }
+.teatro .posa-corre .mt-sbuffo { animation: mt-sbuffa .76s ease-out infinite; }
+.teatro .posa-corre .mt-s2 { animation-delay: -.38s; }
+.teatro .posa-corre .mt-nuvola { animation: mt-polvere .38s ease-out infinite; }
+.teatro .posa-corre .mt-p2 { animation-delay: -.19s; }
+
+@keyframes mt-respira { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.012, 1.025); } }
+@keyframes mt-coda-ogni-tanto { 0%, 70%, 100% { transform: rotate(0deg); } 78% { transform: rotate(-16deg); } 86% { transform: rotate(10deg); } 93% { transform: rotate(-5deg); } }
+@keyframes mt-orecchio-ogni-tanto { 0%, 86%, 100% { transform: rotate(0deg); } 91% { transform: rotate(14deg); } 96% { transform: rotate(-4deg); } }
+@keyframes mt-dimena {
+  0%, 100% { transform: translate(calc(var(--mt-k, 0) * -2.5px), 0) rotate(calc(var(--mt-k, 0) * -2deg)); }
+  25% { transform: translate(0, calc(var(--mt-k, 0) * -2px)) rotate(0deg); }
+  50% { transform: translate(calc(var(--mt-k, 0) * 2.5px), 0) rotate(calc(var(--mt-k, 0) * 2deg)); }
+  75% { transform: translate(0, calc(var(--mt-k, 0) * -2px)) rotate(0deg); }
+}
+@keyframes mt-annuisce { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+/* Scalciata: la zampa va avanti, scatta indietro e si ritira un poco (come pedalare), ampia quanto la carica */
+@keyframes mt-scalcia {
+  0%, 100% { transform: rotate(calc(var(--mt-k, 0) * -38deg)) translate(0, 0); }
+  40% { transform: rotate(calc(var(--mt-k, 0) * 34deg)) translate(0, calc(var(--mt-k, 0) * -4px)); }
+  70% { transform: rotate(calc(var(--mt-k, 0) * 8deg)) translate(0, calc(var(--mt-k, 0) * -7px)); }
+}
+@keyframes mt-scodinzola { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } }
+@keyframes mt-plana { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(0, -1.5px); } }
+@keyframes mt-sventola { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes mt-al-vento { from { transform: translate(0, 0) scale(1, 1); } to { transform: translate(-2px, .6px) scale(1.05, .95); } }
+@keyframes mt-soffio {
+  0% { transform: translate(8px, 0) scale(.3, 1); opacity: 0; }
+  30% { transform: translate(0, 0) scale(1, 1); opacity: 1; }
+  100% { transform: translate(-16px, 0) scale(.6, 1); opacity: 0; }
+}
+/* La botta (perno sul muso, vedi .posa-botta .mt-tutto): arriva allungato nel verso della corsa, si schiaccia contro il
+   recinto stretto e alto (con la posa ferma .96×1.04: in tutto circa .60×1.35), resta schiacciato un attimo (14–38%),
+   rimbalza un poco largo e basso e si assesta */
+@keyframes mt-urto {
+  0% { transform: scale(1.1, .92); }
+  14%, 38% { transform: scale(.625, 1.3); }
+  62% { transform: scale(1.1, .92); }
+  82% { transform: scale(.99, 1.01); }
+  100% { transform: scale(1, 1); }
+}
+/* La testa sta dentro il corpo schiacciato: nella sosta si allarga e si abbassa un poco, così resta leggibile
+   (in tutto, con la posa ferma .8×1.1, circa .6×1.16 invece di .4×1.6) */
+@keyframes mt-urto-testa {
+  0% { transform: translate(-5px, 0) rotate(-22deg) scale(1.1, .94); }
+  14%, 38% { transform: translate(3px, 2px) rotate(4deg) scale(1.25, .8); }
+  62% { transform: translate(-2px, 0) rotate(-4deg) scale(1.05, .97); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1, 1); }
+}
+/* Nella sosta della botta le zampe si puntellano in avanti (il corpo si comprime verso il recinto), poi tornano */
+@keyframes mt-puntella-av { 0%, 100% { transform: rotate(0deg); } 14%, 38% { transform: rotate(-12deg); } 62% { transform: rotate(5deg); } }
+@keyframes mt-puntella-dt { 0%, 100% { transform: rotate(0deg); } 14%, 38% { transform: rotate(-10deg); } 62% { transform: rotate(5deg); } }
+@keyframes mt-vibra { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(9deg); } 40% { transform: rotate(-7deg); } 60% { transform: rotate(4deg); } 80% { transform: rotate(-2deg); } }
+@keyframes mt-gira { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes mt-barcolla { 0%, 100% { transform: translate(-2px, 0) rotate(-3.5deg); } 50% { transform: translate(2px, 0) rotate(3.5deg); } }
+@keyframes mt-ciondola {
+  0%, 100% { transform: translate(0, 0) rotate(-7deg); }
+  25% { transform: translate(1.5px, 2px) rotate(0deg); }
+  50% { transform: translate(0, 0) rotate(7deg); }
+  75% { transform: translate(-1px, -1px) rotate(0deg); }
+}
+@keyframes mt-vacilla { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes mt-orbita {
+  0%, 100% { transform: translate(24px, 0) scale(1); }
+  12.5% { transform: translate(17px, 5px) scale(1.1); }
+  25% { transform: translate(0, 7px) scale(1.15); }
+  37.5% { transform: translate(-17px, 5px) scale(1.1); }
+  50% { transform: translate(-24px, 0) scale(1); }
+  62.5% { transform: translate(-17px, -5px) scale(.85); }
+  75% { transform: translate(0, -7px) scale(.75); }
+  87.5% { transform: translate(17px, -5px) scale(.85); }
+}
+@keyframes mt-scrolla {
+  0%, 72%, 100% { transform: rotate(0deg) scale(1, 1); }
+  10% { transform: rotate(-14deg) scale(.9, 1); }
+  24% { transform: rotate(13deg) scale(.88, 1); }
+  38% { transform: rotate(-11deg) scale(.9, 1); }
+  52% { transform: rotate(7deg) scale(.94, 1); }
+  64% { transform: rotate(-3deg) scale(1, 1); }
+}
+@keyframes mt-scrolla-corpo { 0%, 72%, 100% { transform: translate(0, 0); } 10%, 38% { transform: translate(-1.5px, 0); } 24%, 52% { transform: translate(1.5px, 0); } }
+@keyframes mt-sbatte { 0%, 72%, 100% { transform: rotate(0deg); } 14%, 42% { transform: rotate(24deg); } 28%, 56% { transform: rotate(-16deg); } }
+@keyframes mt-galoppa { 0%, 100% { transform: translate(0, 0) rotate(-2deg); } 50% { transform: translate(0, -7px) rotate(2deg); } }
+@keyframes mt-passo { 0%, 100% { transform: rotate(-24deg); } 50% { transform: rotate(20deg); } }
+@keyframes mt-sobbalza { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(0, 1.5px); } }
+@keyframes mt-sbuffa {
+  0% { transform: translate(0, 0) scale(.3); opacity: 0; }
+  15% { opacity: 1; }
+  60% { transform: translate(10px, -1px) scale(1); opacity: .9; }
+  100% { transform: translate(17px, -3px) scale(1.25); opacity: 0; }
+}
+@keyframes mt-polvere { from { transform: translate(0, 0) scale(.4); opacity: .95; } to { transform: translate(-14px, -4px) scale(1.3); opacity: 0; } }
+
+/* Movimento ridotto: niente dimenarsi, volo, stordimento o corsa; la posa resta ferma (le stelline in fila attorno alla testa,
+   un solo sbuffo: i due starebbero uno sopra l'altro) */
+.teatro .ferma .mt *,
+.teatro .mt.ferma * { animation: none !important; transition: none !important; }
+.teatro .ferma .mt-st1 { translate: 22px 2px; }
+.teatro .ferma .mt-st2 { translate: -22px 2px; }
+.teatro .ferma .mt-st3 { translate: 0 -7px; }
+.teatro .ferma .mt-s2 { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .teatro .mt *,
+  .teatro .mt { animation: none !important; transition: none !important; }
+  .teatro .mt-st1 { translate: 22px 2px; }
+  .teatro .mt-st2 { translate: -22px 2px; }
+  .teatro .mt-st3 { translate: 0 -7px; }
+  .teatro .mt-s2 { visibility: hidden; }
+}

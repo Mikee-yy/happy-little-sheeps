@@ -33,8 +33,8 @@ export function entraEffetti(s: Stato): void {
       voci.push({ giocatore: id, carta, effetto: def.effetto, gruppo: def.gruppo, valore: def.valore, esito: 'attesa' });
     }
   }
-  const agnellini = new Map(s.giocatori.map((g) => [g.id, g.agnellini]));
-  const chiave = (v: VoceEffetto): number[] => [ORDINE_GRUPPI[v.gruppo], v.valore, agnellini.get(v.giocatore) ?? 0];
+  // D10 (21/10/2026): a parità di gruppo e valore gli agnellini non contano, decide subito il caso.
+  const chiave = (v: VoceEffetto): number[] => [ORDINE_GRUPPI[v.gruppo], v.valore];
   const confronta = (a: VoceEffetto, b: VoceEffetto): number => {
     const ka = chiave(a);
     const kb = chiave(b);

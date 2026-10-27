@@ -2,8 +2,9 @@
 // degli ospiti, pubblica una vista per ogni giocatore, gestisce timer, pause, bot e rientri.
 import { azioniPossibili, inAttesaDi, nuovaPartita, SETUP, tentaApplica, vistaPer } from '../engine/src';
 import type { Azione, Evento, IdGiocatore, IdPecora, NomeFase, Stato, Vista } from '../engine/src';
-import { semplice } from '../engine/sim/politiche';
+import { normale } from '../engine/sim/politiche';
 import { esitoTestataCasuale } from '../engine/sim/simulatore';
+import { aggiornaSalvato } from './locale';
 import type { Archivio } from './locale';
 import type { EsitoInvio, Sessione } from './sessione';
 import {
@@ -170,7 +171,7 @@ export class SessioneHost implements Sessione {
     if (dati.versione !== VERSIONE_SALVATAGGIO) return null;
     const meta = (await t.leggi(percorsi(dati.codice).meta)) as { host?: string } | null;
     if (!meta || meta.host !== t.uid) return null;
-    const s = new SessioneHost(t, archivio, dati.codice, dati, opzioni);
+    const s = new SessioneHost(t, archivio, dati.codice, { ...dati, stato: dati.stato && aggiornaSalvato(dati.stato) }, opzioni);
     s.avvia();
     return s;
   }
@@ -659,7 +660,7 @@ export class SessioneHost implements Sessione {
       const massimo = Math.max(...testate.map((a) => (a.tipo === 'esitoTestata' ? a.esito : 0)));
       azione = { tipo: 'esitoTestata', giocatore: id, esito: esitoTestataCasuale(massimo, Math.random) };
     } else {
-      azione = semplice.scegli(s, id, azioni, Math.random);
+      azione = normale.scegli(s, id, azioni, Math.random);
       if (!tentaApplica(s, azione).ok) azione = azioni[Math.floor(Math.random() * azioni.length)]!;
     }
     this.applica(azione);

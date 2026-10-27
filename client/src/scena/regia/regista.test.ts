@@ -4,6 +4,9 @@
 // Ciclo manuale, senza giochi; senza ambiente salvo i meteo lunghi (senza ambiente la nebbia finisce subito).
 // Gli eventi vengono da partite vere giocate con il motore.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// Questo file monta teatri veri: con tutte le prove insieme una prova può superare i 5 s predefiniti (la macchina è
+// carica). Il limite più alto vale per tutto il file, così la prossima prova lenta non fallisce per finta.
+vi.setConfig({ testTimeout: 60_000 });
 import { applica, nuovaPartita, SETUP, vistaPer } from '../../../../engine/src';
 import type { IdCarta, IdGiocatore, Stato, Vista } from '../../../../engine/src';
 import { generatore } from '../../../../engine/sim/simulatore';
@@ -150,7 +153,7 @@ describe('regista: prima recita e battute che aspettano la fine', () => {
     inPari(t, foto(dopo));
     expect(cambi).toEqual([true, false]);
     expect(errori).not.toHaveBeenCalled();
-  }, 30_000);
+  });
 
   it('le battute si recitano in fila: la corsa degli agnellini parte solo dopo il dado e il fumetto', async () => {
     const { prima, dopo } = pascolo();
@@ -168,7 +171,7 @@ describe('regista: prima recita e battute che aspettano la fine', () => {
     expect(ordine).toEqual(['dado']);
     await finche(t, () => !t.occupato(), 10_000);
     expect(ordine).toEqual(['dado', 'fumetti', 'agnellini']);
-  }, 30_000);
+  });
 
   it('una recita senza battute nuove mette in pari con calma, subito, senza occupare', () => {
     const { prima } = pascolo();
@@ -200,7 +203,7 @@ describe('regista: prima recita e battute che aspettano la fine', () => {
     expect(cambi).toEqual([true, true]);
     await finche(t, () => !t.occupato(), 5000);
     expect(cambi).toEqual([true, true, false]);
-  }, 30_000);
+  });
 
   it('una partita nuova sullo stesso teatro (eventi che ripartono da capo): messa in pari subito, niente recita', () => {
     const { dopo } = pascolo();
@@ -240,7 +243,6 @@ describe('regista: prima recita e battute che aspettano la fine', () => {
 describe('regista: meteo, salto e velocità', () => {
   it(
     'meteo su un avversario: libero dopo 5 s di scena, camera tornata, la nebbia prosegue sullo sfondo e poi finisce',
-    { timeout: 30_000 },
     async () => {
       const { prima, dopo } = nebbia();
       const { t, cambi } = pronto(prima, true);
@@ -260,7 +262,7 @@ describe('regista: meteo, salto e velocità', () => {
     },
   );
 
-  it('meteo seguito dalla consolazione: la corsa del gregge parte a 5 s, mentre la nebbia continua', { timeout: 30_000 }, async () => {
+  it('meteo seguito dalla consolazione: la corsa del gregge parte a 5 s, mentre la nebbia continua', async () => {
     const { prima, dopo } = nebbia();
     const { t } = pronto(prima, true);
     const sposta = vi.spyOn(t.ordini, 'spostaAgnellini');
@@ -279,7 +281,7 @@ describe('regista: meteo, salto e velocità', () => {
     expect(errori).not.toHaveBeenCalled();
   });
 
-  it('salto: con una battuta lunga in corso, salta() libera entro 1,5 s di ciclo', { timeout: 30_000 }, async () => {
+  it('salto: con una battuta lunga in corso, salta() libera entro 1,5 s di ciclo', async () => {
     const { prima, dopo } = nebbia();
     const { t } = pronto(prima, true);
     t.recita(foto(dopo), soloIlGuaio(prima, dopo));
@@ -306,7 +308,7 @@ describe('regista: meteo, salto e velocità', () => {
     expect(t.ctx.regia.velocita()).toBe(1);
   });
 
-  it('Animazioni veloci: il meteo libera dopo 2,5 s veri di ciclo', { timeout: 30_000 }, async () => {
+  it('Animazioni veloci: il meteo libera dopo 2,5 s veri di ciclo', async () => {
     cambiaOpzione('veloci');
     expect(opzioni().veloci).toBe(true);
     const { prima, dopo } = nebbia();
@@ -338,7 +340,7 @@ describe('regista: tempo massimo, messa in pari subito, ricostruzione, distruzio
     await finche(t, () => t.ctx.regia.inViaggio.size === 0, 10_000);
     inPari(t, foto(dopo));
     expect(cambi).toEqual([true, false]);
-  }, 30_000);
+  });
 
   it('tempo massimo per la recita intera: dopo una battuta scaduta le altre non si recitano, la scena va in pari', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -358,7 +360,7 @@ describe('regista: tempo massimo, messa in pari subito, ricostruzione, distruzio
     expect(cambi).toEqual([true, false]);
     await finche(t, () => t.ctx.regia.inViaggio.size === 0, 10_000);
     inPari(t, foto(dopo));
-  }, 30_000);
+  });
 
   it('troppe battute (più di 8 in coda): messa in pari subito, libero, nessuna animazione in corso', () => {
     // Una partita vera: si gioca senza recitare finché il copione degli eventi accumulati dà almeno 9 battute
@@ -418,7 +420,7 @@ describe('regista: tempo massimo, messa in pari subito, ricostruzione, distruzio
     expect(t.eventoInCorso()).toBe(false);
   });
 
-  it('ricostruzione con il meteo sullo sfondo (altro giocatore in basso): meteo fermato, libero, scena in pari', { timeout: 30_000 }, async () => {
+  it('ricostruzione con il meteo sullo sfondo (altro giocatore in basso): meteo fermato, libero, scena in pari', async () => {
     const { prima, dopo } = nebbia();
     const { t, cambi } = pronto(prima, true);
     t.recita(foto(dopo), vista(dopo));
@@ -620,5 +622,5 @@ describe('regista: buchi nella numerazione degli eventi', () => {
     expect(dado).toHaveBeenCalledTimes(1);
     expect(sposta).toHaveBeenCalledTimes(1);
     expect(cambi).toEqual([true, false]);
-  }, 30_000);
+  });
 });

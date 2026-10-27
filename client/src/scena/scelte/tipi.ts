@@ -27,6 +27,8 @@ export type Gesto =
   /** Agnellino alzato nel furto (lo rimette giù). */
   | { tipo: 'agnellino'; chi: IdGiocatore }
   | { tipo: 'dado' }
+  /** Il Montone lasciato andare: quanti agnellini cadono (limitato al massimo della domanda). */
+  | { tipo: 'fionda'; esito: number }
   /** Guaio del proprio angolo. */
   | { tipo: 'guaio'; carta: IdCarta }
   /** Carta grande sopra la tovaglia. */
@@ -66,8 +68,15 @@ export interface Domanda {
   centro: IdCarta | null;
   furto: { presi: Partial<Record<IdGiocatore, number>> } | null;
   pulsanti: PulsanteDomanda[];
-  /** Il riquadro di mira della Testata (Testata.tsx) sopra la scena. */
-  testata: boolean;
+  /**
+   * La fionda della Testata: chi tira, il bersaglio e l'esito più alto permesso dal motore (0..massimo); null se non c'è.
+   * `chi` (il lanciatore): con "Passa il telefono" spesso non è chi sta in basso, e il Montone parte vicino alla sua pecora;
+   * senza, chi sta in basso.
+   * `tentativo` (lo mette GiocoInScena, dati semplici): cambia quando la risposta torna valida (mossa rifiutata, attesa
+   * scaduta). Con lo stesso tentativo un tiro già fatto resta fatto, anche se la domanda si toglie e torna; con uno
+   * nuovo si mira di nuovo. Senza, un tiro resta fatto solo finché la domanda è mostrata.
+   */
+  fionda: { chi?: IdGiocatore; bersaglio: IdGiocatore; massimo: number; tentativo?: string } | null;
 }
 
 export interface Scelta {

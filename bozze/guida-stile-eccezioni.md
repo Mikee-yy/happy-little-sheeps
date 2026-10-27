@@ -1,4 +1,6 @@
-# Guida di stile: eccezioni per la scena di gioco (bozza da approvare)
+# Guida di stile: eccezioni per la scena di gioco (approvate il 21 ottobre 2026)
+
+*Approvate tutte dall'utente il 21 ottobre e riportate in `design/guida-stile.md`, sezione "Scena di gioco". Questo file resta come spiegazione dei motivi.*
 
 La guida di stile in `design/guida-stile.md` è stata scritta per le **carte**: oggetti piatti, senza luce né ambiente. La scena di gioco (il prato in 2,5D) ha bisogno di alcune regole in più. Qui sotto c'è ogni punto in cui la bozza si allontana dalla guida, con il motivo. Le carte restano sotto la guida originale, senza eccezioni.
 
@@ -75,4 +77,4 @@ La guida non parla di animazioni. Proposta:
 ## Da decidere insieme
 
 - ~~**Tovaglia:** la tieni a quadri rossi e bianchi come definitiva?~~ Sì, confermata dall'utente il 14 ottobre.
-- **Le 6 illustrazioni meteo disegnate da me in bozza:** grandine, pioggia, vento, nebbia, fulmine e gelata. Vanno approvate o ridisegnate.
+- ~~**Le 6 illustrazioni meteo disegnate in bozza.**~~ Riviste il 21 ottobre: approvate grandine e vento; pioggia (nuvola grigia più larga), fulmine (nuvola quasi nera), gelata (margherita nel ghiaccio, sole ghiacciato) e nebbia (cespuglio con gli occhi) ridisegnate come chiesto.

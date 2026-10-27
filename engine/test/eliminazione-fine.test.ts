@@ -53,11 +53,11 @@ type Lettera = 'M' | 'P' | 'D' | 'T';
 /** Regole di eliminazione di setup.json (specifica 8). */
 const NORMALI: RegolaEliminazione[] = [
   { regola: 'uguali', quanti: 3 },
-  { regola: 'diversi', quanti: 3 },
+  { regola: 'diversi', quanti: 4 },
 ];
 const DUE_GIOCATORI: RegolaEliminazione[] = [
   { regola: 'uguali', quanti: 4 },
-  { regola: 'perTipo', quanti: 2 },
+  { regola: 'diversi', quanti: 4 },
 ];
 
 /** Posti dell'Ovile da setup.json (specifica 3): 3 giocatori (default degli scenari) e 2 giocatori. */
@@ -325,22 +325,22 @@ interface CasoAngolo {
 const nomeCaso = (c: CasoAngolo): string =>
   `${leggibile(c.sigla)} ${c.elimina ? 'elimina' : 'non elimina'}${c.nota ? ` (${c.nota})` : ''}`;
 
-describe('angoloElimina con le regole a 3–4 giocatori (brief 3 "Eliminazione"; specifica 8, D29)', () => {
+describe('angoloElimina con le regole a 3–4 giocatori (brief 3 "Eliminazione"; specifica 8, D29, D46)', () => {
   // Tutte le 20 combinazioni di 3 Guai tra Meteo, Predatori, Drammi e Tosatura.
   const treGuai: CasoAngolo[] = [
     { sigla: 'MMM', elimina: true, nota: 'tre uguali' },
     { sigla: 'PPP', elimina: true, nota: 'tre uguali' },
     { sigla: 'DDD', elimina: true, nota: 'tre uguali' },
-    { sigla: 'MPD', elimina: true, nota: 'tre diversi' },
+    { sigla: 'MPD', elimina: false, nota: 'tre diversi non bastano (D46)' },
     { sigla: 'MMT', elimina: true, nota: 'tre uguali con la Tosatura' },
     { sigla: 'PPT', elimina: true, nota: 'tre uguali con la Tosatura' },
     { sigla: 'DDT', elimina: true, nota: 'tre uguali con la Tosatura' },
-    { sigla: 'MPT', elimina: true, nota: 'tre diversi con la Tosatura' },
-    { sigla: 'MDT', elimina: true, nota: 'tre diversi con la Tosatura' },
-    { sigla: 'PDT', elimina: true, nota: 'tre diversi con la Tosatura' },
-    { sigla: 'MTT', elimina: true, nota: 'due Tosature' },
-    { sigla: 'PTT', elimina: true, nota: 'due Tosature' },
-    { sigla: 'DTT', elimina: true, nota: 'due Tosature' },
+    { sigla: 'MPT', elimina: false, nota: 'tre diversi con la Tosatura non bastano' },
+    { sigla: 'MDT', elimina: false, nota: 'tre diversi con la Tosatura non bastano' },
+    { sigla: 'PDT', elimina: false, nota: 'tre diversi con la Tosatura non bastano' },
+    { sigla: 'MTT', elimina: true, nota: 'tre uguali con due Tosature' },
+    { sigla: 'PTT', elimina: true, nota: 'tre uguali con due Tosature' },
+    { sigla: 'DTT', elimina: true, nota: 'tre uguali con due Tosature' },
     { sigla: 'TTT', elimina: true, nota: 'tre Tosature' },
     { sigla: 'MMP', elimina: false, nota: 'due uguali e uno diverso' },
     { sigla: 'MMD', elimina: false, nota: 'due uguali e uno diverso' },
@@ -360,8 +360,11 @@ describe('angoloElimina con le regole a 3–4 giocatori (brief 3 "Eliminazione";
     { sigla: 'MMDD', elimina: false },
     { sigla: 'PPDD', elimina: false },
     { sigla: 'MMMM', elimina: true, nota: 'oltre la soglia' },
-    { sigla: 'MMPPD', elimina: true, nota: 'tre tipi diversi tra cinque' },
-    { sigla: 'MMPPT', elimina: true },
+    { sigla: 'MPDT', elimina: true, nota: 'quattro diversi: un tipo per uno e la Tosatura' },
+    { sigla: 'MMPDT', elimina: true, nota: 'quattro diversi tra cinque' },
+    { sigla: 'MMPPD', elimina: false, nota: 'tre tipi diversi tra cinque non bastano' },
+    { sigla: 'MMPPDD', elimina: false, nota: 'sei Guai, ma solo tre tipi e nessuno tre volte' },
+    { sigla: 'MMPPT', elimina: true, nota: 'tre uguali con la Tosatura' },
   ];
 
   for (const c of [...treGuai, ...altri]) {
@@ -371,16 +374,16 @@ describe('angoloElimina con le regole a 3–4 giocatori (brief 3 "Eliminazione";
   }
 
   it("l'ordine dei Guai nell'Angolo non conta", () => {
-    for (const sigla of ['TMM', 'MTM', 'TPM', 'PMT', 'DTM', 'TTM']) {
+    for (const sigla of ['TMM', 'MTM', 'TTM', 'TPMD', 'DTPM', 'PDMT']) {
       expect(angoloElimina(tipi(sigla), NORMALI), sigla).toBe(true);
     }
-    for (const sigla of ['PMM', 'MPM', 'DMD', 'PMPM']) {
+    for (const sigla of ['PMM', 'MPM', 'DMD', 'PMPM', 'DMP', 'TPM']) {
       expect(angoloElimina(tipi(sigla), NORMALI), sigla).toBe(false);
     }
   });
 });
 
-describe('angoloElimina con le regole a 2 giocatori (brief 3 "Variante a 2 giocatori"; specifica 8, D29)', () => {
+describe('angoloElimina con le regole a 2 giocatori (brief 3 "Variante a 2 giocatori"; specifica 8, D29, D46)', () => {
   const casi: CasoAngolo[] = [
     { sigla: 'MMMM', elimina: true, nota: 'quattro uguali' },
     { sigla: 'PPPP', elimina: true, nota: 'quattro uguali' },
@@ -388,19 +391,21 @@ describe('angoloElimina con le regole a 2 giocatori (brief 3 "Variante a 2 gioca
     { sigla: 'MMMT', elimina: true, nota: 'quattro uguali con una Tosatura' },
     { sigla: 'PPTT', elimina: true, nota: 'quattro uguali con due Tosature' },
     { sigla: 'DTTT', elimina: true, nota: 'quattro uguali con tre Tosature' },
-    { sigla: 'MMPPDD', elimina: true, nota: 'due per tipo' },
-    { sigla: 'MMPPDT', elimina: true, nota: 'due per tipo con una Tosatura' },
-    { sigla: 'MMPDTT', elimina: true, nota: 'due per tipo con due Tosature' },
-    { sigla: 'MMPPDDD', elimina: true, nota: 'oltre la soglia' },
+    { sigla: 'TTTT', elimina: true, nota: 'quattro Tosature' },
+    { sigla: 'MPDT', elimina: true, nota: 'quattro diversi: un tipo per uno e la Tosatura' },
+    { sigla: 'MPTT', elimina: true, nota: 'quattro diversi: due tipi e due Tosature' },
+    { sigla: 'MMPDT', elimina: true, nota: 'quattro diversi tra cinque' },
+    { sigla: 'MMPPDT', elimina: true, nota: 'quattro diversi tra sei' },
+    { sigla: 'MMPDTT', elimina: true, nota: 'quattro uguali con due Tosature' },
     { sigla: 'MPD', elimina: false, nota: 'tre diversi non bastano' },
-    { sigla: 'MPDT', elimina: false, nota: 'tre diversi con la Tosatura non bastano' },
     { sigla: 'MMM', elimina: false, nota: 'tre uguali non bastano' },
     { sigla: 'MMT', elimina: false, nota: 'tre uguali con la Tosatura non bastano' },
     { sigla: 'TTT', elimina: false },
     { sigla: 'MMMP', elimina: false },
-    { sigla: 'MMPPD', elimina: false, nota: 'manca un Drammi' },
-    { sigla: 'MMPDT', elimina: false, nota: 'la Tosatura copre un solo mancante' },
-    { sigla: 'MPTT', elimina: false },
+    { sigla: 'MMPT', elimina: false, nota: 'la Tosatura completa una sola combinazione' },
+    { sigla: 'MMPPD', elimina: false, nota: 'solo tre tipi' },
+    { sigla: 'MMPPDD', elimina: false, nota: 'due per tipo non basta più: solo tre tipi (D46)' },
+    { sigla: 'MMPPDDD', elimina: false, nota: 'sette Guai, ma solo tre tipi e nessuno quattro volte' },
     { sigla: 'MMMPPP', elimina: false, nota: 'sei Guai senza Drammi' },
   ];
 
@@ -428,12 +433,14 @@ describe('angoloElimina: ogni regola presa da sola (specifica 8)', () => {
     expect(angoloElimina(tipi('MMPP'), diversi3)).toBe(false);
   });
 
-  it('perTipo k: le Tosature coprono tutti i mancanti a k per ogni tipo', () => {
-    const perTipo2: RegolaEliminazione[] = [{ regola: 'perTipo', quanti: 2 }];
-    expect(angoloElimina(tipi('MMPPDD'), perTipo2)).toBe(true);
-    expect(angoloElimina(tipi('MPDTTT'), perTipo2)).toBe(true);
-    expect(angoloElimina(tipi('MMMM'), perTipo2)).toBe(false);
-    expect(angoloElimina(tipi('MPDTT'), perTipo2)).toBe(false);
+  it('diversi 4: con tre tipi soli serve almeno una Tosatura, e ogni Tosatura conta una volta', () => {
+    const diversi4: RegolaEliminazione[] = [{ regola: 'diversi', quanti: 4 }];
+    expect(angoloElimina(tipi('MPDT'), diversi4)).toBe(true);
+    expect(angoloElimina(tipi('MPTT'), diversi4)).toBe(true);
+    expect(angoloElimina(tipi('TTTT'), diversi4)).toBe(true);
+    expect(angoloElimina(tipi('MPD'), diversi4)).toBe(false);
+    expect(angoloElimina(tipi('MMPPDD'), diversi4)).toBe(false);
+    expect(angoloElimina(tipi('MTT'), diversi4)).toBe(false);
   });
 
   it('nessuna regola: nessuna eliminazione', () => {
@@ -441,8 +448,8 @@ describe('angoloElimina: ogni regola presa da sola (specifica 8)', () => {
   });
 });
 
-describe('regole di eliminazione nella configurazione (specifica 3, 8; setup.json)', () => {
-  it('a 3 e 4 giocatori "uguali 3" o "diversi 3"; a 2 giocatori "uguali 4" o "perTipo 2"', () => {
+describe('regole di eliminazione nella configurazione (specifica 3, 8; setup.json; D46)', () => {
+  it('a 3 e 4 giocatori "uguali 3" o "diversi 4"; a 2 giocatori "uguali 4" o "diversi 4"', () => {
     expect(configPer(3).regoleEliminazione).toEqual(NORMALI);
     expect(configPer(4).regoleEliminazione).toEqual(NORMALI);
     expect(configPer(2).regoleEliminazione).toEqual(DUE_GIOCATORI);
@@ -470,17 +477,20 @@ describe('tipiCheEliminano: tipi di Guaio che, aggiunti all\'Angolo, eliminerebb
     { giocatori: 3, sigla: 'M', attesi: [] },
     { giocatori: 3, sigla: 'T', attesi: [] },
     { giocatori: 3, sigla: 'MM', attesi: ['meteo', 'tosatura'] },
-    { giocatori: 3, sigla: 'MP', attesi: ['drammi', 'tosatura'] },
-    { giocatori: 3, sigla: 'MT', attesi: TUTTI_I_TIPI },
+    { giocatori: 3, sigla: 'MP', attesi: [] },
+    { giocatori: 3, sigla: 'MT', attesi: ['meteo', 'tosatura'] },
     { giocatori: 3, sigla: 'TT', attesi: TUTTI_I_TIPI },
-    { giocatori: 3, sigla: 'MMPP', attesi: TUTTI_I_TIPI },
+    { giocatori: 3, sigla: 'MPD', attesi: ['tosatura'] },
+    { giocatori: 3, sigla: 'MPT', attesi: TUTTI_I_TIPI },
+    { giocatori: 3, sigla: 'MMPP', attesi: ['meteo', 'predatori', 'tosatura'] },
     { giocatori: 4, sigla: 'DD', attesi: ['drammi', 'tosatura'] },
+    { giocatori: 4, sigla: 'MPD', attesi: ['tosatura'] },
     { giocatori: 2, sigla: 'MM', attesi: [] },
-    { giocatori: 2, sigla: 'MPD', attesi: [] },
-    { giocatori: 2, sigla: 'MPT', attesi: [] },
+    { giocatori: 2, sigla: 'MPD', attesi: ['tosatura'] },
+    { giocatori: 2, sigla: 'MPT', attesi: ['drammi', 'tosatura'] },
     { giocatori: 2, sigla: 'MMM', attesi: ['meteo', 'tosatura'] },
     { giocatori: 2, sigla: 'MMT', attesi: ['meteo', 'tosatura'] },
-    { giocatori: 2, sigla: 'MMPPD', attesi: ['drammi', 'tosatura'] },
+    { giocatori: 2, sigla: 'MMPPD', attesi: ['tosatura'] },
     { giocatori: 2, sigla: 'MMPPT', attesi: TUTTI_I_TIPI },
   ];
 
@@ -498,9 +508,11 @@ describe('eliminazione alla fine della consolazione, 3 giocatori (brief 3 punti 
     { angolo: 'MM', guaio: 'M', elimina: true },
     { angolo: 'PP', guaio: 'P', elimina: true },
     { angolo: 'DD', guaio: 'D', elimina: true },
-    { angolo: 'MP', guaio: 'D', elimina: true },
+    { angolo: 'MPD', guaio: 'T', elimina: true },
+    { angolo: 'MPT', guaio: 'D', elimina: true },
     { angolo: 'MM', guaio: 'T', elimina: true },
-    { angolo: 'MT', guaio: 'P', elimina: true },
+    { angolo: 'MT', guaio: 'P', elimina: false },
+    { angolo: 'MP', guaio: 'D', elimina: false },
     { angolo: 'MT', guaio: 'T', elimina: true },
     { angolo: 'TT', guaio: 'T', elimina: true },
     { angolo: 'M', guaio: 'M', elimina: false },
@@ -674,7 +686,7 @@ describe('vittoria per Ultima pecora (brief 3 "Come si vince" 2; specifica 8, 9.
         eliminati: ['g2'],
         agnellini: { g2: 0 },
         guaio: g.uno('D'),
-        angoli: { g3: g.angolo('MP') },
+        angoli: { g3: g.angolo('DD') },
         mani: { g3: ['coperta-di-lana'] },
       },
       'g1',
@@ -1253,13 +1265,14 @@ describe('variante a 2 giocatori (brief 3 "Variante a 2 giocatori"; specifica 3,
     { angolo: 'MMM', guaio: 'M', elimina: true, nota: 'quattro uguali' },
     { angolo: 'MMT', guaio: 'M', elimina: true, nota: 'quattro uguali con la Tosatura' },
     { angolo: 'MMT', guaio: 'T', elimina: true, nota: 'quattro uguali con due Tosature' },
-    { angolo: 'MMPPD', guaio: 'D', elimina: true, nota: 'due per tipo' },
-    { angolo: 'MMPPT', guaio: 'D', elimina: true, nota: 'due per tipo con la Tosatura' },
+    { angolo: 'MPT', guaio: 'D', elimina: true, nota: 'quattro diversi: un tipo per uno e la Tosatura' },
+    { angolo: 'MPT', guaio: 'T', elimina: true, nota: 'quattro diversi: due tipi e due Tosature' },
+    { angolo: 'MMPPT', guaio: 'D', elimina: true, nota: 'quattro diversi tra sei' },
     { angolo: 'MM', guaio: 'M', elimina: false, nota: 'tre uguali non bastano' },
     { angolo: 'MMM', guaio: 'P', elimina: false, nota: 'tre uguali e uno diverso' },
     { angolo: 'MP', guaio: 'D', elimina: false, nota: 'tre diversi non eliminano' },
-    { angolo: 'MPT', guaio: 'D', elimina: false, nota: 'tre diversi con la Tosatura non eliminano' },
-    { angolo: 'MMPT', guaio: 'D', elimina: false, nota: 'la Tosatura copre un solo mancante' },
+    { angolo: 'MMPPD', guaio: 'D', elimina: false, nota: 'due per tipo non basta: solo tre tipi (D46)' },
+    { angolo: 'MMP', guaio: 'T', elimina: false, nota: 'la Tosatura completa una sola combinazione' },
   ];
   for (const c of casi) {
     it(`${leggibile(c.angolo + c.guaio)} ${c.elimina ? 'elimina e l\'altro vince per Ultima pecora' : 'non elimina'} (${c.nota})`, () => {

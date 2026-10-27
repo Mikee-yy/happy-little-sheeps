@@ -4,7 +4,7 @@ import { contestoFinto } from './aiuti-prova';
 import type { Contesto } from './contesto';
 import { creaLettura } from './lettura';
 import { defCarta, type IdCarta } from '../../../engine/src';
-import { creaMano, posizioneMano, trasf, type Mano } from './mano';
+import { creaMano, posizioneMano, trasf, UNA_VOLTA_MAX_MS, type Mano } from './mano';
 
 let ctx: Contesto;
 let mano: Mano;
@@ -606,5 +606,89 @@ describe('Mano comandata', () => {
     trascina(carta(B), 600);
     expect(avvisi).toEqual(['avviso']);
     expect(c.trascinate).toEqual([B]);
+  });
+});
+
+describe('Mano: la carta pescata si muove una volta', () => {
+  const carta = (id: string) => ctx.el.mano.querySelector<HTMLElement>(`.cm[aria-label="${defCarta(id as IdCarta).nome}"]`)!;
+  const animata = (id: string) => !!carta(id).querySelector('svg.anima');
+
+  it('la carta che entra in un ventaglio già scoperto fa il suo movimento una volta, poi torna ferma', () => {
+    mano.mostra(['sasso-comodo#1'], 0);
+    mano.mostra(['sasso-comodo#1', 'capriola#1'], 0);
+    expect(carta('capriola#1').classList.contains('una-volta')).toBe(true);
+    expect(animata('capriola#1')).toBe(true);
+    // Solo la carta nuova si muove
+    expect(carta('sasso-comodo#1').classList.contains('una-volta')).toBe(false);
+    expect(animata('sasso-comodo#1')).toBe(false);
+    vi.advanceTimersByTime(UNA_VOLTA_MAX_MS);
+    expect(carta('capriola#1').classList.contains('una-volta')).toBe(false);
+    expect(animata('capriola#1')).toBe(false);
+  });
+
+  it('finisce prima se il browser dice che nessuna parte gira più', () => {
+    mano.mostra([], 0);
+    mano.mostra(['capriola#1'], 0);
+    const el = carta('capriola#1');
+    const finte: Array<{ playState: string; effect: { target: Element } }> = [];
+    const parte = el.querySelector('.an')!;
+    finte.push({ playState: 'running', effect: { target: parte } });
+    Object.assign(el, { getAnimations: () => finte });
+    el.dispatchEvent(new Event('animationend', { bubbles: true }));
+    expect(el.classList.contains('una-volta')).toBe(true);
+    finte[0]!.playState = 'finished';
+    el.dispatchEvent(new Event('animationend', { bubbles: true }));
+    expect(el.classList.contains('una-volta')).toBe(false);
+    expect(animata('capriola#1')).toBe(false);
+  });
+
+  it('la prima mano mostrata e la mano appena scoperta restano ferme', () => {
+    mano.mostra(['sasso-comodo#1', 'capriola#1'], 0);
+    expect(ctx.el.mano.querySelector('.una-volta, svg.anima')).toBeNull();
+    mano.mostra(null, 2);
+    mano.mostra(['carriola#1', 'capriola#1'], 0);
+    expect(ctx.el.mano.querySelector('.una-volta, svg.anima')).toBeNull();
+  });
+
+  it('con `ferme` (ricostruzione) e con il movimento ridotto la carta pescata resta ferma', () => {
+    mano.mostra(['sasso-comodo#1'], 0);
+    mano.mostra(['sasso-comodo#1', 'capriola#1'], 0, { ferme: true });
+    expect(ctx.el.mano.querySelector('.una-volta, svg.anima')).toBeNull();
+    ctx.ridotto = true;
+    mano.mostra(['sasso-comodo#1', 'capriola#1', 'carriola#1'], 0);
+    expect(ctx.el.mano.querySelector('.una-volta, svg.anima')).toBeNull();
+  });
+
+  it('con la scheda nascosta la carta pescata resta ferma', () => {
+    mano.mostra(['sasso-comodo#1'], 0);
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    try {
+      mano.mostra(['sasso-comodo#1', 'capriola#1'], 0);
+    } finally {
+      delete (document as { visibilityState?: unknown }).visibilityState;
+    }
+    expect(ctx.el.mano.querySelector('.una-volta, svg.anima')).toBeNull();
+  });
+
+  it('sollevata durante il movimento si muove senza fine; abbassata dopo la fine torna ferma', () => {
+    mano.mostra(['sasso-comodo#1'], 0);
+    mano.mostra(['sasso-comodo#1', 'capriola#1'], 0);
+    const el = carta('capriola#1');
+    evento('pointerdown', el, 100, 700);
+    evento('pointerup', el, 100, 700);
+    expect(mano.attiva()).toBe('capriola#1');
+    expect(el.classList.contains('una-volta')).toBe(false);
+    expect(animata('capriola#1')).toBe(true);
+    vi.advanceTimersByTime(UNA_VOLTA_MAX_MS);
+    expect(animata('capriola#1')).toBe(true);
+    mano.abbassa();
+    expect(animata('capriola#1')).toBe(false);
+  });
+
+  it('una carta che lascia la mano durante il movimento non lascia timer', () => {
+    mano.mostra(['sasso-comodo#1'], 0);
+    mano.mostra(['sasso-comodo#1', 'capriola#1'], 0);
+    mano.mostra(['sasso-comodo#1'], 0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

@@ -16,6 +16,7 @@ export const TESTI_SVILUPPO = {
   furto: 'Gli rubano 2 agnellini',
   lupo: 'Prende il Lupo',
   meteo: 'Guai meteo',
+  fionda: 'Testata a fionda',
   beeeNo: 'Gioca Beee-NO!',
   pascolo: 'Pascolo da 5',
   partita: 'Partita',
@@ -25,7 +26,7 @@ export const TESTI_SVILUPPO = {
   prossima: 'Prossima mossa',
   finita: 'Partita finita',
   recinti: 'Recinti',
-  varianti: { base: 'base', A: 'A', B: 'B' } as Record<string, string>,
+  varianti: { base: 'base (recinti più profondi)', B: 'B' } as Record<string, string>,
 };
 
 /** I Guai meteo del pannello (bozza, riga 2641). */

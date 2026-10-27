@@ -1,5 +1,5 @@
 // Navigazione tra le schermate: partita su un dispositivo (sessione locale) o a più dispositivi (stanze).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { SessioneHost } from '../../sync/host';
 import { archivioBrowser, SessioneLocale } from '../../sync/locale';
 import type { GiocatoreLocale } from '../../sync/locale';
@@ -21,8 +21,11 @@ import {
   segnaInStanza,
 } from './remoto/connessione';
 import { ospita, precaricaStanza } from './remoto/durataStanza';
-import { ModuloStanza, Stanza, VistaTavolo } from './remoto/Stanza';
-import { Home, Preparazione, Regole, scelteIniziali } from './schermate';
+import { ModuloStanza, RegoleInStanza, Stanza, useSchermoAcceso, VistaTavolo } from './remoto/Stanza';
+import { Regole } from './regole/Regole';
+import { ricordaPunto, tornaAlPunto } from './regole/ritorno';
+import type { PuntoDiRitorno } from './regole/ritorno';
+import { Home, Preparazione, scelteIniziali } from './schermate';
 import type { SceltePreparazione } from './schermate';
 import { T } from './testi';
 
@@ -67,6 +70,10 @@ export function App() {
           : 'home',
   );
   const [dopoRegole, setDopoRegole] = useState<Schermata>('home');
+  /** I nomi degli esempi delle Regole: quelli della partita da cui si sono aperte, o null (nomi di esempio). */
+  const [nomiRegole, setNomiRegole] = useState<readonly string[] | null>(null);
+  /** Da dove si sono aperte le Regole (scorrimento e punto della tastiera), e se al ritorno va rimesso. */
+  const [punto, setPunto] = useState<{ punto: PuntoDiRitorno; daRimettere: boolean } | null>(null);
   /** Partita di prova in corso: resta montata (nascosta) mentre si leggono le Regole; il numero la fa ripartire da capo. */
   const [prova, setProva] = useState<number | null>(null);
   const [scelte, setScelte] = useState<SceltePreparazione>(scelteIniziali);
@@ -130,10 +137,21 @@ export function App() {
     setSessione(SessioneLocale.nuova(g, nuovoSeme(), archivio));
     setSchermata('partita');
   };
-  const regole = (da: Schermata) => {
+  // Nella stanza lo schermo resta acceso, anche leggendo le Regole (la partita va avanti): un solo blocco per tutte e due
+  useSchermoAcceso(stanza !== null && (schermata === 'stanza' || (schermata === 'regole' && dopoRegole === 'stanza')));
+
+  const regole = (da: Schermata, nomi: readonly string[] | null = null) => {
     setDopoRegole(da);
+    setNomiRegole(nomi);
+    setPunto({ punto: ricordaPunto(), daRimettere: false });
     setSchermata('regole');
   };
+  // Tornati dalle Regole, la schermata di prima è di nuovo disegnata: scorrimento e punto della tastiera di prima
+  useLayoutEffect(() => {
+    if (!punto?.daRimettere || schermata === 'regole') return;
+    tornaAlPunto(punto.punto);
+    setPunto(null);
+  }, [punto, schermata]);
   const esciDallaStanza = () => {
     stanza?.sessione.chiudi();
     setStanza(null);
@@ -151,7 +169,7 @@ export function App() {
           setSchermata('home');
         }}
         onRigioca={() => (giocatori.length ? inizia(giocatori) : setSchermata('preparazione'))}
-        onRegole={() => regole('partita')}
+        onRegole={(nomi) => regole('partita', nomi)}
       />
     );
   } else if (schermata === 'preparazione') {
@@ -179,7 +197,17 @@ export function App() {
             : dopoRegole === 'preparazione'
               ? 'preparazione'
               : 'home';
-    contenuto = <Regole onIndietro={() => setSchermata(ritorno)} />;
+    const indietro = () => {
+      setSchermata(ritorno);
+      setPunto((x) => x && { ...x, daRimettere: true });
+    };
+    // Dalla stanza la partita va avanti: riga e richiamo li legge la sessione della stanza
+    contenuto =
+      ritorno === 'stanza' && stanza ? (
+        <RegoleInStanza sessione={stanza.sessione} nomi={nomiRegole} onIndietro={indietro} />
+      ) : (
+        <Regole nomi={nomiRegole} onIndietro={indietro} />
+      );
   } else if (schermata === 'crea' || schermata === 'entra') {
     contenuto = (
       <ModuloStanza
@@ -199,7 +227,7 @@ export function App() {
       />
     );
   } else if (schermata === 'stanza' && stanza) {
-    contenuto = <Stanza sessione={stanza.sessione} iscrizione={stanza.iscrizione} onEsci={esciDallaStanza} onRegole={() => regole('stanza')} />;
+    contenuto = <Stanza sessione={stanza.sessione} iscrizione={stanza.iscrizione} onEsci={esciDallaStanza} onRegole={(nomi) => regole('stanza', nomi)} />;
   } else if (schermata === 'tavolo' && tavolo) {
     contenuto = (
       <VistaTavolo
@@ -275,7 +303,7 @@ export function App() {
               setProva(null);
               setSchermata('home');
             }}
-            onRegole={() => regole('prova')}
+            onRegole={(nomi) => regole('prova', nomi)}
           />
         </div>
       )}

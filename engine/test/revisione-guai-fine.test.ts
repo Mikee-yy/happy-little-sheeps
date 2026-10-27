@@ -554,7 +554,7 @@ describe('Eliminazione: destino dell\'eliminato e Ultima pecora (brief 3 "Elimin
         guaio: TOSATURA,
         eliminati: ['g3', 'g4'],
         agnellini: { g3: 0, g4: 0 },
-        angoli: { g2: ['insonnia', 'lupo-vegetariano'] },
+        angoli: { g2: ['insonnia', 'crisi-esistenziale'] },
         mani: mani(giocate),
       },
       scelte(giocate),

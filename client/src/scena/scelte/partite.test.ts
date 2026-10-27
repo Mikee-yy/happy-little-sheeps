@@ -98,11 +98,11 @@ function giocaPartita(giocatori: number, seme: number): Giocata {
     expect(d, `domanda assente per lo schermo ${JSON.stringify(m.schermo)}`).not.toBeNull();
     if (!d) break;
     gesti++;
-    if (d.testata) {
-      // Il riquadro di mira manda un esito permesso da solo.
-      const esiti = m.azioni.filter((a) => a.tipo === 'esitoTestata');
-      expect(esiti.length).toBeGreaterThan(0);
-      applicaPermessa(m, scegli(esiti));
+    if (d.fionda) {
+      // La fionda manda un esito a caso, dalla stessa strada dei telefoni (avanza).
+      const r = avanza(m, scelta!, { tipo: 'fionda', esito: Math.floor(caso() * (d.fionda.massimo + 1)) });
+      expect(r.esito?.tipo, 'la fionda deve dare una mossa').toBe('mossa');
+      if (r.esito?.tipo === 'mossa') applicaPermessa(m, r.esito.azione);
       continue;
     }
     const possibili = gestiDi(d);

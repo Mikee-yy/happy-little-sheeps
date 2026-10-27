@@ -3,6 +3,7 @@
 import type { Azione, IdGiocatore, Vista } from '../../../engine/src';
 import { nome, nomi } from '../partita/descrizioni';
 import type { PannelloPrivato } from '../partita/regia';
+import { chiaveDi, domandaDi, sceltaVuota } from '../scena/scelte/domanda';
 import type { Momento } from '../scena/scelte/tipi';
 import { T } from '../testi';
 
@@ -63,6 +64,18 @@ export function momentoRemoto(sc: ScenaRemota, io: IdGiocatore, vistaIo: Vista, 
     return { ...base, vista: tavolo, schermo: { tipo: 'pubblica', giocatore: io, pannello: p } };
   }
   return { ...base, vista: vistaIo, schermo: { tipo: 'privata', giocatore: io, pannello: p } };
+}
+
+/**
+ * Tocca a `io` fare una scelta: la partita aspetta proprio lui e sul suo telefono c'è la domanda di adesso, la stessa che
+ * la scena gli farebbe. Le finestre (reazioni come il Beee-NO!, Belati di punteggio) non contano: aspettano tutti ma si
+ * chiudono da sole col tempo. Serve al richiamo delle Regole aperte da una stanza.
+ */
+export function toccaAMe(io: IdGiocatore, vistaIo: Vista, tavolo: Vista, azioni: Azione[]): boolean {
+  const finestra = !!vistaIo.finestra || (vistaIo.fase.nome === 'belati_punteggio' && vistaIo.pila.length === 0);
+  if (finestra || !vistaIo.attesa.giocatori.includes(io)) return false;
+  const m = momentoRemoto(scenaRemota(vistaIo, io, azioni), io, vistaIo, tavolo, azioni);
+  return m !== null && domandaDi(m, sceltaVuota(chiaveDi(m))) !== null;
 }
 
 /** Testo della striscia quando si aspetta (gli stessi di prima): vuoto per gli schermi che non sono d'attesa. */

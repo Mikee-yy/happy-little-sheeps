@@ -50,6 +50,9 @@ describe('scena caricata a parte', () => {
   it('il grafo statico arriva davvero alla partita (la prova vede i file)', () => {
     expect(visti).toContain('partita/Partita.tsx');
     expect(visti).toContain('stile.css');
+    // …e alla schermata delle Regole: la guardia sulle carte disegnate qui sotto controlla davvero qualcosa
+    expect(visti).toContain('regole/Regole.tsx');
+    expect(visti).toContain('regole/caricaCarte.ts');
   });
 
   it('dalla pagina iniziale nessun import statico arriva al teatro, al componente della scena o al suo stile', () => {
@@ -61,5 +64,20 @@ describe('scena caricata a parte', () => {
   it('la scena arriva con un import dinamico', () => {
     const testo = readFileSync(resolve(RADICE, 'partita/caricaScena.ts'), 'utf8');
     expect(testo).toMatch(/import\('\.\.\/scena\/Scena'\)/);
+  });
+
+  it('dalla pagina iniziale nessun import statico arriva alle carte disegnate e alle loro animazioni', () => {
+    for (const f of ['scena/carte/carte.ts', 'scena/carte/illustrazioni.ts', 'scena/carte/animazioni.css', 'regole/carte.tsx']) {
+      expect(visti, f).not.toContain(f);
+    }
+  });
+
+  it('le carte delle Regole arrivano con un import dinamico, e il loro modulo porta con sé le animazioni', () => {
+    const caricatore = readFileSync(resolve(RADICE, 'regole/caricaCarte.ts'), 'utf8');
+    expect(caricatore).toMatch(/import\('\.\/carte'\)/);
+    expect(importStatici(resolve(RADICE, 'regole/caricaCarte.ts'))).not.toContain('./carte');
+    const carte = [...raggiungibili(resolve(RADICE, 'regole/carte.tsx'))].map((f) => relative(RADICE, f).replace(/\\/g, '/'));
+    expect(carte).toContain('scena/carte/carte.ts');
+    expect(carte).toContain('scena/carte/animazioni.css');
   });
 });

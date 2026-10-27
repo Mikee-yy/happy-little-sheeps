@@ -11,6 +11,7 @@
 // si raggiungono; accanto c'è il riassunto testuale della partita.
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import './scena.css';
+import './carte/animazioni.css';
 import type { Vista } from '../../../engine/src';
 import { riassuntoTestuale, type Fotografia } from './fotografia';
 import { piattaforma } from './piattaforma';

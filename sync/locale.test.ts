@@ -1,5 +1,6 @@
 // Sessione locale: salvataggio automatico, ripresa, viste filtrate, rifiuto delle azioni non valide.
 import { describe, expect, it } from 'vitest';
+import { configPer } from '../engine/src';
 import { archivioInMemoria, SessioneLocale } from './locale';
 
 const GIOCATORI = [
@@ -41,6 +42,19 @@ describe('SessioneLocale', () => {
     expect(v.giocatori.find((g) => g.id === 'b')?.mano).toBeNull();
     expect(s.azioni('a').every((x) => x.tipo === 'scegliTrovata')).toBe(true);
     expect(s.azioni('sistema')).toEqual([]);
+  });
+
+  it.each([
+    [2, [{ regola: 'uguali', quanti: 4 }, { regola: 'perTipo', quanti: 2 }]],
+    [3, [{ regola: 'uguali', quanti: 3 }, { regola: 'diversi', quanti: 3 }]],
+  ])('una partita a %i salvata con le regole di eliminazione di prima riprende con quelle di adesso', (n, vecchie) => {
+    const archivio = archivioInMemoria();
+    SessioneLocale.nuova(GIOCATORI.slice(0, n), 5, archivio);
+    const dati = JSON.parse(archivio.leggi()!);
+    dati.stato.config.regoleEliminazione = vecchie;
+    archivio.scrivi(JSON.stringify(dati));
+    const ripresa = SessioneLocale.riprendi(archivio);
+    expect(ripresa?.vista(null).config.regoleEliminazione).toEqual(configPer(n).regoleEliminazione);
   });
 
   it('un salvataggio illeggibile o di un\'altra versione non si riprende', () => {

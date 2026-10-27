@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { azioniPossibili, defCarta, inAttesaDi, nuovaPartita, PROVA, tentaApplica, tipoDi, vistaPer } from '../src';
 import type { Azione, IdGiocatore, Stato } from '../src';
 import { casuale } from '../src/rng';
-import { semplice } from '../sim/politiche';
+import { normale, semplice } from '../sim/politiche';
 
 const conPreparazione = (seme = 7) => nuovaPartita({ giocatori: PROVA.giocatori, seme, preparazione: PROVA.preparazione });
 const applica = (s: Stato, a: Azione): Stato => {
@@ -77,7 +77,8 @@ describe('partita di prova', () => {
       let a: Azione;
       if (id === 'g1') a = mossaUmano(s, azioni);
       else {
-        a = azioni.find((x) => x.tipo === 'esitoTestata') ?? semplice.scegli(s, id, azioni, r);
+        // Come sync/prova.ts: "semplice" nei tre round guidati, poi "normale" (D47)
+        a = azioni.find((x) => x.tipo === 'esitoTestata') ?? (s.round <= 3 ? semplice : normale).scegli(s, id, azioni, r);
         if (a.tipo === 'esitoTestata') a = { ...a, esito: Math.min(2, a.esito) };
         if (!tentaApplica(s, a).ok) a = azioni[0]!;
       }

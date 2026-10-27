@@ -45,6 +45,14 @@ export type SeguaceRecinto = (m: MappaRecinto) => boolean | void;
 export interface Camera {
   /** Si avvicina all'avversario `chi`; la promessa si risolve quando il recinto è allargato. */
   inquadra(chi: IdGiocatore): Promise<void>;
+  /**
+   * Ingrandisce sul posto il recinto dell'avversario `chi` (come `inquadra`, ma la camera non si muove e gli altri non
+   * spariscono): fino alle proporzioni del tuo, per `fattore` (la fionda lo vuole più grande). Con `attenua` gli altri
+   * avversari restano a quell'opacità finché il recinto è ingrandito. Con `null` lo riporta normale e toglie l'attenuazione.
+   * `risparmiato` non si attenua mai: è chi tira, che con "Passa il telefono" spesso non sta in basso.
+   * Un altro recinto già ingrandito così torna prima com'era. La promessa si risolve a movimento finito.
+   */
+  ingrandisciRecinto(chi: IdGiocatore | null, fattore?: number, attenua?: number, risparmiato?: IdGiocatore | null): Promise<void>;
   /** Torna all'inquadratura intera; la promessa si risolve quando il recinto è tornato com'era. */
   sgancia(): Promise<void>;
   inquadrato(): IdGiocatore | null;
@@ -95,6 +103,10 @@ export function creaCamera(palco: Palco): Camera {
   const TWEEN: Tween[] = [];
   let statoCamera: StatoCamera | null = null;
   let inquadrato: IdGiocatore | null = null;
+  /** L'avversario il cui recinto è ingrandito sul posto (senza camera vicina). */
+  let ingrandito: IdGiocatore | null = null;
+  /** Gli altri avversari attenuati attorno al recinto ingrandito: di chi è il recinto e a che opacità. */
+  let attenuati: { chi: IdGiocatore; opacita: number; risparmiato: IdGiocatore | null } | null = null;
 
   function animaCamera(da: StatoCamera, a: StatoCamera, durata: number, assesta: boolean): void {
     const passi = 30;
@@ -165,20 +177,20 @@ export function creaCamera(palco: Palco): Camera {
     }
   }
 
-  function recintoVicino(chi: IdGiocatore): FormaRecinto | null {
+  function recintoVicino(chi: IdGiocatore, fattore = 1): FormaRecinto | null {
     const g = palco.posto(chi), A = palco.area(chi), io = palco.inBasso();
     const gIo = io ? palco.posto(io) : undefined, aIo = io ? palco.area(io) : undefined;
     const R = A?.recinto0 as FormaRecinto | undefined, r = aIo?.recinto0 as FormaRecinto | undefined;
     if (!g || !gIo || !R || !r) return null;
-    const s = g.w / gIo.w;
+    const s = (g.w / gIo.w) * fattore;
     const larg = r.larg * s, prof = (r.yDavanti - r.yDietro) * s, pecoraASinistra = g.x < R.x;
     return { x: pecoraASinistra ? R.x : R.x + R.larg - larg, yDietro: R.yDavanti - prof, yDavanti: R.yDavanti, larg, k: s };
   }
 
-  function cambiaRecinto(chi: IdGiocatore, verso: 'vicino' | 'lontano', durata: number): Promise<void> {
+  function cambiaRecinto(chi: IdGiocatore, verso: 'vicino' | 'lontano', durata: number, fattore = 1): Promise<void> {
     const A = palco.area(chi);
     const R0 = A?.recinto0 as FormaRecinto | undefined;
-    const vicino = verso === 'vicino' ? recintoVicino(chi) : null;
+    const vicino = verso === 'vicino' ? recintoVicino(chi, fattore) : null;
     if (!A || !R0 || !A.area0 || (verso === 'vicino' && !vicino)) return Promise.resolve();
     const daR = forma((A.recinto as FormaRecinto | undefined) ?? R0);
     const daA: Riquadro = { x0: A.x0, y0: A.y0, x1: A.x1, y1: A.y1 };
@@ -243,21 +255,25 @@ export function creaCamera(palco: Palco): Camera {
     }
   }
 
-  // Messa a fuoco: le postazioni degli altri avversari spariscono mentre sei vicino a uno di loro
-  function sfuma(chi: IdGiocatore | null, attivo: boolean): void {
+  // Messa a fuoco: le postazioni degli altri avversari spariscono mentre sei vicino a uno di loro; con `opacita` restano
+  // a metà (attenuate, la mira della fionda), senza contare come nascoste. `risparmiato` (chi tira) resta pieno.
+  function sfuma(chi: IdGiocatore | null, attivo: boolean, opacita = 0, risparmiato: IdGiocatore | null = null): void {
     const io = palco.inBasso();
     for (const c of palco.giocatori()) {
       if (c === io) continue;
-      const via = attivo && c !== chi;
+      const via = attivo && c !== chi && c !== risparmiato;
       // Tutto ciò che appartiene a quel giocatore porta data-chi: pecora, targa, segnalini, recinto, cartello, sterrato,
       // ventaglio, carte del round e mini-carte dei Guai (bozza, riga 2204, più quelli aggiunti nel pezzo 1)
       const selettore = `[data-chi="${c}"]`;
       ctx.el.mondo.querySelectorAll<HTMLElement | SVGElement>(selettore).forEach((e) => {
-        e.style.opacity = via ? '0' : '';
+        e.style.opacity = via ? String(opacita) : '';
         e.style.pointerEvents = via ? 'none' : '';
       });
       const a = palco.area(c);
-      if (a) a.sfumata = via;
+      if (a) {
+        a.sfumata = via && opacita === 0;
+        a.attenuata = via && opacita > 0 ? opacita : undefined;
+      }
     }
   }
 
@@ -271,6 +287,10 @@ export function creaCamera(palco: Palco): Camera {
     const a: StatoCamera = { cx, cy, k: K, px: 195, py: 330 };
     // Già vicino a un altro: il suo recinto torna com'era (nella bozza il meteo nuovo sgancia sempre prima)
     if (inquadrato && inquadrato !== chi) void cambiaRecinto(inquadrato, 'lontano', 0.95);
+    // La camera prende in carico il recinto già ingrandito sul posto: da qui lo ripristina lei (sgancia)
+    if (ingrandito === chi) ingrandito = null;
+    // Gli altri spariscono del tutto (sfuma qui sotto): l'attenuazione non serve più
+    attenuati = null;
     animaCamera(da, a, 1150, true);
     const fatto = cambiaRecinto(chi, 'vicino', 1.15);
     sfuma(chi, true);
@@ -279,6 +299,31 @@ export function creaCamera(palco: Palco): Camera {
     statoCamera = a;
     inquadrato = chi;
     return fatto;
+  }
+
+  /** Toglie l'attenuazione degli altri avversari, se c'è (senza toccare chi è sparito per un'inquadratura). */
+  function togliAttenuati(): void {
+    if (!attenuati) return;
+    attenuati = null;
+    if (!inquadrato) sfuma(null, false);
+  }
+
+  function ingrandisciRecinto(chi: IdGiocatore | null, fattore = 1, attenua?: number, risparmiato: IdGiocatore | null = null): Promise<void> {
+    const io = palco.inBasso();
+    // Un recinto già inquadrato è ingrandito dalla camera, e quello di chi sta in basso non si ingrandisce mai
+    if (chi && (chi === io || chi === inquadrato || chi === ingrandito)) return Promise.resolve();
+    const prima = ingrandito;
+    ingrandito = null;
+    togliAttenuati();
+    const tornato = prima && palco.area(prima) ? cambiaRecinto(prima, 'lontano', 0.95) : Promise.resolve();
+    if (!chi) return tornato;
+    if (!palco.area(chi) || !recintoVicino(chi, fattore)) return tornato;
+    ingrandito = chi;
+    if (attenua !== undefined && !inquadrato) {
+      attenuati = { chi, opacita: attenua, risparmiato };
+      sfuma(chi, true, attenua, risparmiato);
+    }
+    return Promise.all([tornato, cambiaRecinto(chi, 'vicino', 1.15, fattore)]).then(() => undefined);
   }
 
   function sgancia(): Promise<void> {
@@ -300,6 +345,7 @@ export function creaCamera(palco: Palco): Camera {
 
   return {
     inquadra,
+    ingrandisciRecinto,
     sgancia,
     inquadrato: () => inquadrato,
     zoom,
@@ -335,6 +381,7 @@ export function creaCamera(palco: Palco): Camera {
     },
     riapplica() {
       if (inquadrato) sfuma(inquadrato, true);
+      else if (attenuati) sfuma(attenuati.chi, true, attenuati.opacita, attenuati.risparmiato);
     },
     seguiRecinto(chi, fn) {
       let elenco = seguaci.get(chi);
@@ -349,8 +396,10 @@ export function creaCamera(palco: Palco): Camera {
       camera.style.transform = '';
       const chi = inquadrato;
       inquadrato = null;
+      ingrandito = null;
       statoCamera = null;
-      if (chi) sfuma(chi, false);
+      if (chi || attenuati) sfuma(chi, false);
+      attenuati = null;
     },
   };
 }

@@ -5,6 +5,7 @@ import { applica, azioniPossibili } from '../../../../engine/src';
 import type { Azione, Stato } from '../../../../engine/src';
 import { chiudiPunteggio, conFaccia, nessunaReazione, prosegui, scegli, scenario } from '../../../../engine/test/aiuti';
 import type { OpzioniScenario } from '../../../../engine/test/aiuti';
+import { nome } from '../../partita/descrizioni';
 import { scenaProva } from '../../prova/regiaProva';
 import { T } from '../../testi';
 import { momentoDi as momentoComune } from './aiuti-momento';
@@ -99,7 +100,7 @@ describe('automatica', () => {
     expect(d.pecore).toEqual([]);
     expect(d.dado).toBe(false);
     expect(d.furto).toBeNull();
-    expect(d.testata).toBe(false);
+    expect(d.fionda).toBeNull();
     manoSpenta(d);
     expect(d.pulsanti).toEqual([{ id: 'continua', testo: T.azioni.continua, attivo: true }]);
     const r = tocca(m, sceltaVuota(d.chiave), { tipo: 'pulsante', id: 'continua' });
@@ -276,7 +277,7 @@ describe('pubblica: dado', () => {
     expect(d.dado).toBe(true);
     expect(d.pecore).toEqual([]);
     expect(d.centro).toBeNull();
-    expect(d.testata).toBe(false);
+    expect(d.fionda).toBeNull();
     expect(d.pulsanti).toEqual([]);
     manoSpenta(d);
     const r = tocca(m, sceltaVuota(d.chiave), { tipo: 'dado' });
@@ -329,7 +330,7 @@ describe('pubblica: dichiarazione del furto', () => {
     expect(d.scritta).toBe(T.scena.scelte.rubaAncora(2));
     expect(d.furto).toEqual({ presi: {} });
     expect(d.dado).toBe(false);
-    expect(d.testata).toBe(false);
+    expect(d.fionda).toBeNull();
     expect(d.centro).toBeNull();
     manoSpenta(d);
     expect(pulsante(d, 'conferma')).toEqual({ id: 'conferma', testo: T.azioni.conferma, attivo: false });
@@ -436,7 +437,7 @@ describe('pubblica: Testata', () => {
     expect(d.pecore.sort()).toEqual(['g2', 'g3']);
     expect(d.furto).toBeNull();
     expect(d.pulsanti).toEqual([]);
-    expect(d.testata).toBe(false);
+    expect(d.fionda).toBeNull();
     manoSpenta(d);
     const r = tocca(m, sceltaVuota(d.chiave), { tipo: 'pecora', chi: 'g3' });
     expect(r.esito?.tipo === 'mossa' && r.esito.azione).toBe(m.azioni.find((a) => a.tipo === 'dichiaraDado' && a.bersaglio === 'g3'));
@@ -460,29 +461,51 @@ describe('pubblica: Testata', () => {
     }
   });
 
-  it('il riquadro di mira: testata acceso, niente gesti nella scena', () => {
+  const allaMira = () => {
     let s = allaTestata();
-    s = nessunaReazione(applica(s, azioniPossibili(s, 'g1').find((a) => a.tipo === 'dichiaraDado')!));
-    const m = momentoDi(s);
+    s = nessunaReazione(applica(s, azioniPossibili(s, 'g1').find((a) => a.tipo === 'dichiaraDado' && a.bersaglio === 'g2')!));
+    return momentoDi(s);
+  };
+
+  it('la mira: fionda con chi tira, bersaglio e massimo, niente pecore né pulsanti', () => {
+    const m = allaMira();
     expect(m.schermo).toEqual({ tipo: 'pubblica', giocatore: 'g1', pannello: 'testata' });
     const d = domandaVera(m);
-    expect(d.scritta).toBe(T.testata.titolo);
-    expect(d.testata).toBe(true);
+    const massimo = Math.max(...m.azioni.flatMap((a) => (a.tipo === 'esitoTestata' ? [a.esito] : [])));
+    // Chi tira (il lanciatore): con "Passa il telefono" spesso non è chi sta in basso, e il Montone parte vicino alla sua pecora
+    expect(d.fionda).toEqual({ chi: 'g1', bersaglio: 'g2', massimo });
     expect(d.pecore).toEqual([]);
     expect(d.dado).toBe(false);
     expect(d.pulsanti).toEqual([]);
+    // Sul dispositivo condiviso nomina anche chi tira: il telefono può essere in mano a un altro
+    expect(d.scritta).toBe(T.testata.fionda.scritta(nome(m.vista, 'g2'), nome(m.vista, 'g1')));
     manoSpenta(d);
+  });
+
+  it("gesto fionda: la mossa esitoTestata con l'esito, limitato al massimo", () => {
+    const m = allaMira();
+    const d = domandaVera(m);
     const v = sceltaVuota(d.chiave);
-    for (const g of [
-      { tipo: 'pecora', chi: 'g2' },
-      { tipo: 'dado' },
-      { tipo: 'pulsante', id: 'conferma' },
-      { tipo: 'carta', carta: 'carriola#1' },
-    ] as Gesto[]) {
+    const r = tocca(m, v, { tipo: 'fionda', esito: d.fionda!.massimo + 1 });
+    expect(r.esito).toEqual({ tipo: 'mossa', azione: { tipo: 'esitoTestata', giocatore: 'g1', esito: d.fionda!.massimo } });
+    const zero = tocca(m, v, { tipo: 'fionda', esito: 0 });
+    expect(zero.esito).toEqual({ tipo: 'mossa', azione: { tipo: 'esitoTestata', giocatore: 'g1', esito: 0 } });
+  });
+
+  it('nella mira gli altri gesti non fanno niente', () => {
+    const m = allaMira();
+    const v = sceltaVuota(domandaVera(m).chiave);
+    for (const g of [{ tipo: 'pecora', chi: 'g2' }, { tipo: 'dado' }, { tipo: 'pulsante', id: 'conferma' }, { tipo: 'carta', carta: 'carriola#1' }] as Gesto[]) {
       const r = tocca(m, v, g);
       expect(r.esito).toBeNull();
       expect(r.scelta).toBe(v);
     }
+  });
+
+  it('fuori dalla mira il gesto fionda non fa niente', () => {
+    const m = momentoDi(allaTestata());
+    const r = tocca(m, sceltaVuota(chiaveDi(m)), { tipo: 'fionda', esito: 1 });
+    expect(r.esito).toBeNull();
   });
 });
 
