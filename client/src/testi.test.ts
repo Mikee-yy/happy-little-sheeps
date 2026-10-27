@@ -362,6 +362,8 @@ describe('giro finale: correzioni dei testi', () => {
     const due = regole(['Zoe', 'Ugo']);
     expect(testoDi(sezione('fine', due))).not.toContain('Belato Finale');
     expect(sezione('fine', due).blocchi.map((b) => b.forte)).not.toContain('Pari all\'ultimo posto?');
+    // In due anche la parità al primo posto non può capitare: è sempre "Tutti pari" (decisione dell'utente, 27 ottobre)
+    expect(sezione('fine', due).blocchi.map((b) => b.forte)).not.toContain('Pari al primo posto in un round?');
     expect(testoDi(sezione('fine', due))).toContain('in fondo al mazzo dei Guai');
     expect(sezione('esempi', due).blocchi[0]!.testo).toBe(
       'Zoe e Ugo fanno 7 e 4. Zoe lancia il dado. Ugo prende il Guaio, riceve 1 agnellino e può scartare una carta.',
@@ -369,6 +371,7 @@ describe('giro finale: correzioni dei testi', () => {
     // Fuori da una partita e a 3–4 giocatori resta tutto com'era
     for (const nomi of [null, ['Zoe', 'Ugo', 'Ivo']]) {
       expect(testoDi(sezione('fine', regole(nomi)))).toContain('Belato Finale');
+      expect(sezione('fine', regole(nomi)).blocchi.map((b) => b.forte)).toContain('Pari al primo posto in un round?');
       expect(sezione('esempi', regole(nomi)).blocchi[0]!.testo).toContain('fanno 7, 7 e 4.');
     }
   });

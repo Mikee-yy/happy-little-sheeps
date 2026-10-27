@@ -836,7 +836,10 @@ function sezioneBeeeNo(setup: typeof SETUP, a: string, b: string): BloccoRegole[
   ];
 }
 
-/** `inDue`: in due giocatori il Belato Finale non può capitare (D36: una parità al minimo è "Tutti pari"), quindi non lo si nomina. */
+/**
+ * `inDue`: in due giocatori una parità al primo o all'ultimo posto è sempre "Tutti pari" (D36): niente righe sulla parità al
+ * primo posto e sul Belato Finale.
+ */
 function sezioneFine(inDue: boolean): BloccoRegole[] {
   return [
     conApertura('Ovile pieno.', 'Chi riempie il proprio Ovile vince subito, anche se l\'ultimo agnellino è quello di consolazione.'),
@@ -845,13 +848,13 @@ function sezioneFine(inDue: boolean): BloccoRegole[] {
       'Mazzo finito.',
       `Si finisce il round e se ne gioca un altro, l'ultimo. Poi vince chi ha più agnellini e, a parità, chi ha meno Guai. ${VITTORIA_CONDIVISA}`,
     ),
-    conApertura(
-      'Pari al primo posto in un round?',
-      'Lanciano il dado tutti quelli pari, prima chi ha meno agnellini e, a parità anche lì, a caso.',
-    ),
     ...(inDue
       ? []
       : [
+          conApertura(
+            'Pari al primo posto in un round?',
+            'Lanciano il dado tutti quelli pari, prima chi ha meno agnellini e, a parità anche lì, a caso.',
+          ),
           conApertura(
             'Pari all\'ultimo posto?',
             'Si fa il Belato Finale. Chi è pari gioca coperta un\'altra Trovata e conta solo il valore stampato, senza tratti, effetti o Belati.',
