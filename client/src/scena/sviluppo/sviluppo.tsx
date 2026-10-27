@@ -1,13 +1,16 @@
-// Pagina di sviluppo della scena (client/scena.html, non pubblicata): il teatro da solo, a schermo intero, con una
+// Pagina di sviluppo della scena (client/scena.html in sviluppo; pubblicata come banco di prova a /banco/, indirizzo nascosto): il teatro da solo, a schermo intero, con una
 // partita vera del motore. In alto "Opzioni" (OpzioniScena) e "Prova eventi" (bozza scena.src.html, righe 2641–2708),
 // il selettore delle varianti dei recinti e il banco di prova (window.PROVE, vedi prove.ts).
 // Dalla console: SCENA è il banco della pagina (partita, teatro, cambiaGiocatori, impostaNomi…).
+// Le chiavi del localStorage hanno un prefisso (archivio.ts): le prove non toccano le preferenze del gioco vero.
+import './archivio-isolato';
 import { StrictMode, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import '../../../../design/design-tokens.css';
 import '../scena.css';
 import '../carte/animazioni.css';
+import './sviluppo.css';
 import { applica, nuovaPartita, SETUP, vistaPer } from '../../../../engine/src';
 import type { IdGiocatore, Stato } from '../../../../engine/src';
 import { Sprite } from '../../grafica';

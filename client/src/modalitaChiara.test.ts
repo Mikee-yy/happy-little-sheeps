@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 const leggi = (percorso: string) => readFileSync(resolve(process.cwd(), percorso), 'utf8');
 
 describe('Solo chiaro, qualunque sia la modalità del telefono', () => {
-  for (const pagina of ['client/index.html', 'client/prova.html', 'client/scena.html']) {
+  for (const pagina of ['client/index.html', 'client/prova.html', 'client/scena.html', 'client/banco/index.html']) {
     it(`${pagina} dichiara color-scheme "only light"`, () => {
       expect(leggi(pagina)).toMatch(/<meta\s+name="color-scheme"\s+content="only light"\s*\/?>/);
     });

@@ -1,0 +1,24 @@
+/* Pagina di sviluppo (banco di prova, anche sul telefono): ritocchi per usarla col dito.
+   Il pannello "Prova eventi" non esce più dallo schermo (scorre dentro di sé) e i pulsanti sono alti almeno 44 px. */
+.teatro .eventi {
+  width: 262px;
+  /* 844 = altezza della scena; 56 = sotto i pulsanti in alto; il resto è margine. Il pannello cresce di --kd: si divide. */
+  box-sizing: border-box;
+  max-height: calc((844px - 56px - 24px) / var(--kd, 1));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  gap: 8px;
+}
+.teatro .eventi .btn,
+.teatro .griglia-eventi .btn,
+.teatro .eventi .btn.chip { min-height: 44px; }
+.teatro .eventi .btn.chip { padding: 8px 12px 7px; }
+.teatro .eventi .chips { gap: 8px; }
+.teatro .eventi p { margin-top: 4px; }
+/* Pulsanti in alto e menu Opzioni a misura di dito */
+.teatro .hud .btn { min-height: 44px; }
+.teatro .opzioni .btn { min-height: 44px; }
+/* Un elemento messo a fuoco non deve far scorrere la scena di lato (lo schermo nasconde ciò che sporge) */
+.teatro .schermo { overflow: clip; }

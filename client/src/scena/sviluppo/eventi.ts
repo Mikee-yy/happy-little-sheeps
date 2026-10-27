@@ -8,7 +8,7 @@ import type { Teatro } from '../teatro';
 
 /** I testi del solo sviluppo (pagina e pannello). */
 export const TESTI_SVILUPPO = {
-  titolo: 'Scena: pagina di sviluppo',
+  titolo: 'Banco di prova',
   apriOpzioni: 'Opzioni',
   apriEventi: 'Prova eventi',
   aChi: 'A chi?',

@@ -59,6 +59,8 @@ Altri comandi: `npm run simula` (simulatore di partite) e `npm run esperimenti`.
 
 Il sito è statico, su GitHub Pages. A ogni push sul ramo `main` parte il workflow `.github/workflows/pubblica.yml`: controlla i tipi, esegue i test, compila e pubblica `client/dist`. Se un controllo fallisce il sito resta com'era. Si può rilanciare anche a mano dalla scheda Actions del repository.
 
+Con il gioco si pubblica anche il banco di prova della scena, a `/banco/` (la pagina di sviluppo di `client/scena.html`, da usare anche sul telefono): una build a parte in `client/dist/banco` (vedi `vite.config.ts`), che il gioco non nomina e che i motori di ricerca non indicizzano. Lavora solo sul dispositivo, senza stanze, e salva le sue preferenze con il prefisso `banco:`, senza toccare quelle del gioco. `client/prova.html` resta solo per lo sviluppo.
+
 ## Stanze: Firebase
 
 Le stanze usano Firebase Realtime Database con accesso anonimo, sul piano gratuito **Spark**. La guida passo per passo, interamente dal browser, è in `docs/firebase.md`. Le regole di accesso stanno in `database.rules.json` e vanno incollate nella console di Firebase (scheda Regole). Le chiavi web di Firebase sono pubbliche per natura: la protezione sono le regole.

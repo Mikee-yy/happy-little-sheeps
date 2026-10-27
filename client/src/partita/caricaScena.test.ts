@@ -61,6 +61,10 @@ describe('scena caricata a parte', () => {
     }
   });
 
+  it('dalla pagina iniziale nessun import statico arriva alla pagina di sviluppo (il banco di prova di /banco/)', () => {
+    expect(visti.filter((f) => f.startsWith('scena/sviluppo/'))).toEqual([]);
+  });
+
   it('la scena arriva con un import dinamico', () => {
     const testo = readFileSync(resolve(RADICE, 'partita/caricaScena.ts'), 'utf8');
     expect(testo).toMatch(/import\('\.\.\/scena\/Scena'\)/);
