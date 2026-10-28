@@ -6,6 +6,7 @@ import { TAVOLOZZA as P, GRIGIO_FUMO } from '../ambiente/paesaggio';
 import type { Contesto } from '../contesto';
 import type { PostoDisp } from '../disposizioni';
 import { W } from '../misure';
+import { piattaforma } from '../piattaforma';
 import { ambienteMuto, type AmbienteAgnelli } from './agnello';
 import { clamp } from './aree';
 
@@ -534,7 +535,7 @@ export function fumetto(ctx: Contesto, g: PostoDisp, chi: IdGiocatore, testo: st
   f.style.top = g.fumetto[1] - h - 8 + 'px';
   f.style.setProperty('--coda', `${cx - x}px`);
   f.style.transformOrigin = `${cx - x}px calc(100% + 9px)`;
-  f.style.scale = k.toFixed(3);
+  piattaforma.impostaScala(f, k.toFixed(3));
   insieme.add(f);
   const via = () => {
     insieme.delete(f);
@@ -559,7 +560,7 @@ export function aggiornaFumetti(ctx: Contesto, zoom: () => number): void {
   const insieme = FUMETTI.get(ctx);
   if (!insieme?.size) return;
   const s = (ctx.KD / (zoom() || 1)).toFixed(3);
-  for (const f of insieme) f.style.scale = s;
+  for (const f of insieme) piattaforma.impostaScala(f, s);
 }
 
 export function togliFumetti(ctx: Contesto): void {

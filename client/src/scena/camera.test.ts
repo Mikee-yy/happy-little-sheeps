@@ -182,6 +182,32 @@ describe('camera: ingrandisciRecinto', () => {
     expect(opacita('g4')).toEqual(new Set(['0.3']));
   });
 
+  it('un meteo ancora in corso sul recinto (seguace) lo segue mentre la mira lo ingrandisce e lo stringe: torna al suo posto', async () => {
+    const { t, camera, palco } = scena();
+    const centro = () => {
+      const a = palco.area('g2')!;
+      return { x: (a.x0 + a.x1) / 2, y: (a.y0 + a.y1) / 2 };
+    };
+    // Un punto messo sul recinto normale (la pozzanghera, la nuvoletta), con la sua scala
+    const prima = centro();
+    let p = { ...prima }, scala = 1;
+    camera.seguiRecinto('g2', (mp) => {
+      p = mp.punto(p.x, p.y);
+      scala *= mp.k;
+    });
+    void camera.ingrandisciRecinto('g2', 1.35);
+    await scorri(t, 1500);
+    // Sul recinto grande resta al centro, e cresce con lui
+    expect(Math.abs(p.x - centro().x)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(p.y - centro().y)).toBeLessThanOrEqual(0.5);
+    expect(scala).toBeGreaterThan(1);
+    void camera.ingrandisciRecinto(null);
+    await scorri(t, 1500);
+    expect(Math.abs(p.x - prima.x)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(p.y - prima.y)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(scala - 1)).toBeLessThanOrEqual(0.01);
+  });
+
   it('dopo inquadra e sgancia, ingrandisciRecinto torna a ingrandire lo stesso recinto', async () => {
     const { t, camera, larghezza } = scena();
     const l0 = larghezza('g2');

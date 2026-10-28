@@ -1786,6 +1786,35 @@ describe('testata: chi sta sotto il Montone si scansa e poi torna al suo posto',
     const solo = await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 7));
     expect(fineMs - inizio).toBe(solo);
   });
+
+  it('modo leggero: chi si scansa scivola di lato e torna con i tempi di sempre, ma senza saltelli', async () => {
+    const t = manuale();
+    const anim = animazioniTenute(t);
+    t.allinea(fotoIniziale(3), 'calmo');
+    t.ctx.risparmio.leggero = true;
+    senzaRecintoAccanto('g2');
+    const { arrivo, vicini } = pecoraEAgnellini(t);
+    const pecora = palco().pecora('g2')!;
+    let finito = false;
+    void t.ordini.testata('g1', 'g2', 0, 7).then(() => (finito = true));
+    await scarica();
+    const salti: number[] = [];
+    for (let i = 0; i < 80 && !finito; i++) {
+      await scorri(t, 100);
+      for (const a of vicini) if (a.regia) salti.push(a.hop);
+    }
+    expect(finito).toBe(true);
+    const animazioni = anim.di(pecora.el);
+    expect(animazioni.length).toBeGreaterThanOrEqual(2);
+    // Scivola e torna con una durata vera (non 1 ms come con il movimento ridotto), sempre a terra
+    for (const a of animazioni) {
+      expect(a.durata).toBeGreaterThan(1);
+      for (const k of a.f) expect(spostamento(String(k.transform)).dy).toBe(0);
+    }
+    expect(coperto(arrivo, largoIn(arrivo), ingombroDi(vicini[0]!))).toBe(true);
+    expect(salti.length).toBeGreaterThan(0);
+    expect(salti.every((h) => h === 0)).toBe(true);
+  });
 });
 
 describe('testata: il colpo lungo vola oltre e sparisce (dietro la collina, o nel cielo tirando al massimo), poi torna di corsa', () => {
@@ -1911,6 +1940,56 @@ describe('testata: il colpo lungo vola oltre e sparisce (dietro la collina, o ne
     expect(poseMontone().map((x) => x.posa)).toEqual(['volo', 'corre', 'scuote', 'corre']);
     controllaRitorno(viste, r, 'nel cielo');
     expect(radice.querySelectorAll('.montone, .ombra-montone, .luccichio-testata')).toHaveLength(0);
+    expect(errori).not.toHaveBeenCalled();
+  });
+
+  it('la corsa di rientro non passa sopra gli agnellini del Gregge: passa dietro chi tocca la sua strada; il Gregge resta libero', async () => {
+    const t = manuale();
+    animazioniSulOrologio(t);
+    t.allinea(fotoIniziale(3), 'calmo');
+    const palco = presa.palco as Palco;
+    const r = recinto('g2');
+    tiroLungo(t, { pieno: false });
+    const a = palco.area('gregge')!;
+    const Sy = yRitorno(r);
+    // Un agnellino del Gregge con i piedi appena dietro la strada della corsa (il Montone gli starebbe davanti, sopra di lui),
+    // un altro lontano dalla strada
+    const [sullaStrada, lontano] = a.agnelli as [Agnello, Agnello];
+    const fermo = (g: Agnello, x: number, y: number): void => {
+      g.x = g.tx = x;
+      g.y = g.ty = y;
+      g.stato = 'bruca';
+      g.t = 1e6;
+    };
+    const yStrada = Math.max(a.y0 + 2, Math.min(a.y1 - 2, Sy - 4));
+    expect(yStrada, 'il Gregge tocca la strada della corsa').toBeGreaterThan(Sy - 20);
+    fermo(sullaStrada, (a.x0 + a.x1) / 2, yStrada);
+    fermo(lontano, a.x0 + 4, a.y0 + 2);
+    let finito = false;
+    void t.ordini.testata('g1', 'g2', 0, 7).then(() => (finito = true));
+    let visto = false;
+    for (let i = 0; i < 80 && !finito; i++) {
+      await scorri(t, 50);
+      const corre = [...radice.querySelectorAll<HTMLElement>('.montone')].find((m) => !m.classList.contains('montone-dietro') && m.style.zIndex !== '' && Number(m.style.zIndex) < 600);
+      if (!corre) continue;
+      visto = true;
+      // Disegnato sotto l'agnellino sulla strada
+      expect(Number(corre.style.zIndex)).toBeLessThan(100 + Math.round(sullaStrada.y));
+      // Mentre corre, gli agnellini liberi non scelgono posti sulla sua strada
+      expect(a.coperta?.(a.x0 + 10, yStrada)).toBe(true);
+      expect(a.coperta?.(a.x0 + 4, a.y0 - 40)).toBeFalsy();
+    }
+    expect(visto, 'la corsa di rientro si è vista').toBe(true);
+    for (let i = 0; i < 80 && !finito; i++) await scorri(t, 100);
+    expect(finito).toBe(true);
+    expect(a.coperta).toBeUndefined();
+    // Interrotta mentre corre (ricostruzione del tavolo): il Gregge torna subito libero
+    tiroLungo(t, { pieno: true });
+    void t.ordini.testata('g1', 'g2', 0, 7);
+    for (let i = 0; i < 80 && !a.coperta; i++) await scorri(t, 50);
+    expect(a.coperta).toBeDefined();
+    (t.ordini as OrdiniDelTeatro).interrompi();
+    expect(a.coperta).toBeUndefined();
     expect(errori).not.toHaveBeenCalled();
   });
 

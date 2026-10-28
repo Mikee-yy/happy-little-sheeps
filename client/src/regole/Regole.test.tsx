@@ -52,8 +52,9 @@ describe('Regole: la fisarmonica', () => {
       expect(x.type).toBe('button');
       const p = pannelloDi(x);
       expect(p).not.toBeNull();
-      expect(p.getAttribute('role')).toBe('region');
-      expect(p.getAttribute('aria-labelledby')).toBe(x.id);
+      // Contenitori semplici, non otto "region" (con tutto aperto riempirebbero i punti di riferimento)
+      expect(p.getAttribute('role')).toBeNull();
+      expect(p.getAttribute('aria-labelledby')).toBeNull();
       expect(p.hidden).toBe(i !== 0);
       // Chiuso: nessuna figura montata, né carte né segnaposti né altri disegni
       if (i !== 0) {
@@ -140,8 +141,15 @@ describe('Regole: le figure', () => {
     mostra();
     // Lo scopo: agnellino, Montone e le quattro pecore
     const scopo = pannelloDi(titolo('Lo scopo'));
-    const attesi = regole(null)[0]!.blocchi.flatMap((b) => b.figure.map((f) => testoAlternativo(f.disegno)));
+    // (le pecore hanno il nome nella didascalia: lo dice lei, il disegno tace)
+    const figureScopo = regole(null)[0]!.blocchi.flatMap((b) => b.figure);
+    const attesi = figureScopo.filter((f) => !f.didascalia?.startsWith(testoAlternativo(f.disegno))).map((f) => testoAlternativo(f.disegno));
+    expect(attesi).toEqual([T.regole.alternativi.agnellino, T.regole.alternativi.montone]);
     expect([...scopo.querySelectorAll('[role="img"]')].map((e) => e.getAttribute('aria-label'))).toEqual(attesi);
+    const pecore = figureScopo.filter((f) => f.disegno.tipo === 'pecora');
+    expect(pecore).toHaveLength(4);
+    expect(scopo.querySelectorAll('figure.di-pecora .figura-disegno[aria-hidden="true"]')).toHaveLength(4);
+    expect([...scopo.querySelectorAll('figure.di-pecora figcaption')].map((e) => e.textContent)).toEqual(pecore.map((f) => f.didascalia));
     // Le didascalie stanno sotto la figura
     expect(scopo.querySelector('figure figcaption')?.textContent).toBe(regole(null)[0]!.blocchi[2]!.figure[0]!.didascalia);
     fireEvent.click(titolo('Il dado'));
@@ -149,6 +157,32 @@ describe('Regole: le figure', () => {
     expect(recinto.getAttribute('aria-hidden')).toBe('true');
     const contenitore = recinto.closest('[role="img"]')!;
     expect(contenitore.getAttribute('aria-label')).toBe(testoAlternativo({ tipo: 'recinto' }));
+  });
+
+  it('i lettori di schermo non sentono un nome due volte: testo alternativo e didascalia uguali, uno dei due è nascosto', async () => {
+    mostra({ nomi: ['Ada', 'Bea', 'Cleo'] });
+    for (const t of titoli()) if (t.getAttribute('aria-expanded') === 'false') fireEvent.click(t);
+    await attendi();
+    const nascosto = (e: Element) => !!e.closest('[aria-hidden="true"]');
+    const norma = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+    const figure = [...document.querySelectorAll('main.regole figure')];
+    expect(figure.length).toBeGreaterThan(20);
+    const doppi: string[] = [];
+    let conDidascalia = 0;
+    for (const f of figure) {
+      const didascalia = f.querySelector('figcaption');
+      if (!didascalia) continue;
+      conDidascalia++;
+      const detti = [
+        ...[...f.querySelectorAll('[role="img"]')].filter((e) => !nascosto(e)).map((e) => e.getAttribute('aria-label') ?? ''),
+        ...(nascosto(didascalia) ? [] : [didascalia.textContent ?? '']),
+      ].map(norma);
+      // Si sente sempre qualcosa
+      expect(detti.length, f.outerHTML.slice(0, 120)).toBeGreaterThan(0);
+      for (const [i, a] of detti.entries()) for (const [j, b] of detti.entries()) if (i !== j && b.includes(a)) doppi.push(`${a} | ${b}`);
+    }
+    expect(conDidascalia).toBeGreaterThan(0);
+    expect(doppi).toEqual([]);
   });
 
   it('le file con più di 2 figure si raggiungono con Tab e hanno un nome; con 1 o 2 figure niente fila', () => {
@@ -241,26 +275,36 @@ describe('Regole: animazioni fuori dallo schermo', () => {
     act(() => o.cb([{ target: el, isIntersecting: inVista } as unknown as IntersectionObserverEntry], {} as IntersectionObserver));
   };
 
-  it('un pannello aperto fuori dallo schermo prende "fuori-vista", e lo perde quando torna in vista', () => {
+  it('ogni carta fuori dallo schermo prende "fuori-vista" (le altre del pannello no), e lo perde quando torna in vista', async () => {
     mostra();
-    const p = pannelloDi(titolo('Lo scopo'));
-    expect(osservatori.some((o) => o.osservati.has(p))).toBe(true);
-    // I pannelli chiusi non si osservano
-    expect(osservatori.some((o) => o.osservati.has(pannelloDi(titolo('Le carte'))))).toBe(false);
-    vedi(p, false);
-    expect(p.classList.contains('fuori-vista')).toBe(true);
-    vedi(p, true);
-    expect(p.classList.contains('fuori-vista')).toBe(false);
-    // Chiuso, non si osserva più
-    fireEvent.click(titolo('Lo scopo'));
-    expect(osservatori.some((o) => o.osservati.has(p))).toBe(false);
-    expect(p.classList.contains('fuori-vista')).toBe(false);
+    const osservata = (e: Element) => osservatori.some((o) => o.osservati.has(e));
+    // Si osservano le carte, non i pannelli né gli altri disegni
+    expect(osservata(pannelloDi(titolo('Lo scopo')))).toBe(false);
+    expect([...pannelloDi(titolo('Lo scopo')).querySelectorAll('figure')].some(osservata)).toBe(false);
+    fireEvent.click(titolo('Le carte'));
+    await attendi();
+    const p = pannelloDi(titolo('Le carte'));
+    expect(osservata(p)).toBe(false);
+    const carte = [...p.querySelectorAll('figure.di-carta')];
+    expect(carte).toHaveLength(13);
+    expect(carte.every(osservata)).toBe(true);
+    const [prima, seconda] = carte as [Element, Element];
+    vedi(prima, false);
+    expect(prima.classList.contains('fuori-vista')).toBe(true);
+    expect(seconda.classList.contains('fuori-vista')).toBe(false);
+    vedi(prima, true);
+    expect(prima.classList.contains('fuori-vista')).toBe(false);
+    // Chiuso il pannello, non si osserva più niente
+    fireEvent.click(titolo('Le carte'));
+    expect(carte.some(osservata)).toBe(false);
   });
 
   it('in stile.css le animazioni delle carte fuori vista sono in pausa, e la vecchia legenda non c\'è più', () => {
     const css = readFileSync(resolve(process.cwd(), 'client/src/stile.css'), 'utf8');
     expect(css).toMatch(/\.regole \.fuori-vista \.anima \.an \{\s*animation-play-state: paused;\s*\}/);
     expect(css).not.toContain('.legenda');
+    // Tab non lascia il punto della tastiera sotto l'Indietro, nemmeno sopra la barra Home dell'iPhone
+    expect(css).toMatch(/html:has\(\.regole\) \{[^}]*scroll-padding-bottom: calc\([^;]*max\(var\(--spazio-3\), env\(safe-area-inset-bottom\)\)[^;]*\);/);
     // L'Indietro fisso in fondo e le parole lunghe che vanno a capo
     expect(css).toMatch(/\.regole-fondo \{[^}]*position: sticky;[^}]*bottom: 0;/);
     expect(css).toMatch(/\.regole \{[^}]*overflow-wrap: anywhere;/);
@@ -298,6 +342,25 @@ describe('Regole: Indietro e la stanza', () => {
     mostra({ inStanza: true });
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByRole('button', { name: T.regole.tornaAllaPartita })).toBeNull();
+  });
+
+  it("in sala d'attesa (riservaStanza) il posto della riga è già tenuto, vuoto e muto: quando la partita comincia il testo non si sposta", () => {
+    mostra({ riservaStanza: true });
+    const posto = document.querySelector('main.regole > .regole-stanza:first-child');
+    expect(posto).not.toBeNull();
+    expect(posto!.nextElementSibling?.tagName).toBe('H1');
+    expect(posto!.textContent).toBe('');
+    expect(posto!.getAttribute('aria-hidden')).toBe('true');
+    expect(posto!.classList.contains('regole-riserva')).toBe(true);
+    cleanup();
+    // Comincia la partita: la riga prende quel posto
+    mostra({ riservaStanza: true, inStanza: true });
+    expect(document.querySelector('main.regole > .regole-stanza:first-child')?.textContent).toBe(T.regole.stanzaVaAvanti);
+    expect(document.querySelectorAll('.regole-stanza')).toHaveLength(1);
+    cleanup();
+    // Fuori da una stanza, niente
+    mostra();
+    expect(document.querySelector('.regole-stanza')).toBeNull();
   });
 
   it('la riga e il richiamo possono dire altro (lo stato della stanza), allo stesso posto', () => {

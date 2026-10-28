@@ -647,6 +647,31 @@ describe('la mira della Testata', () => {
     expect(gesti).toHaveLength(3);
   });
 
+  it('stesso tentativo, mira tolta e rimessa prima del lancio: stessa partenza; un tentativo nuovo ne sceglie un\'altra', async () => {
+    const { t } = nuovo();
+    const { gesti, suGesto } = registra();
+    t.chiedi(fionda({ tentativo: 'a' }), suGesto);
+    await pronta(t);
+    const P = doveMontone();
+    // La scena recita prima del lancio: la domanda si toglie e torna con lo stesso tentativo
+    t.smettiDiChiedere();
+    t.chiedi(fionda({ tentativo: 'a' }), suGesto);
+    await pronta(t);
+    expect(doveMontone()).toEqual(P);
+    expect(zona()).not.toBeNull();
+    trascina(0, 150);
+    expect(gesti).toHaveLength(1);
+    expect(t.ctx.regia.tiroLocale!.partenza).toEqual(P);
+    // Una Testata nuova (tentativo diverso, dopo una domanda senza fionda) riparte da un punto nuovo
+    t.chiedi(domanda(), suGesto);
+    t.chiedi(fionda({ tentativo: 'b' }), suGesto);
+    await pronta(t);
+    t.smettiDiChiedere();
+    t.chiedi(fionda({ tentativo: 'c' }), suGesto);
+    await pronta(t);
+    expect(doveMontone()).not.toEqual(P);
+  });
+
   it('un tentativo nuovo prima del lancio non disfa la mira', async () => {
     const { t } = nuovo();
     const { gesti, suGesto } = registra();

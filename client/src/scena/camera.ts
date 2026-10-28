@@ -71,9 +71,10 @@ export interface Camera {
   /** Durante la messa a fuoco nasconde anche gli elementi degli altri avversari creati dopo (allineamento calmo). */
   riapplica(): void;
   /**
-   * Mentre il recinto di `chi` torna dalla forma ingrandita a quella normale, `fn` riceve ogni passo per spostare
-   * in proporzione ciò che il meteo ha disegnato sul recinto (cespuglio, pozze, ghiaccioli). Gli agnellini dell'area
-   * (anche quelli trattenuti dal meteo, con le loro mete) li sposta la camera.
+   * Mentre il recinto di `chi` cambia misura (torna dalla forma ingrandita a quella normale, o si ingrandisce, come con
+   * la mira della fionda su un meteo ancora in corso), `fn` riceve ogni passo per spostare in proporzione ciò che il meteo
+   * ha disegnato sul recinto (cespuglio, pozze, ghiaccioli). Gli agnellini dell'area (anche quelli trattenuti dal meteo,
+   * con le loro mete) li sposta la camera, solo quando il recinto si stringe.
    */
   seguiRecinto(chi: IdGiocatore, fn: SeguaceRecinto): void;
 }
@@ -208,8 +209,9 @@ export function creaCamera(palco: Palco): Camera {
         const prima: Riquadro = { x0: A.x0, y0: A.y0, x1: A.x1, y1: A.y1 };
         Object.assign(A, mescola(daA, aA, e));
         // Tornando alla forma normale, ciò che sta nel recinto si stringe con lui (allargandosi, invece, gli agnellini
-        // restano dove sono e poi usano lo spazio nuovo)
-        if (verso === 'lontano') seguiPasso(chi, A, prima, r.k / (kPrima || 1));
+        // restano dove sono e poi usano lo spazio nuovo). Il meteo ancora in corso (pozzanghera, nuvoletta: i seguaci) lo
+        // segue in tutte e due le direzioni: la mira ingrandisce anche un recinto su cui era stato messo a misura normale
+        seguiPasso(chi, A, prima, r.k / (kPrima || 1), verso === 'lontano');
         kPrima = r.k;
       },
       'recinto:' + chi,
@@ -218,12 +220,15 @@ export function creaCamera(palco: Palco): Camera {
 
   const seguaci = new Map<IdGiocatore, Set<SeguaceRecinto>>();
 
-  /** Un passo del recinto che si stringe: agnellini (posizione, meta, mossa della regia) e seguaci in proporzione. */
-  function seguiPasso(chi: IdGiocatore, A: Area, prima: Riquadro, k: number): void {
+  /**
+   * Un passo del recinto che cambia misura: i seguaci in proporzione e, se si stringe (`agnelli`), anche gli agnellini
+   * (posizione, meta, mossa della regia).
+   */
+  function seguiPasso(chi: IdGiocatore, A: Area, prima: Riquadro, k: number, agnelli: boolean): void {
     const sx = prima.x1 - prima.x0 ? (A.x1 - A.x0) / (prima.x1 - prima.x0) : 1;
     const sy = prima.y1 - prima.y0 ? (A.y1 - A.y0) / (prima.y1 - prima.y0) : 1;
     const punto = (x: number, y: number) => ({ x: A.x0 + (x - prima.x0) * sx, y: A.y0 + (y - prima.y0) * sy });
-    for (const g of A.agnelli) {
+    if (agnelli) for (const g of A.agnelli) {
       // Chi corre o vola verso un'altra area segue la sua strada
       if (g.inViaggio) continue;
       ({ x: g.x, y: g.y } = punto(g.x, g.y));

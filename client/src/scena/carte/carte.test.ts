@@ -131,8 +131,12 @@ describe('animazioni delle carte (carte/animazioni.css)', () => {
   it('le regole delle carte valgono per ogni ".anima", non solo nella scena (tranne la carta appena pescata)', () => {
     expect(animazioni).toMatch(/^\.anima \.an \{[^}]*transform-box: fill-box;[^}]*animation-iteration-count: infinite;/m);
     const nelTeatro = animazioni.match(/^\s*\.teatro[^{]*\{/gm) ?? [];
-    expect(nelTeatro.map((s) => s.trim())).toEqual(['.teatro .cm.una-volta .anima .an {']);
+    expect(nelTeatro.map((s) => s.trim())).toEqual(['.teatro .cm.una-volta .anima .an {', '.teatro .leggero .anima .an {']);
     expect(scena).not.toMatch(/\.anima/);
+  });
+
+  it('nel modo leggero della scena (telefoni lenti) ogni parte fa un giro solo e si ferma, come la carta appena pescata', () => {
+    expect(animazioni).toMatch(/^\.teatro \.leggero \.anima \.an \{ animation-iteration-count: 1; \}/m);
   });
 
   it('con "Riduci movimento" ogni parte di ogni carta animata sta ferma', () => {

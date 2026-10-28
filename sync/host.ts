@@ -655,13 +655,21 @@ export class SessioneHost implements Sessione {
     const azioni = azioniPossibili(s, id);
     if (azioni.length === 0) return;
     const testate = azioni.filter((a) => a.tipo === 'esitoTestata');
-    let azione: Azione;
+    let azione: Azione | null = null;
     if (testate.length > 0) {
       const massimo = Math.max(...testate.map((a) => (a.tipo === 'esitoTestata' ? a.esito : 0)));
       azione = { tipo: 'esitoTestata', giocatore: id, esito: esitoTestataCasuale(massimo, Math.random) };
     } else {
-      azione = normale.scegli(s, id, azioni, Math.random);
-      if (!tentaApplica(s, azione).ok) azione = azioni[Math.floor(Math.random() * azioni.length)]!;
+      try {
+        azione = normale.scegli(s, id, azioni, Math.random);
+      } catch (e) {
+        // La strategia si è rotta: si annota e si ripiega, così la stanza non resta ferma
+        console.error('mossaBot:', e);
+      }
+      if (!azione || !tentaApplica(s, azione).ok) {
+        // Ripiego: la prima delle azioni possibili che il motore accetta (di solito la prima)
+        azione = azioni.find((a) => tentaApplica(s, a).ok) ?? azioni[0]!;
+      }
     }
     this.applica(azione);
   }

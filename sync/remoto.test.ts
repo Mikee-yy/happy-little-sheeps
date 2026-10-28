@@ -692,6 +692,23 @@ describe('Durata delle animazioni (opzione durataRecita)', () => {
     scegli.mockRestore();
   });
 
+  it('se la strategia del bot si rompe, chi ospita lo annota e ripiega su una mossa possibile: la stanza non si ferma', async () => {
+    const scegli = vi.spyOn(normale, 'scegli').mockImplementation(() => {
+      throw new Error('strategia rotta');
+    });
+    const errori = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { tv, host } = await alDado({});
+    tv.ospiti[1]!.chiudi();
+    await scorri();
+    host.sostituisciConBot('g3');
+    host.invia({ tipo: 'lanciaDado', giocatore: 'g1' });
+    await scorri(TEMPI.bot + 100);
+    expect(host.vista(null).finestra?.inAttesa).not.toContain('g3');
+    expect(errori).toHaveBeenCalled();
+    scegli.mockRestore();
+    errori.mockRestore();
+  });
+
   it('senza opzione il bot muove dopo il suo ritardo di oggi', async () => {
     const { tv, host } = await alDado({});
     tv.ospiti[1]!.chiudi();

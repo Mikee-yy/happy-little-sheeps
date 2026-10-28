@@ -63,6 +63,9 @@
 
 /* La carta appena pescata (mano.ts, classe "una-volta" sulla carta della mano): ogni parte fa un giro solo, poi si ferma */
 .teatro .cm.una-volta .anima .an { animation-iteration-count: 1; }
+/* Modo leggero della scena (telefoni lenti, servizi/risparmio.ts: classe "leggero" sulla scena): le carte animate (in primo
+   piano, nella mano, nella lettura) fanno anche loro un giro solo, poi restano sul disegno fermo */
+.teatro .leggero .anima .an { animation-iteration-count: 1; }
 
 /* Scorta nel vello: la carta nascosta sbuca un poco dalla lana e rientra */
 .anima .an-sbuca { animation-name: an-sbuca; animation-duration: 3.2s; }

@@ -45,6 +45,33 @@ describe('CartaRegole', () => {
     expect(container.querySelector('.anima')).toBeNull();
   });
 
+  it('"Riduci movimento" cambiato con le Regole aperte: le carte si fermano e ripartono subito', () => {
+    let ridotto = false;
+    const ascoltatori = new Set<(e: { matches: boolean }) => void>();
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      get matches() {
+        return ridotto && q.includes('prefers-reduced-motion: reduce');
+      },
+      media: q,
+      addEventListener: (_: string, f: (e: { matches: boolean }) => void) => ascoltatori.add(f),
+      removeEventListener: (_: string, f: (e: { matches: boolean }) => void) => ascoltatori.delete(f),
+    }));
+    const { container, unmount } = render(<CartaRegole id="cannocchiale" />);
+    expect(container.querySelector('svg.anima')).not.toBeNull();
+    act(() => {
+      ridotto = true;
+      for (const f of [...ascoltatori]) f({ matches: true });
+    });
+    expect(container.querySelector('.anima')).toBeNull();
+    act(() => {
+      ridotto = false;
+      for (const f of [...ascoltatori]) f({ matches: false });
+    });
+    expect(container.querySelector('svg.anima')).not.toBeNull();
+    unmount();
+    expect(ascoltatori.size).toBe(0);
+  });
+
   it('un Guaio dice "Guaio Meteo", un Belato dice "Belato"', () => {
     render(
       <>

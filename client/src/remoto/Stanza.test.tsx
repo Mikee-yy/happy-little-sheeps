@@ -633,13 +633,25 @@ describe('Regole aperte dalla stanza', () => {
     expect(document.querySelector('.regole-stanza')?.textContent).toBe(T.regole.stanzaVaAvanti);
   });
 
-  it("in sala d'attesa: niente riga e niente richiamo", async () => {
+  it("in sala d'attesa: niente riga e niente richiamo, ma il posto della riga è già tenuto (vuoto e muto)", async () => {
     const tv = await tavolata();
     render(<RegoleInStanza sessione={tv.host} nomi={null} onIndietro={() => {}} />);
     await aspetta();
     expect(document.querySelector('.regole h1')?.textContent).toBe('Regole');
-    expect(document.querySelector('.regole-stanza')).toBeNull();
+    const posto = document.querySelector('main.regole > .regole-stanza:first-child');
+    expect(posto?.classList.contains('regole-riserva')).toBe(true);
+    expect(posto?.textContent).toBe('');
+    expect(posto?.getAttribute('aria-hidden')).toBe('true');
     expect(richiamo()).toBeNull();
+    // La partita comincia: la riga compare nello stesso posto, il titolo non si sposta
+    await act(async () => {
+      tv.host.inizia(1);
+    });
+    await aspetta(50);
+    const riga = document.querySelector('main.regole > .regole-stanza:first-child');
+    expect(riga?.classList.contains('regole-riserva')).toBe(false);
+    expect(riga?.textContent).toBe(T.regole.stanzaVaAvanti);
+    expect(document.querySelectorAll('.regole-stanza')).toHaveLength(1);
   });
 
   /** Il gioco vero: chi ospita (Ada) rientra con App dopo un ricaricamento, Bea è ospite; si arriva alla scelta segreta. */

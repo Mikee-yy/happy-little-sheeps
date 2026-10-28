@@ -227,6 +227,8 @@ const OMBRA_IN_ALTO = 0.35;
 const PECORA_MEZZA = 0.35;
 const PECORA_PIEDI = 0.78;
 const AGNELLO_MEZZO = 11;
+/** L'altezza del corpo dell'agnellino sopra i piedi (alla profondità 1; agnello.ts lo disegna 25,8 più in su). */
+const AGNELLO_ALTO = 26;
 
 /** La larghezza del Montone a terra alla profondità `profondita` (come nella mira: 150 × profondità × 1.1). */
 export function largoMontone(profondita: number): number {
@@ -582,10 +584,12 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
    * sobbalzo e le orecchie dritte, e alla fine si gira verso il Montone (`montone`: la sua x). Si gira solo il disegno
    * (`Pecora.gira`): girare la cornice specchierebbe anche l'ombra al sole e il vento. Una sola animazione che resta alla
    * fine (`fill: forwards`); il ritorno la sostituisce, e annullate tutte e due la pecora è subito al suo posto e nel suo
-   * verso. Con il movimento ridotto cambia posto senza passaggi in mezzo.
+   * verso. Con il movimento ridotto cambia posto senza passaggi in mezzo; nel modo leggero senza saltelli.
    */
   function scansaPecora(p: Pecora, dx: number, montone: number, w: number): Scansato {
     const r = ctx.ridotto;
+    // Nel modo leggero (telefoni lenti) scivola con i tempi di sempre, ma senza saltelli
+    const saltelli = r || ctx.risparmio.leggero ? 0 : 1;
     const x = p.g.x + p.g.w / 2 + dx;
     // −1: per guardare il Montone si gira (il suo verso è `p.verso`)
     const gira: 1 | -1 = Math.sign(montone - x) * p.verso < 0 ? -1 : 1;
@@ -598,9 +602,9 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
         ? [{ transform: tr(0, 0) }, { transform: tr(dx, 0) }]
         : [
             { transform: tr(0, 0), offset: 0 },
-            { transform: tr(0, -SALTI_PECORA.sobbalzo * w), offset: SOBBALZO_MS / 2 / tot },
+            { transform: tr(0, -SALTI_PECORA.sobbalzo * w * saltelli), offset: SOBBALZO_MS / 2 / tot },
             { transform: tr(0, 0), offset: SOBBALZO_MS / tot },
-            { transform: tr(dx / 2, -SALTI_PECORA.scivola * w), offset: (SOBBALZO_MS + SCIVOLA_MS / 2) / tot },
+            { transform: tr(dx / 2, -SALTI_PECORA.scivola * w * saltelli), offset: (SOBBALZO_MS + SCIVOLA_MS / 2) / tot },
             { transform: tr(dx, 0), offset: 1 },
           ],
       { duration: r ? 1 : tot, easing: 'linear', fill: 'forwards' },
@@ -625,7 +629,7 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
       torna() {
         if (ritorno || chiuso) return;
         // Guarda il Montone, cioè verso casa: due passetti, poi si rigira nel suo verso. Senza `fill`: finita, è al suo posto
-        const h = -SALTI_PECORA.ritorno * w;
+        const h = -SALTI_PECORA.ritorno * w * saltelli;
         p.gira(gira);
         const questo = animaTenuta(
           p.el,
@@ -665,6 +669,8 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
    */
   function scansaAgnello(g: Agnello, meta: number, montone: number): Scansato {
     const r = ctx.ridotto;
+    // Nel modo leggero (telefoni lenti) scivola e torna senza saltelli
+    const saltelli = r || ctx.risparmio.leggero ? 0 : 1;
     const casa = { x: g.x, y: g.y };
     const inizio = ctx.orologio.ms;
     let tornaDa: number | null = null;
@@ -681,19 +687,19 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
           g.verso = verso(montone - g.x);
         } else if (t < SOBBALZO_MS) {
           g.x = casa.x;
-          g.hop = Math.sin((t / SOBBALZO_MS) * Math.PI) * SALTI_AGNELLO.sobbalzo;
+          g.hop = Math.sin((t / SOBBALZO_MS) * Math.PI) * SALTI_AGNELLO.sobbalzo * saltelli;
           g.verso = verso(montone - g.x);
         } else {
           const q = (t - SOBBALZO_MS) / SCIVOLA_MS;
           g.x = casa.x + (meta - casa.x) * liscio(q);
-          g.hop = Math.sin(q * Math.PI) * SALTI_AGNELLO.scivola;
+          g.hop = Math.sin(q * Math.PI) * SALTI_AGNELLO.scivola * saltelli;
           g.verso = verso(meta - casa.x);
         }
         return false;
       }
       const q = r ? 1 : Math.min(1, (ora - tornaDa) / DURATA_USCITA_MONTONE_MS);
       g.x = meta + (casa.x - meta) * liscio(q);
-      g.hop = Math.abs(Math.sin(q * 2 * Math.PI)) * SALTI_AGNELLO.ritorno;
+      g.hop = Math.abs(Math.sin(q * 2 * Math.PI)) * SALTI_AGNELLO.ritorno * saltelli;
       g.verso = verso(casa.x - meta);
       if (q < 1) return false;
       g.x = casa.x;
@@ -930,7 +936,7 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
    * - Nel cielo (`cielo`: tirato al massimo, o un colpo su tre di scena): dritto lungo la linea sopra le colline, sempre più
    *   piccolo fino a un puntino, e sparisce con un luccichio.
    * Poi, dopo una pausa, torna di corsa arrabbiato: entra da un lato dello schermo sul prato davanti al recinto, si ferma e
-   * scuote la testa, ed esce dall'altra parte (senza passare sopra le pecore che gli stanno dietro: altrimenti dietro di
+   * scuote la testa, ed esce dall'altra parte (senza passare sopra le pecore e gli agnellini del Gregge che gli stanno dietro: altrimenti dietro di
    * loro). Tutto dura quanto le altre Testate (`durate.json`). Il recinto della mira torna normale quando il Montone è sparito.
    * Con il movimento ridotto niente volo: il Montone fermo davanti al recinto (è già tornato) per un attimo, e nel cielo anche
    * il luccichio fermo dove è sparito, come il Montone fermo nel punto d'arrivo degli altri tiri.
@@ -946,6 +952,7 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     };
     const via = (): void => {
       for (const e of elementi) e.remove();
+      liberaGregge();
       recintoNormale();
     };
     const aggiungi = <E extends Element>(e: E, prima: Element | null = null): E => {
@@ -977,7 +984,39 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     // Entra dal lato più vicino se lì non passa sopra una pecora che gli sta dietro, se no dall'altro; esce dall'altra parte
     const entra = latoCorsa(S, corpo, dietro.map((d) => d.r), vicino) ?? vicino;
     const strade = [strisciaCorsa(S, corpo, entra), strisciaCorsa(S, corpo, entra < 0 ? 1 : -1)];
-    const zCorsa = Math.min(zS, ...dietro.filter((d) => strade.some((s) => siToccano(s, d.r))).map((d) => d.z - 1));
+    const zPecore = Math.min(zS, ...dietro.filter((d) => strade.some((s) => siToccano(s, d.r))).map((d) => d.z - 1));
+    // Gli agnellini del Gregge (davanti al recinto, proprio sulla strada): il corpo di uno con i piedi in (x, y)
+    const corpoAgnello = (x: number, y: number): Rett => {
+      const k = palco.profondita(y), mezzo = AGNELLO_MEZZO * k;
+      return { x0: x - mezzo, y0: y - AGNELLO_ALTO * k, x1: x + mezzo, y1: y };
+    };
+    const sullaStrada = (x: number, y: number): boolean => strade.some((s) => siToccano(s, corpoAgnello(x, y)));
+    const gregge = palco.area('gregge');
+    let copertaCorsa: ((x: number, y: number) => boolean) | null = null;
+    const liberaGregge = (): void => {
+      scansati.delete(liberaGregge);
+      if (gregge && copertaCorsa && gregge.coperta === copertaCorsa) delete gregge.coperta;
+      copertaCorsa = null;
+    };
+    /**
+     * Quando rientra di corsa: passa dietro gli agnellini del Gregge che toccano la sua strada e gli starebbero dietro (come
+     * per le pecore), e finché corre gli agnellini liberi non scelgono posti lì (chi ci stava andando si ferma dov'è).
+     */
+    const zCorsa = (): number => {
+      if (!gregge) return zPecore;
+      liberaGregge();
+      copertaCorsa = sullaStrada;
+      gregge.coperta = copertaCorsa;
+      // Interrotta (ricostruzione del tavolo): il Gregge torna subito tutto libero
+      scansati.add(liberaGregge);
+      for (const g of gregge.agnelli) {
+        if (!g.vivo || g.regia || g.inViaggio || g.sollevato || !sullaStrada(g.tx, g.ty) || sullaStrada(g.x, g.y)) continue;
+        g.tx = g.x;
+        g.ty = g.y;
+      }
+      const sotto = gregge.agnelli.filter((g) => g.vivo && !g.inViaggio && 100 + Math.round(g.y) <= zS && sullaStrada(g.x, g.y));
+      return Math.min(zPecore, ...sotto.map((g) => 100 + Math.round(g.y) - 1));
+    };
     const corre = -entra;
     const daFuori = { x: entra < 0 ? -FUORI_SCHERMO : W + FUORI_SCHERMO, y: S.y };
     const aFuori = { x: entra < 0 ? W + FUORI_SCHERMO : -FUORI_SCHERMO, y: S.y };
@@ -985,7 +1024,7 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     if (ctx.ridotto) {
       recintoNormale();
       const r = aggiungi(nuovoMontone());
-      r.style.zIndex = String(zCorsa);
+      r.style.zIndex = String(zCorsa());
       mettiPosa(r, 'corre');
       if (F) aggiungi(luccichio(F));
       await anima(r, [{ transform: posa(S, kS, corre) }, { transform: posa(S, kS, corre) }], { duration: 1, fill: 'forwards' });
@@ -1094,7 +1133,7 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     await attendi(DURATA_TESTATA_MS - sparizione - DURATA_RITORNO_MS - DURATA_SCUOTE_MS - DURATA_USCITA_RITORNO_MS);
     if (!vivo()) return void via();
     const r = aggiungi(nuovoMontone());
-    r.style.zIndex = String(zCorsa);
+    r.style.zIndex = String(zCorsa());
     mettiPosa(r, 'corre');
     ctx.suona('beee', 0.5);
     await anima(r, [{ transform: posa(daFuori, kS, corre) }, { transform: posa(S, kS, corre) }], {

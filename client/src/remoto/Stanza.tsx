@@ -826,6 +826,7 @@ export function RegoleInStanza(p: { sessione: SessioneStanza; nomi: readonly str
     <Regole
       nomi={p.nomi}
       inStanza={inPartita}
+      riservaStanza
       rigaStanza={finita ? T.regole.stanzaFinita : inPausa ? T.regole.stanzaInPausa : T.regole.stanzaVaAvanti}
       richiamo={deveDecidere || sceltaMia}
       testoRichiamo={deveDecidere ? T.regole.richiamoScollegato : T.regole.richiamo}

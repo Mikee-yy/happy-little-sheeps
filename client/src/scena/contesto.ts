@@ -15,7 +15,7 @@ export interface Contesto {
   orologio: Orologio;
   /** Numero in [0, 1): di base `Math.random`, nelle prove un caso a seme fisso. */
   caso: () => number;
-  /** L'utente preferisce meno movimento (letto all'avvio). */
+  /** L'utente preferisce meno movimento (letto all'avvio, poi segue i cambi del sistema). */
   ridotto: boolean;
   /** Tempo della scena in secondi (bozza, riga 941). */
   T: number;
@@ -81,6 +81,9 @@ export function creaContesto(el: ElementiScena, o: { caso?: () => number } = {})
     vibra: () => undefined,
     pulizie: [],
   };
+  // "Riduci movimento" cambiato a partita in corso: le animazioni avviate da qui in poi (che leggono `ridotto` quando
+  // partono) lo rispettano; quelle già in corso finiscono come sono partite (il CSS invece si ferma o riparte subito)
+  ctx.pulizie.push(piattaforma.seguiMovimentoRidotto((r) => (ctx.ridotto = r)));
   ctx.regia = creaRegia({ orologio, meteoAttivo: () => ctx.meteoAttivo(), inViaggioValido: (g) => ctx.inViaggioValido(g) });
   Suono.caso = caso;
   const suoni = creaSuoni(ctx.regia);

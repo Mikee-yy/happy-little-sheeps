@@ -1,11 +1,13 @@
 // Schermate fuori dalla partita: Home e preparazione della partita locale (le Regole stanno in regole/Regole.tsx).
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { CATALOGO, SETUP } from '../../engine/src';
 import type { IdPecora } from '../../engine/src';
 import type { GiocatoreLocale } from '../../sync/locale';
 import type { Iscrizione } from '../../sync/stanza';
 import logo from '../../design/svg/logo-chiaro.svg';
+import { AvvisoNotte } from './AvvisoNotte';
 import { Avatar, IconaGuaio, Pecora } from './grafica';
+import { avvisoNotteDaMostrare } from './modalitaNotte';
 import { Pulsante } from './partita/componenti';
 import { T } from './testi';
 
@@ -24,6 +26,9 @@ export function Home(p: {
   onRegole: () => void;
 }) {
   const [spiega, setSpiega] = useState(false);
+  /** Samsung Internet in modalità notte: l'avviso si decide una volta, all'apertura della Home. */
+  const [notte, setNotte] = useState(avvisoNotteDaMostrare);
+  const pulsanti = useRef<HTMLDivElement>(null);
   return (
     <main className="home">
       <h1 className="logo">
@@ -34,7 +39,16 @@ export function Home(p: {
           <Pecora key={pc.id} pecora={pc.id} size={72} />
         ))}
       </div>
-      <div className="home-pulsanti">
+      {notte && (
+        <AvvisoNotte
+          onChiuso={() => {
+            setNotte(false);
+            // Il pulsante premuto sparisce: il fuoco va al primo pulsante della Home
+            pulsanti.current?.querySelector('button')?.focus();
+          }}
+        />
+      )}
+      <div className="home-pulsanti" ref={pulsanti}>
         {p.salvata && (
           <Pulsante largo onClick={p.onRiprendi}>
             {T.home.riprendi}

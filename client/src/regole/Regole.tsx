@@ -1,7 +1,7 @@
 // La schermata Regole: otto sezioni a fisarmonica (testi e figure da `regole(nomi)` di testi.ts). Ogni titolo è un
 // pulsante dentro un h2; il pannello c'è sempre (per `aria-controls`) ma da chiuso è nascosto e non monta le figure.
 // Le carte disegnate arrivano a parte (`useCarte`): finché non ci sono, al loro posto un segnaposto con lo stesso
-// testo alternativo. Le figure di un pannello aperto ma fuori dallo schermo hanno le animazioni in pausa.
+// testo alternativo. Ogni carta fuori dallo schermo ha le animazioni in pausa.
 // I nomi dei giocatori arrivano solo come testo React.
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Agnellino, Dado3D, FacciaDado, IconaGuaio, Montone, Pecora } from '../grafica';
@@ -21,6 +21,11 @@ export function Regole(p: {
   nomi: readonly string[] | null;
   /** Aperte da una stanza in corso: la partita va avanti, una riga lo dice. */
   inStanza?: boolean;
+  /**
+   * Aperte da una stanza, anche in sala d'attesa: il posto della riga è tenuto (vuoto e muto) fin da subito, così quando la
+   * partita comincia e la riga compare il testo che si sta leggendo non si sposta.
+   */
+  riservaStanza?: boolean;
   /** Nella stanza tocca a te fare una scelta: in cima compare il richiamo che riporta alla partita. */
   richiamo?: boolean;
   /** Il testo della riga della stanza, se non è "la partita va avanti" (pausa, partita finita). */
@@ -59,8 +64,10 @@ export function Regole(p: {
           <p>{p.testoRichiamo ?? T.regole.richiamo}</p>
           <Pulsante onClick={p.onIndietro}>{T.regole.tornaAllaPartita}</Pulsante>
         </div>
+      ) : p.inStanza ? (
+        <p className="regole-stanza">{p.rigaStanza ?? T.regole.stanzaVaAvanti}</p>
       ) : (
-        p.inStanza && <p className="regole-stanza">{p.rigaStanza ?? T.regole.stanzaVaAvanti}</p>
+        p.riservaStanza && <div className="regole-stanza regole-riserva" aria-hidden="true" />
       )}
       <h1 ref={titolo} tabIndex={-1}>
         {T.regole.titolo}
@@ -81,8 +88,6 @@ function Sezione(p: { sezione: SezioneRegole; numero: number; base: string; aper
   const { sezione: s } = p;
   const idTitolo = `${p.base}-${s.id}-titolo`;
   const idPannello = `${p.base}-${s.id}-pannello`;
-  const pannello = useRef<HTMLDivElement>(null);
-  const fuori = useFuoriVista(pannello, p.aperta);
   const blocchi = s.blocchi.map((b, i) => <Blocco key={i} blocco={b} carte={p.carte} />);
   return (
     <section className="regole-sezione">
@@ -101,14 +106,9 @@ function Sezione(p: { sezione: SezioneRegole; numero: number; base: string; aper
           <span>{s.titolo}</span>
         </button>
       </h2>
-      <div
-        ref={pannello}
-        id={idPannello}
-        role="region"
-        aria-labelledby={idTitolo}
-        hidden={!p.aperta}
-        className={fuori ? 'regole-pannello fuori-vista' : 'regole-pannello'}
-      >
+      {/* Un contenitore semplice, non una "region": con tutte le otto sezioni aperte l'elenco dei punti di riferimento
+          dei lettori di schermo si riempirebbe (guida APG della fisarmonica); il titolo è subito sopra */}
+      <div id={idPannello} hidden={!p.aperta} className="regole-pannello">
         {p.aperta &&
           // I passi del round hanno il loro numero
           (s.id === 'round' ? (
@@ -125,7 +125,7 @@ function Sezione(p: { sezione: SezioneRegole; numero: number; base: string; aper
   );
 }
 
-/** Vero quando il pannello aperto è fuori dallo schermo (senza IntersectionObserver resta sempre in vista). */
+/** Vero quando l'elemento (una carta animata) è fuori dallo schermo (senza IntersectionObserver resta sempre in vista). */
 function useFuoriVista(ref: RefObject<HTMLElement | null>, attivo: boolean): boolean {
   const [fuori, setFuori] = useState(false);
   useEffect(() => {
@@ -176,23 +176,50 @@ function Blocco({ blocco: b, carte }: { blocco: BloccoRegole; carte: ModuloCarte
   );
 }
 
+/** Un testo come lo sente un lettore di schermo, per confrontarne due (maiuscole e spazi non contano). */
+const comeDetto = (s: string): string => s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+/**
+ * Quale dei due nomi tacere ai lettori di schermo perché non si senta due volte: il disegno, se la didascalia comincia con
+ * il suo nome (la pecora: "Ricciolo" e "Ricciolo · +1 Meteo…"; la faccia del dado, uguale); la didascalia, se il nome del
+ * disegno la contiene già (l'icona "Guaio Meteo" con "Meteo"; una carta, che dice tutto). Le carte non si tacciono mai.
+ */
+function daTacere(d: DisegnoRegole, didascalia: string | undefined): 'disegno' | 'didascalia' | null {
+  if (!didascalia) return null;
+  const alt = comeDetto(testoAlternativo(d)), testo = comeDetto(didascalia);
+  if (d.tipo !== 'carta' && testo.startsWith(alt)) return 'disegno';
+  if (alt.includes(testo) || testo.startsWith(alt)) return 'didascalia';
+  return null;
+}
+
 function Figura({ figura: f, carte }: { figura: FiguraRegole; carte: ModuloCarte | null }) {
+  const tacere = daTacere(f.disegno, f.didascalia);
+  const ref = useRef<HTMLElement>(null);
+  // Solo le carte si animano: ognuna si ferma quando è fuori dallo schermo (anche oltre il bordo di una fila scorrevole)
+  const fuori = useFuoriVista(ref, f.disegno.tipo === 'carta');
   return (
-    <figure className={`figura-regole di-${f.disegno.tipo}`}>
-      {disegno(f.disegno, carte)}
-      {f.didascalia && <figcaption>{f.didascalia}</figcaption>}
+    <figure ref={ref} className={`figura-regole di-${f.disegno.tipo}${fuori ? ' fuori-vista' : ''}`}>
+      {disegno(f.disegno, carte, tacere === 'disegno')}
+      {f.didascalia && <figcaption aria-hidden={tacere === 'didascalia' ? true : undefined}>{f.didascalia}</figcaption>}
     </figure>
   );
 }
 
-function disegno(d: DisegnoRegole, carte: ModuloCarte | null): ReactNode {
+function disegno(d: DisegnoRegole, carte: ModuloCarte | null, taciuto = false): ReactNode {
   const alt = testoAlternativo(d);
   if (d.tipo === 'carta') {
     if (carte) return <carte.CartaRegole id={d.id} />;
     // Segnaposto delle stesse misure, con lo stesso testo alternativo, finché le carte non arrivano (o se non arrivano)
     return <span className="figura-segnaposto" role="img" aria-label={alt} />;
   }
-  // I disegni del pacchetto sono nascosti ai lettori di schermo: il testo alternativo sta sul contenitore
+  // I disegni del pacchetto sono nascosti ai lettori di schermo: il testo alternativo sta sul contenitore (o, se la
+  // didascalia lo ripete, il nome lo dice lei e il contenitore tace)
+  if (taciuto)
+    return (
+      <span className="figura-disegno" aria-hidden="true">
+        {simbolo(d)}
+      </span>
+    );
   return (
     <span className="figura-disegno" role="img" aria-label={alt}>
       {simbolo(d)}

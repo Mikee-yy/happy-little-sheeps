@@ -76,6 +76,39 @@ describe('piattaforma con le API del browser presenti', () => {
     expect(piattaforma.movimentoRidotto()).toBe(false);
   });
 
+  it('seguiMovimentoRidotto: chiama la funzione a ogni cambio della preferenza (anche con il vecchio addListener) e smette', () => {
+    let ridotto = false;
+    const ascoltatori = new Set<(e: { matches: boolean }) => void>();
+    const lista = {
+      get matches() {
+        return ridotto;
+      },
+      addEventListener: (_: string, f: (e: { matches: boolean }) => void) => ascoltatori.add(f),
+      removeEventListener: (_: string, f: (e: { matches: boolean }) => void) => ascoltatori.delete(f),
+    };
+    vi.stubGlobal('matchMedia', () => lista);
+    const visti: boolean[] = [];
+    const smetti = piattaforma.seguiMovimentoRidotto((r) => visti.push(r));
+    ridotto = true;
+    for (const f of ascoltatori) f({ matches: true });
+    expect(visti).toEqual([true]);
+    smetti();
+    expect(ascoltatori.size).toBe(0);
+    // Safari vecchio: solo addListener/removeListener
+    const vecchi = new Set<(e: { matches: boolean }) => void>();
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addListener: (f: (e: { matches: boolean }) => void) => vecchi.add(f), removeListener: (f: (e: { matches: boolean }) => void) => vecchi.delete(f) }));
+    const smettiVecchio = piattaforma.seguiMovimentoRidotto((r) => visti.push(r));
+    for (const f of vecchi) f({ matches: false });
+    expect(visti).toEqual([true, false]);
+    smettiVecchio();
+    expect(vecchi.size).toBe(0);
+    // Senza matchMedia, o se lancia: niente, e smettere non fa danni
+    vi.stubGlobal('matchMedia', () => {
+      throw new Error('no');
+    });
+    expect(() => piattaforma.seguiMovimentoRidotto(() => undefined)()).not.toThrow();
+  });
+
   it('vibra non fa danni se navigator.vibrate lancia', () => {
     vi.stubGlobal('navigator', {
       vibrate: () => {
@@ -184,5 +217,27 @@ describe('piattaforma con le API del browser presenti', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('impostaScala: la proprietà scale separata e il ripiego per i browser vecchi', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('con scale separata (o senza CSS.supports, come in jsdom) usa style.scale', () => {
+    const el = document.createElement('div');
+    piattaforma.impostaScala(el, '1.5');
+    expect(el.style.scale).toBe('1.5');
+    vi.stubGlobal('CSS', { supports: () => true });
+    piattaforma.impostaScala(el, '0.5 2');
+    expect(el.style.scale).toBe('0.5 2');
+  });
+
+  it('senza scale separata (Chrome < 104, Safari < 14.1) mette la scala nel transform', () => {
+    vi.stubGlobal('CSS', { supports: (p: string) => p !== 'scale' });
+    const el = document.createElement('div');
+    piattaforma.impostaScala(el, '1.5');
+    expect(el.style.transform).toBe('scale(1.5)');
+    piattaforma.impostaScala(el, '0.5 2');
+    expect(el.style.transform).toBe('scale(0.5, 2)');
   });
 });

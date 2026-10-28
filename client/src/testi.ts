@@ -19,6 +19,14 @@ export const T = {
     nuovaConfermata: 'C\'è una partita salvata: iniziarne una nuova la cancella.',
   },
 
+  /** Sulla Home, una volta sola: Samsung Internet in modalità notte scurisce il gioco e la pagina non può impedirlo. */
+  avvisoNotte: {
+    titolo: 'Il gioco ti sembra scuro?',
+    testo: 'Con la modalità notte Samsung Internet cambia i colori del gioco, che diventa difficile da vedere.',
+    come: 'Per rivederlo con i suoi colori tocca il menu e scegli «Siti chiari».',
+    chiudi: 'Ho capito',
+  },
+
   preparazione: {
     titolo: 'Nuova partita',
     quantiGiocatori: 'Quanti giocatori?',

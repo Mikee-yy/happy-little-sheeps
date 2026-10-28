@@ -585,3 +585,68 @@
   .teatro .mt-st3 { translate: 0 -7px; }
   .teatro .mt-s2 { visibility: hidden; }
 }
+
+/* Modo leggero (telefoni lenti, servizi/risparmio.ts: classe "leggero" sulla scena): del Montone si muove solo il corpo
+   (e da stordito le stelline e la spirale, che altrimenti starebbero una sopra l'altra); vello, scia, zampe, coda, orecchie,
+   testa, sbuffi e polvere restano nella posa ferma, come con il movimento ridotto (un solo sbuffo) */
+.teatro .leggero .mt *:not(.mt-tutto):not(.mt-stella):not(.mt-gira) { animation: none !important; }
+.teatro .leggero .mt-s2 { visibility: hidden; }
+
+/* Browser vecchi senza le proprietà `translate`, `rotate` e `scale` separate (prima di Chrome 104 e Safari 14.1: i WebView
+   Android vecchi): le stesse pose ferme con `transform`, nello stesso ordine (prima lo spostamento, poi la rotazione, poi la
+   scala). Mentre una parte si anima, l'animazione su `transform` prende il posto della posa ferma; da fermo la posa c'è. */
+@supports not (translate: 0) {
+  .teatro .mt g { transition: transform .18s ease-out; }
+  .teatro .ui .mano { transition: opacity .4s, transform .35s cubic-bezier(.3,1.15,.5,1), visibility 0s; }
+  .teatro .ui .consiglio { transition: opacity .4s, transform .35s cubic-bezier(.3,1.15,.5,1), visibility 0s; }
+  .teatro .ui.fionda-in-mira .mano { transform: translateY(320px) scale(var(--kd, 1)); transition: opacity .4s, transform .3s ease-in, visibility 0s .3s; }
+  .teatro .ui.fionda-in-mira .consiglio { transform: translate(-50%, 320px); transition: opacity .4s, transform .3s ease-in, visibility 0s .3s; }
+  .teatro .posa-carica .mt-testa { transform: rotate(calc(var(--carica, 0) * 16deg)); }
+  .teatro .posa-carica .mt-ciglio { transform: rotate(calc(var(--carica, 0) * 14deg)); }
+  .teatro .posa-carica .mt-occhio { transform: scale(1, calc(1 - var(--carica, 0) * .35)); }
+  .teatro .posa-carica .mt-zampe-dt .mt-zampa { transform: rotate(calc(var(--carica, 0) * 12deg)); }
+  .teatro .posa-volo .mt-tutto { transform: scale(1.06, .94); }
+  .teatro .posa-volo .mt-testa { transform: translate(3px, 0) rotate(10deg); }
+  .teatro .posa-volo .mt-ciglio { transform: rotate(8deg); }
+  .teatro .posa-volo .mt-orecchio { transform: rotate(16deg); }
+  .teatro .posa-volo .mt-dt-1 { transform: rotate(16deg); }
+  .teatro .posa-volo .mt-dt-2 { transform: rotate(36deg); }
+  .teatro .posa-volo .mt-av-1 { transform: rotate(68deg); }
+  .teatro .posa-volo .mt-av-2 { transform: rotate(88deg); }
+  .teatro .posa-volo .mt-coda { transform: rotate(10deg); }
+  .teatro .posa-botta .mt-tutto { transform: scale(.96, 1.04); }
+  .teatro .posa-botta .mt-testa { transform: translate(7px, 2px) rotate(14deg) scale(.8, 1.1); }
+  .teatro .posa-botta .mt-occhio { transform: scale(1, .2); }
+  .teatro .posa-botta .mt-ciglio { transform: rotate(18deg); }
+  .teatro .posa-botta .mt-orecchio { transform: rotate(22deg); }
+  .teatro .posa-botta .mt-zampe-av .mt-zampa { transform: rotate(-14deg); }
+  .teatro .posa-botta .mt-zampe-dt .mt-zampa { transform: rotate(10deg); }
+  .teatro .posa-botta .mt-coda { transform: rotate(30deg); }
+  .teatro .posa-stordito .mt-testa { transform: rotate(8deg); }
+  .teatro .posa-stordito .mt-ciglio { transform: rotate(-14deg); }
+  .teatro .posa-stordito .mt-orecchio { transform: rotate(-26deg); }
+  .teatro .posa-stordito .mt-coda { transform: rotate(-35deg); }
+  .teatro .posa-stordito .mt-dt-1 { transform: rotate(-16deg); }
+  .teatro .posa-stordito .mt-dt-2 { transform: rotate(-6deg); }
+  .teatro .posa-stordito .mt-av-1 { transform: rotate(10deg); }
+  .teatro .posa-stordito .mt-av-2 { transform: rotate(22deg); }
+  .teatro .posa-scuote .mt-occhio { transform: scale(1, .35); }
+  .teatro .posa-corre .mt-tutto { transform: rotate(4deg); }
+  .teatro .posa-corre .mt-testa { transform: rotate(14deg); }
+  .teatro .posa-corre .mt-ciglio { transform: rotate(18deg); }
+  .teatro .posa-corre .mt-occhio { transform: scale(1, .7); }
+  .teatro .posa-corre .mt-orecchio { transform: rotate(14deg); }
+  .teatro .posa-corre .mt-coda { transform: rotate(15deg); }
+  .teatro .ferma .mt-st1 { transform: translate(22px, 2px); }
+  .teatro .ferma .mt-st2 { transform: translate(-22px, 2px); }
+  .teatro .ferma .mt-st3 { transform: translate(0, -7px); }
+  @media (prefers-reduced-motion: reduce) {
+    .teatro .mt-st1 { transform: translate(22px, 2px); }
+    .teatro .mt-st2 { transform: translate(-22px, 2px); }
+    .teatro .mt-st3 { transform: translate(0, -7px); }
+    .teatro .ui .mano,
+    .teatro .ui .consiglio,
+    .teatro .ui.fionda-in-mira .mano,
+    .teatro .ui.fionda-in-mira .consiglio { transition: opacity .4s, transform 0s, visibility 0s; }
+  }
+}

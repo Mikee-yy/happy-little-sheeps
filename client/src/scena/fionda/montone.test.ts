@@ -218,6 +218,47 @@ describe('le pose in scena.css', () => {
     expect(media).toMatch(/\.teatro \.mt-s2 \{[^}]*visibility:\s*hidden/);
   });
 
+  it('nel modo leggero (telefoni lenti) si muove solo il corpo (e da stordito stelline e spirale): vello, scia, zampe, coda no', () => {
+    const r = regole(sezione).find((x) => x.selettori.some((s) => s.startsWith('.teatro .leggero .mt *')));
+    expect(r, 'regola del modo leggero').toBeDefined();
+    expect(r!.corpo).toMatch(/animation:\s*none !important/);
+    const sel = r!.selettori.find((s) => s.startsWith('.teatro .leggero .mt *'))!;
+    // Si fermano le parti, non il corpo né le stelline e la spirale dello stordito
+    const d = inPosa('volo');
+    const scena = document.createElement('div');
+    scena.className = 'teatro';
+    scena.innerHTML = `<div class="leggero">${d.innerHTML}</div>`;
+    for (const parte of ['.mt-ciuffo', '.mt-riccioli', '.mt-filo', '.mt-zampa', '.mt-coda', '.mt-orecchio']) {
+      const e = scena.querySelector(parte);
+      expect(e, parte).not.toBeNull();
+      expect(e!.matches(sel), parte).toBe(true);
+    }
+    for (const parte of ['.mt-tutto', '.mt-stella', '.mt-gira']) expect(scena.querySelector(parte)!.matches(sel), parte).toBe(false);
+    expect(sezione).toMatch(/\.teatro \.leggero \.mt-s2 \{[^}]*visibility:\s*hidden/);
+  });
+
+  it('nei browser senza le proprietà translate/rotate/scale separate le pose ferme usano transform', () => {
+    const blocco = sezione.slice(sezione.indexOf('@supports not (translate: 0)'));
+    expect(sezione).toContain('@supports not (translate: 0)');
+    // Ogni regola della sezione con translate/rotate/scale ha la sua gemella con transform nel blocco
+    const fuori = regole(sezione.slice(0, sezione.indexOf('@supports not (translate: 0)')).replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, ''));
+    const conProprieta = fuori.filter((x) => /(^|;)\s*(translate|rotate|scale)\s*:/.test(x.corpo));
+    expect(conProprieta.length).toBeGreaterThan(20);
+    const dentro = regole(blocco);
+    for (const x of conProprieta) {
+      for (const s of x.selettori) {
+        const gemella = dentro.find((y) => y.selettori.includes(s));
+        expect(gemella, s).toBeDefined();
+        expect(gemella!.corpo, s).toMatch(/transform:/);
+      }
+    }
+    // Anche la mano e il consiglio che scendono mentre si mira (con l'ingrandimento e la centratura che hanno già)
+    const tutto = css.replace(/\r\n/g, '\n');
+    const prima = tutto.slice(tutto.indexOf('@supports not (translate: 0)'));
+    expect(prima).toMatch(/\.fionda-in-mira \.mano \{[^}]*transform: translateY\(320px\) scale\(var\(--kd, 1\)\)/);
+    expect(prima).toMatch(/\.fionda-in-mira \.consiglio \{[^}]*transform: translate\(-50%, 320px\)/);
+  });
+
   it('con il movimento ridotto (preferenza del sistema o classe "ferma") le pose restano senza animazioni', () => {
     const media = sezione.slice(sezione.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(sezione).toContain('@media (prefers-reduced-motion: reduce)');

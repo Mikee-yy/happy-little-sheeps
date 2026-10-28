@@ -12,6 +12,7 @@ import type { OpzioniParticella, TipoParticella } from '../ambiente/particelle';
 import type { Camera, SeguaceRecinto } from '../camera';
 import type { Orologio } from '../orologio';
 import { H, W } from '../misure';
+import { piattaforma } from '../piattaforma';
 import type { Palco } from '../palco';
 import type { Agnello, ManigliaMeteo } from '../personaggi/agnello';
 import { clamp, type Area } from '../personaggi/aree';
@@ -413,7 +414,7 @@ export function creaMeteo(palco: Palco, camera: Camera, effetti: Readonly<Record
       el.style.left = `${q.x}px`;
       el.style.top = `${q.yDavanti - q.alto * 0.62 + 3.5 * q.k}px`;
       el.style.zIndex = String(100 + Math.round(q.yDavanti) + 3);
-      el.style.scale = `${(q.larg / r.larg).toFixed(4)} ${(q.k / r.k).toFixed(4)}`;
+      piattaforma.impostaScala(el, `${(q.larg / r.larg).toFixed(4)} ${(q.k / r.k).toFixed(4)}`);
     });
     return el;
   }
@@ -426,7 +427,7 @@ export function creaMeteo(palco: Palco, camera: Camera, effetti: Readonly<Record
       el.style.left = `${p.x}px`;
       el.style.top = `${p.y}px`;
       scala *= mp.k;
-      el.style.scale = scala.toFixed(4);
+      piattaforma.impostaScala(el, scala.toFixed(4));
       if (z) el.style.zIndex = String(z(p.y));
     });
   }

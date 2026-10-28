@@ -57,6 +57,19 @@ export const piattaforma = {
     }
   },
 
+  /**
+   * Scala dell'elemento con la proprietà `scale` separata; i browser che non la conoscono (Chrome < 104, Safari < 14.1)
+   * la ricevono nel `transform`. Senza `CSS.supports` (jsdom) si usa `scale`.
+   */
+  impostaScala(el: HTMLElement | SVGElement, valore: string): void {
+    const css = g().CSS as { supports?: (p: string, v: string) => boolean } | undefined;
+    if (typeof css?.supports !== 'function' || css.supports('scale', '1')) {
+      el.style.scale = valore;
+      return;
+    }
+    el.style.transform = `scale(${valore.trim().split(/\s+/).join(', ')})`;
+  },
+
   contesto2d(c: HTMLCanvasElement): CanvasRenderingContext2D | null {
     if (inJsdom()) return null;
     try {
@@ -87,6 +100,33 @@ export const piattaforma = {
     } catch {
       return false;
     }
+  },
+
+  /**
+   * Chiama `fn` a ogni cambio di "Riduci movimento" nel sistema (con il nuovo valore); dà la funzione per smettere.
+   * `addEventListener` sulla lista di matchMedia, o il vecchio `addListener` (Safari prima della 14); senza, niente.
+   */
+  seguiMovimentoRidotto(fn: (ridotto: boolean) => void): () => void {
+    const m = g().matchMedia as ((q: string) => MediaQueryList) | undefined;
+    if (typeof m !== 'function') return () => undefined;
+    try {
+      const lista = m('(prefers-reduced-motion: reduce)') as MediaQueryList & {
+        addListener?: (f: (e: { matches: boolean }) => void) => void;
+        removeListener?: (f: (e: { matches: boolean }) => void) => void;
+      };
+      const ascolta = (e: { matches: boolean }): void => fn(!!e.matches);
+      if (typeof lista?.addEventListener === 'function') {
+        lista.addEventListener('change', ascolta);
+        return () => lista.removeEventListener('change', ascolta);
+      }
+      if (typeof lista?.addListener === 'function') {
+        lista.addListener(ascolta);
+        return () => lista.removeListener?.(ascolta);
+      }
+    } catch {
+      /* ignorato */
+    }
+    return () => undefined;
   },
 
   puoVibrare(): boolean {

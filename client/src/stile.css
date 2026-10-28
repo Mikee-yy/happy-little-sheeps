@@ -992,6 +992,25 @@ button.carta {
   font-size: var(--testo-s);
   text-align: left;
 }
+/* Samsung Internet in modalità notte (una volta sola, sopra i pulsanti della Home) */
+.avviso-notte {
+  width: 100%;
+  display: grid;
+  gap: var(--spazio-2);
+  justify-items: start;
+  background: var(--colore-carta);
+  border: var(--tratto-ui-forte) solid var(--colore-inchiostro);
+  border-radius: var(--raggio-pannello);
+  padding: var(--spazio-3) var(--spazio-4);
+  text-align: left;
+}
+.avviso-notte h2 {
+  font-size: var(--testo-m);
+}
+.avviso-notte p {
+  margin: 0;
+  font-size: var(--testo-s);
+}
 /* Avviso in cima alla preparazione: porta giù fino al riassunto */
 .vai-regole {
   justify-self: start;
@@ -1019,7 +1038,8 @@ button.carta {
 }
 /* Con l'Indietro fisso in fondo, Tab non lascia il punto della tastiera coperto */
 html:has(.regole) {
-  scroll-padding-bottom: 96px;
+  /* Quanto è alto l'Indietro (pulsante, margine sopra e sotto, con la barra Home dell'iPhone), più l'ombra */
+  scroll-padding-bottom: calc(var(--pulsante-altezza) + var(--spazio-3) + max(var(--spazio-3), env(safe-area-inset-bottom)) + 8px);
   /* L'altezza del richiamo della stanza (una riga di testo, il pulsante, i margini e il tratto): la riga "va avanti" tiene
      lo stesso posto, così quando il richiamo arriva al suo posto il testo sotto non si sposta */
   --richiamo-altezza: calc(1.45rem + var(--spazio-2) + var(--pulsante-altezza) + 2 * var(--spazio-3) + 2 * var(--tratto-ui));
@@ -1042,6 +1062,10 @@ html:has(.regole-richiamo) {
   display: grid;
   align-content: center;
   background: var(--colore-carta);
+}
+/* In sala d'attesa il posto della riga è tenuto ma non si vede: quando la partita comincia la riga compare lì */
+.regole-riserva {
+  visibility: hidden;
 }
 /* Il richiamo della stanza: in cima al posto della riga, e resta in vista mentre si scorre */
 .regole-richiamo {

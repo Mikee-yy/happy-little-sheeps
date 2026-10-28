@@ -66,6 +66,31 @@ afterEach(() => {
 
 const manuale = () => (teatro = creaTeatro(radice, { ciclo: 'manuale', ambiente: false, caso: casoConSeme(3) }));
 
+describe('teatro: "Riduci movimento" cambiato a partita in corso', () => {
+  it('ctx.ridotto segue la preferenza dal vivo (le animazioni nuove la rispettano); distruggi smette di ascoltare', () => {
+    let ridotto = false;
+    const ascoltatori = new Set<(e: { matches: boolean }) => void>();
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return ridotto;
+      },
+      addEventListener: (_: string, f: (e: { matches: boolean }) => void) => ascoltatori.add(f),
+      removeEventListener: (_: string, f: (e: { matches: boolean }) => void) => ascoltatori.delete(f),
+    }));
+    const t = manuale();
+    expect(t.ctx.ridotto).toBe(false);
+    ridotto = true;
+    for (const f of [...ascoltatori]) f({ matches: true });
+    expect(t.ctx.ridotto).toBe(true);
+    ridotto = false;
+    for (const f of [...ascoltatori]) f({ matches: false });
+    expect(t.ctx.ridotto).toBe(false);
+    t.distruggi();
+    teatro = null;
+    expect(ascoltatori.size).toBe(0);
+  });
+});
+
 describe('teatro: adatta', () => {
   it("l'ingrandimento della mano (--kd) resta una variabile CSS; scala e spostamento (--s, --sy) non servono più", () => {
     const t = manuale();

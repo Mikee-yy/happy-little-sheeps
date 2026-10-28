@@ -148,6 +148,11 @@ export function creaMira(ctx: Contesto, palco: Palco, camera: Camera): Mira {
    * secondo tiro che riscrive `tiroLocale`). Si scorda quando la domanda non ha più la fionda o il tentativo cambia.
    */
   let ricordo: { f: Fionda; tiro: Punto; locale: TiroLocale } | null = null;
+  /**
+   * La partenza di una mira tolta prima del lancio (la scena recita), con la sua fionda e il suo tentativo: rimessa con lo
+   * stesso tentativo riparte da lì, non da un punto nuovo a caso. Si scorda con un tentativo nuovo o una fionda diversa.
+   */
+  let partenzaTolta: { f: Fionda; partenza: Punto } | null = null;
   /** I giochi degli agnellini com'erano prima della mira (si fermano mentre si mira); `null` senza mira. */
   let giochiPrima: boolean | null = null;
   const stessaFionda = (a: Fionda, b: Fionda): boolean => a.chi === b.chi && a.bersaglio === b.bersaglio && a.massimo === b.massimo;
@@ -478,8 +483,11 @@ export function creaMira(ctx: Contesto, palco: Palco, camera: Camera): Mira {
       } else {
         if (r && stessaFionda(r.f, f)) scordaTiro();
         else ricordo = null;
-        s.partenza = nuovaPartenza(f);
+        const pt = partenzaTolta;
+        const stessa = pt !== null && stessaFionda(pt.f, f) && f.tentativo !== undefined && pt.f.tentativo === f.tentativo;
+        s.partenza = stessa ? { ...pt.partenza } : nuovaPartenza(f);
       }
+      partenzaTolta = null;
       // Prima i cerchi (sul recinto), poi la scia, l'elastico e il Montone sopra
       ctx.el.mondo.append(s.cerchi, s.scia, s.elastico, s.montone);
       // Gli agnellini non giocano mentre si mira: i fumetti dei giochi finirebbero sopra i cerchi
@@ -495,11 +503,16 @@ export function creaMira(ctx: Contesto, palco: Palco, camera: Camera): Mira {
       posizionaZona(s);
     },
     togli(dimentica = false) {
-      if (dimentica) ricordo = null;
+      if (dimentica) {
+        ricordo = null;
+        partenzaTolta = null;
+      }
       const s = m;
       if (!s) return;
       finisciPresa();
       m = null;
+      // Tolta prima del lancio (la scena recita): con lo stesso tentativo si riparte da qui
+      partenzaTolta = !dimentica && !s.lanciato && s.f.tentativo !== undefined ? { f: { ...s.f }, partenza: { ...s.partenza } } : null;
       ctx.el.ui.classList.remove(IN_CARICA, IN_MIRA);
       s.montone.remove();
       s.elastico.remove();
