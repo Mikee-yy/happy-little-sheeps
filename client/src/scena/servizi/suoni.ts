@@ -5,7 +5,7 @@ import { opzioni } from './opzioni';
 import type { Regia } from './regia';
 
 export type NomeSuono =
-  | 'campanaccio' | 'beee' | 'colpo' | 'fruscio' | 'dado' | 'tono' | 'pop' | 'tonfo' | 'fanfara'
+  | 'campanaccio' | 'beee' | 'colpo' | 'fruscio' | 'dado' | 'tono' | 'pop' | 'tonfo' | 'ting' | 'fanfara'
   | 'ticchettio' | 'tuono' | 'pioggiaInizia' | 'pioggiaFine' | 'folata';
 
 export class GeneratoreSuoni {
@@ -212,6 +212,12 @@ export class GeneratoreSuoni {
   /** `forza` sotto 1 per un tonfo più leggero (il Montone che atterra sull'erba). */
   tonfo(forza = 1): void {
     this.tono(150, 48, 'sine', 0.35 * forza, 0.35);
+  }
+
+  /** Il luccichio del Montone che sparisce nel cielo: due note acute e brevi, come nei cartoni animati. */
+  ting(): void {
+    this.tono(1760, 1790, 'sine', 0.05, 0.12);
+    this.tono(2637, 2680, 'sine', 0.04, 0.22, 0.07);
   }
 
   fanfara(): void {

@@ -21,9 +21,12 @@ import { W } from '../misure';
 import { CENTRO_TAVOLO } from '../ordini';
 import {
   basePartenza,
+  colpoLungo,
   esitoTiro,
+  fineDietroLaCollina,
   fasciaDi,
   FIONDA,
+  forzaPerDistanza,
   lunghezzaElastico,
   partenzaDi,
   puntoArrivo,
@@ -335,7 +338,8 @@ describe('la mira della Testata', () => {
     expect(gesti).toEqual([{ tipo: 'fionda', esito }]);
     // Con il recinto com'era al tiro: una copia, non l'area che la camera continua a cambiare; e la partenza usata
     const recinto = { x0: area.x0, y0: area.y0, x1: area.x1, y1: area.y1 };
-    expect(t.ctx.regia.tiroLocale).toEqual({ chi: 'g1', bersaglio: 'g2', esito, arrivo, recinto, partenza: P });
+    // L'elastico tirato di 150, la forza piena: `pieno` (un colpo lungo così volerebbe nel cielo)
+    expect(t.ctx.regia.tiroLocale).toEqual({ chi: 'g1', bersaglio: 'g2', esito, arrivo, recinto, partenza: P, pieno: true });
     expect(t.ctx.regia.tiroLocale!.recinto).not.toBe(area);
     expect(Object.keys(t.ctx.regia.tiroLocale!.recinto).sort()).toEqual(['x0', 'x1', 'y0', 'y1']);
     // Appena lanciato cerchi e numeri spariscono
@@ -1156,5 +1160,218 @@ describe('la mano mentre si mira', () => {
     // Con il movimento ridotto spariscono e tornano senza scivolare
     const ridotto = css.slice(css.indexOf('/* Movimento ridotto: la mano'));
     expect(ridotto).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.teatro \.ui \.mano,\s*\.teatro \.ui \.consiglio,[^{]*\.teatro \.ui\.fionda-in-mira \.consiglio \{[^}]*translate 0s/);
+  });
+});
+
+describe('il volo segue la scia: su chi tira il Montone atterra sulla linea mostrata, dalla stessa partenza', () => {
+  /** I piedi del Montone in un fotogramma del volo (ordini.ts: translate dei piedi meno 75, 102). */
+  function piedi(f: Keyframe): Punto {
+    const m = /translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/.exec(String(f.transform));
+    expect(m, String(f.transform)).not.toBeNull();
+    return { x: Number(m![1]) + 75, y: Number(m![2]) + 102 };
+  }
+  /** La distanza di `p` dalla retta per `a` e `b`. */
+  const dallaRetta = (p: Punto, a: Punto, b: Punto): number =>
+    Math.abs((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)) / Math.hypot(b.x - a.x, b.y - a.y);
+  /** Lascia andare la scena finché la promessa non si risolve (al più 10 s di scena). */
+  async function finoAllaFine(t: Teatro, p: Promise<void>): Promise<void> {
+    let finito = false;
+    void p.then(() => (finito = true));
+    await scarica();
+    for (let ms = 0; !finito && ms < 10000; ms += 100) await scorri(t, 100);
+    expect(finito).toBe(true);
+  }
+  const copia = (a: Rett): Rett => ({ x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 });
+  const aRiposo = (palco: Palco, chi: IdGiocatore): Rett => {
+    const a = palco.area(chi)!;
+    const [x0, y0, x1, y1] = a.area0 ?? [a.x0, a.y0, a.x1, a.y1];
+    return { x0, y0, x1, y1 };
+  };
+  type Dove = 'sinistra' | 'dritto' | 'destra' | 'corto';
+  /**
+   * Il tiro (elastico, unità del mondo: in jsdom un pixel del dito) che dalla partenza `P` arriva sul recinto `r` (quello
+   * della mira, ingrandito): a sinistra o a destra del centro (zona 2), dritto al centro (zona 3), corto davanti (a vuoto).
+   */
+  function tiroVerso(P: Punto, r: Rett, dove: Dove): Punto {
+    const c = { x: (r.x0 + r.x1) / 2, y: (r.y0 + r.y1) / 2 };
+    const scosta = { sinistra: -0.6, dritto: 0, destra: 0.6, corto: 0 }[dove];
+    const meta = { x: c.x + scosta * ((r.x1 - r.x0) / 2), y: c.y };
+    const d = Math.hypot(meta.x - P.x, meta.y - P.y);
+    const forza = dove === 'corto' ? 0.02 : forzaPerDistanza(d, fasciaDi(P, r));
+    const l = lunghezzaElastico(forza);
+    return { x: (-(meta.x - P.x) / d) * l, y: (-(meta.y - P.y) / d) * l };
+  }
+
+  /**
+   * Mira e tira verso `bersaglio` (chi tira: `chi`, di base chi sta in basso), poi la domanda se ne va e la regia recita la
+   * Testata con l'esito del gesto: `ordine` dice se la domanda se ne va prima del volo (pagina di sviluppo, partita) o dopo
+   * che il volo è partito. Controlla che il volo parta dal Montone della mira e atterri sulla linea della scia, nella zona
+   * dell'esito sul recinto su cui si è mirato; poi che il recinto torni normale.
+   */
+  async function tiraEGuarda(
+    t: Teatro,
+    palco: Palco,
+    camera: Camera,
+    o: { bersaglio: IdGiocatore; chi?: IdGiocatore; dove: Dove; ordine?: 'domanda-prima' | 'volo-prima'; tentativo: string },
+  ): Promise<void> {
+    const chi = o.chi ?? palco.inBasso()!;
+    const caso = `${o.chi ?? ''}→${o.bersaglio} ${o.dove} (${o.ordine ?? 'domanda-prima'})`;
+    const riposo = aRiposo(palco, o.bersaglio);
+    const { gesti, suGesto } = registra();
+    t.chiedi(fionda({ chi: o.chi, bersaglio: o.bersaglio, tentativo: o.tentativo }), suGesto);
+    await pronta(t);
+    const mirato = copia(palco.area(o.bersaglio)!);
+    const P = doveMontone();
+    const tiro = tiroVerso(P, mirato, o.dove);
+    trascina(tiro.x, tiro.y, false);
+    const scia = puntini().map((c) => ({ x: Number(c.getAttribute('cx')), y: Number(c.getAttribute('cy')) }));
+    expect(scia, caso).toHaveLength(FIONDA.puntiScia);
+    evento('pointerup', window, 100 + tiro.x, 600 + tiro.y);
+    expect(gesti, caso).toHaveLength(1);
+    const esito = (gesti[0] as { esito: number }).esito;
+    if (o.dove !== 'corto') expect(esito, caso).toBeGreaterThan(0);
+    else expect(esito, caso).toBe(0);
+    const anima = vi.spyOn(t.ctx, 'anima');
+    let fine: Promise<void>;
+    if (o.ordine === 'volo-prima') {
+      fine = t.ordini.testata(chi, o.bersaglio, esito, 7);
+      t.chiedi(domanda({ dado: true }), () => undefined);
+    } else {
+      t.smettiDiChiedere();
+      fine = t.ordini.testata(chi, o.bersaglio, esito, 7);
+    }
+    await finoAllaFine(t, fine);
+    const voli = anima.mock.calls.filter(([e]) => (e as HTMLElement).classList.contains('montone')).map(([, f]) => f);
+    anima.mockRestore();
+    const volo = voli[0]!;
+    const da = piedi(volo[0]!);
+    const arrivo = piedi(volo[volo.length - 1]!);
+    // Dalla stessa partenza
+    expect(da.x, caso).toBeCloseTo(P.x, 3);
+    expect(da.y, caso).toBeCloseTo(P.y, 3);
+    // Sulla linea della scia, dalla stessa parte (la scia è l'inizio del volo): ogni puntino sta sulla retta del volo
+    const ultimo = scia[scia.length - 1]!;
+    expect(dallaRetta(arrivo, P, ultimo), `${caso}: arrivo ${arrivo.x},${arrivo.y} lontano dalla scia`).toBeLessThan(0.5);
+    for (const p of scia) expect(dallaRetta(p, P, arrivo), caso).toBeLessThan(0.5);
+    expect((arrivo.x - P.x) * (ultimo.x - P.x) + (arrivo.y - P.y) * (ultimo.y - P.y), caso).toBeGreaterThan(0);
+    expect(Math.hypot(arrivo.x - P.x, arrivo.y - P.y), caso).toBeGreaterThan(Math.hypot(ultimo.x - P.x, ultimo.y - P.y));
+    // Nella zona dell'esito, sul recinto su cui si è mirato
+    expect(Math.min(zonaDi(arrivo, mirato), 3), caso).toBe(esito);
+    // Poi il recinto torna com'era
+    await scorri(t, 1500);
+    const ora = palco.area(o.bersaglio)!;
+    for (const k of ['x0', 'y0', 'x1', 'y1'] as const) expect(Math.abs(ora[k] - riposo[k]), `${caso}: ${k}`).toBeLessThanOrEqual(0.5);
+    expect(camera.alterati(), caso).toBe(0);
+  }
+
+  it.each([2 as const, 3 as const, 4 as const])(
+    'a sinistra, dritto, a destra e corto, verso ogni avversario, col recinto ingrandito (%i giocatori)',
+    async (n) => {
+      const { t, palco, camera } = nuovo(n);
+      let i = 0;
+      for (const bersaglio of palco.giocatori().filter((c) => c !== palco.inBasso())) {
+        for (const dove of ['sinistra', 'dritto', 'destra', 'corto'] as const) {
+          await tiraEGuarda(t, palco, camera, { bersaglio, dove, tentativo: String(i++) });
+        }
+      }
+    },
+  );
+
+  it('il volo parte prima che la domanda se ne vada (partita, stanze): uguale, e il recinto non torna normale sotto il volo', async () => {
+    const { t, palco, camera } = nuovo(3);
+    let i = 0;
+    for (const bersaglio of ['g2', 'g3']) {
+      for (const dove of ['sinistra', 'destra'] as const) {
+        await tiraEGuarda(t, palco, camera, { bersaglio, dove, ordine: 'volo-prima', tentativo: String(i++) });
+      }
+    }
+  });
+
+  it('"Passa il telefono" a 4: chi tira sta in alto, verso un avversario (recinto ingrandito) e verso chi sta in basso', async () => {
+    const { t, palco, camera } = nuovo(4);
+    let i = 0;
+    for (const [chi, bersaglio, dove] of [
+      ['g3', 'g2', 'sinistra'],
+      ['g3', 'g2', 'destra'],
+      ['g2', 'g4', 'dritto'],
+      ['g3', 'g1', 'sinistra'],
+      ['g3', 'g1', 'destra'],
+    ] as const) {
+      await tiraEGuarda(t, palco, camera, { chi, bersaglio, dove, tentativo: String(i++) });
+    }
+  });
+
+  it.each([2 as const, 3 as const, 4 as const])(
+    'il colpo lungo (tirato quasi al massimo, e al massimo) segue la linea della scia finché sparisce, poi il recinto torna normale (%i giocatori)',
+    async (n) => {
+      const { t, palco, camera } = nuovo(n);
+      const bersaglio = palco.giocatori().find((c) => c !== palco.inBasso())!;
+      let i = 0;
+      for (const l of [FIONDA.tiroMassimo - FIONDA.cielo.pieno - 4, FIONDA.tiroMassimo]) {
+        const { gesti, suGesto } = registra();
+        t.chiedi(fionda({ bersaglio, tentativo: String(i++) }), suGesto);
+        await pronta(t);
+        const mirato = { ...palco.area(bersaglio)! };
+        const P = doveMontone();
+        const c = { x: (mirato.x0 + mirato.x1) / 2, y: (mirato.y0 + mirato.y1) / 2 };
+        const d = Math.hypot(c.x - P.x, c.y - P.y);
+        const tiro = { x: (-(c.x - P.x) / d) * l, y: (-(c.y - P.y) / d) * l };
+        trascina(tiro.x, tiro.y, false);
+        const ultimo = puntini().at(-1)!;
+        const scia = { x: Number(ultimo.getAttribute('cx')), y: Number(ultimo.getAttribute('cy')) };
+        evento('pointerup', window, 100 + tiro.x, 600 + tiro.y);
+        const nota = `${n} giocatori, elastico ${l}`;
+        expect(gesti, nota).toEqual([{ tipo: 'fionda', esito: 0 }]);
+        const vero = t.ctx.regia.tiroLocale!.arrivo;
+        expect(colpoLungo(P, vero, mirato), nota).toBe(true);
+        expect(t.ctx.regia.tiroLocale!.pieno, nota).toBe(l === FIONDA.tiroMassimo);
+        const anima = vi.spyOn(t.ctx, 'anima');
+        t.smettiDiChiedere();
+        let finito = false;
+        void t.ordini.testata('g1', bersaglio, 0, 7).then(() => (finito = true));
+        await scarica();
+        for (let ms = 0; !finito && ms < 10000; ms += 100) await scorri(t, 100);
+        expect(finito, nota).toBe(true);
+        const volo = anima.mock.calls.find(([e]) => (e as HTMLElement).classList.contains('montone'))![1];
+        anima.mockRestore();
+        const piede = (k: Keyframe): Punto => {
+          const m = /translate\(([-\d.e]+)px,\s*([-\d.e]+)px\)/.exec(String(k.transform))!;
+          return { x: Number(m[1]) + 75, y: Number(m[2]) + 102 };
+        };
+        const dallaRetta = (q: Punto): number =>
+          Math.abs((scia.x - P.x) * (q.y - P.y) - (scia.y - P.y) * (q.x - P.x)) / Math.hypot(scia.x - P.x, scia.y - P.y);
+        if (l === FIONDA.tiroMassimo) {
+          // Nel cielo: dritto, sempre sulla linea della scia
+          for (const k of volo) expect(dallaRetta(piede(k)), nota).toBeLessThan(0.5);
+        } else {
+          // Dietro la collina: ad arco (in verticale), in pianta sulla linea fino a dove esce dalla fascia del recinto
+          const E = fineDietroLaCollina(P, vero, mirato);
+          volo.forEach((k, j) => expect(piede(k).x, nota).toBeCloseTo(P.x + ((E.x - P.x) * j) / (volo.length - 1), 3));
+          expect(dallaRetta(piede(volo.at(-1)!)), nota).toBeLessThan(0.5);
+        }
+        expect(qa('.montone, .luccichio-testata'), nota).toHaveLength(0);
+        await scorri(t, 1500);
+        expect(camera.alterati(), nota).toBe(0);
+      }
+    },
+  );
+
+  it('la mira tolta prima del lancio rimette subito a posto il recinto; dopo il lancio lo lascia grande fino al volo', async () => {
+    const { t, palco } = nuovo(3);
+    const riposo = aRiposo(palco, 'g2');
+    const largo = (): number => palco.area('g2')!.x1 - palco.area('g2')!.x0;
+    t.chiedi(fionda({ tentativo: 'a' }), () => undefined);
+    await pronta(t);
+    t.smettiDiChiedere();
+    await scorri(t, 1500);
+    expect(Math.abs(largo() - (riposo.x1 - riposo.x0))).toBeLessThanOrEqual(0.5);
+    t.chiedi(fionda({ tentativo: 'b' }), () => undefined);
+    await pronta(t);
+    const grande = largo();
+    expect(grande).toBeGreaterThan(riposo.x1 - riposo.x0 + 1);
+    trascina(0, META_TIRO);
+    t.smettiDiChiedere();
+    await scorri(t, 1500);
+    expect(largo()).toBeCloseTo(grande, 3);
   });
 });

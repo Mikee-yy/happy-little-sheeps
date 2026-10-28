@@ -11,7 +11,22 @@ import type { IdCarta, IdGiocatore } from '../../../engine/src';
 import { T } from '../testi';
 import { casoConSeme } from './aiuti-prova';
 import type { PosaMontone } from './fionda/montone';
-import { basePartenza, coperto, FIONDA, partenzaDi, puntoDiScena, variazioneDaSeq, zonaDi, type Punto, type Rett } from './fionda/tiro';
+import {
+  basePartenza,
+  cieloDaSeq,
+  colpoLungo,
+  coperto,
+  fineDietroLaCollina,
+  FIONDA,
+  partenzaDi,
+  puntoDiScena,
+  puntoInCielo,
+  variazioneDaSeq,
+  yRitorno,
+  zonaDi,
+  type Punto,
+  type Rett,
+} from './fionda/tiro';
 import { fotografia, type Fotografia } from './fotografia';
 import { W } from './misure';
 import { CENTRO_TAVOLO, ingombroAgnello, ingombroPecora, largoMontone, type OrdiniDelTeatro } from './ordini';
@@ -773,14 +788,16 @@ describe('testata: volo, testata, stordito, scuote la testa, corre via', () => {
     expect(suona).toHaveBeenCalledWith('tonfo');
   });
 
-  it('a vuoto: un tonfo più leggero a terra, niente paura né scossa del prato, nessun agnellino si muove', async () => {
+  it('a vuoto (corto, davanti al recinto): un tonfo più leggero a terra, niente paura né scossa del prato, nessun agnellino si muove', async () => {
     const t = manuale();
     t.allinea(fotoIniziale(3), 'calmo');
     const anima = vi.spyOn(t.ctx, 'anima');
     const suona = vi.spyOn(t.ctx, 'suona');
     const reagisci = vi.spyOn(presa.palco as Palco, 'reagisci');
     const prima = t.stato().agnellini;
-    await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 4));
+    // seq dispari: il mancato di scena davanti al recinto (corto: atterra). Quello lungo vola oltre e sparisce (più sotto)
+    expect(colpoLungo(partenzaScena('g1', 5), puntoDiScena(recinto('g2'), 0, 5), recinto('g2'))).toBe(false);
+    await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 5));
     expect(anima.mock.calls.some(([e]) => e === t.ctx.el.mondo)).toBe(false);
     expect(reagisci).not.toHaveBeenCalledWith('g2', 'paura');
     expect(suona).toHaveBeenCalledWith('tonfo', 0.5);
@@ -915,18 +932,32 @@ describe('testata: ombra, profondità, movimento ridotto', () => {
   });
 
   it.each([2 as const, 3 as const, 4 as const])(
-    'un mancato lungo resta sul prato prima della collina, a vuoto e fuori dagli altri recinti, verso ogni bersaglio (%i giocatori)',
+    'un mancato che atterra resta sul prato prima della collina, a vuoto e fuori dagli altri recinti; uno lungo vola lungo la linea del tiro, mai di lato (%i giocatori)',
     async (n) => {
       const t = manuale();
       t.allinea(fotoIniziale(n), 'calmo');
       const montone = animazioniMontone(t);
-      /** Il punto d'arrivo del volo (deciso alla partenza): poi la Testata si interrompe, non serve vederla tutta. */
-      const arrivoDi = async (fine: Promise<void>): Promise<Punto> => {
-        const giu = piedi(montone().at(-1)!.f.at(-1)!);
+      /** Il primo volo (deciso alla partenza): poi la Testata si interrompe, non serve vederla tutta. */
+      const voloDi = async (fine: Promise<void>): Promise<Keyframe[]> => {
+        const volo = montone()[0]!.f;
         (t.ordini as OrdiniDelTeatro).interrompi();
         await finoAllaFine(t, fine);
         montone.azzera();
-        return giu;
+        return volo;
+      };
+      /** Atterra sul prato, oppure (colpo lungo) vola dalla partenza lungo la linea verso il punto vero, fino a lui o al cielo. */
+      const controlla = (volo: Keyframe[], da: Punto, vero: Punto, b: IdGiocatore, nota: string): void => {
+        const r = recinto(b);
+        if (!colpoLungo(da, vero, r)) return sulPratoAVuoto(piedi(volo.at(-1)!), b, nota);
+        vicino(piedi(volo[0]!), da);
+        // In pianta sempre sulla linea: l'arco alza il Montone (solo in verticale), il volo nel cielo va dritto
+        const dx = vero.x - da.x, dy = vero.y - da.y;
+        // In orizzontale va sempre avanti dalla partenza verso il punto vero, senza tornare indietro né andare di lato
+        const xs = volo.map((k) => (piedi(k).x - da.x) * Math.sign(dx || 1));
+        for (let i = 1; i < xs.length; i++) expect(xs[i]!, `${nota}: passo ${i}`).toBeGreaterThanOrEqual(xs[i - 1]! - 1e-6);
+        const fine = piedi(volo.at(-1)!);
+        const sullaLinea = Math.abs(dx * (fine.y - da.y) - dy * (fine.x - da.x)) / Math.hypot(dx, dy);
+        expect(sullaLinea, `${nota}: arriva sulla linea del tiro`).toBeLessThan(1e-6);
       };
       const ids = (presa.palco as Palco).giocatori();
       for (const b of ids) {
@@ -939,13 +970,14 @@ describe('testata: ombra, profondità, movimento ridotto', () => {
             const P = partenzaScena('g1', 3);
             const vero = { x: P.x + (c.x + dx - P.x) * 2.5, y: P.y + (c.y - P.y) * 2.5 };
             t.ctx.regia.tiroLocale = { chi: 'g1', bersaglio: b, esito: 0, arrivo: vero, recinto: { ...r }, partenza: P };
-            sulPratoAVuoto(await arrivoDi(t.ordini.testata('g1', b, 0, 3)), b, `g1 → ${b}, ${dx}`);
+            controlla(await voloDi(t.ordini.testata('g1', b, 0, 3)), P, vero, b, `g1 → ${b}, ${dx}`);
           }
         }
         // Sugli altri telefoni: il mancato di scena, lungo (seq pari, oltre la staccionata dietro) e corto (seq dispari)
         const chi = b === 'g1' ? 'g2' : 'g1';
         for (const seq of [2, 3, 4, 5, 6, 8]) {
-          sulPratoAVuoto(await arrivoDi(t.ordini.testata(chi, b, 0, seq)), b, `${chi} → ${b}, seq ${seq}`);
+          const volo = await voloDi(t.ordini.testata(chi, b, 0, seq));
+          controlla(volo, partenzaScena(chi, seq), puntoDiScena(r, 0, seq), b, `${chi} → ${b}, seq ${seq}`);
         }
       }
     },
@@ -1753,5 +1785,243 @@ describe('testata: chi sta sotto il Montone si scansa e poi torna al suo posto',
     tiroIn(t, { x: 240, y: 110 });
     const solo = await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 7));
     expect(fineMs - inizio).toBe(solo);
+  });
+});
+
+describe('testata: il colpo lungo vola oltre e sparisce (dietro la collina, o nel cielo tirando al massimo), poi torna di corsa', () => {
+  /** La distanza di `p` dalla retta per `a` e `b`. */
+  const dallaRetta = (p: Punto, a: Punto, b: Punto): number =>
+    Math.abs((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)) / Math.hypot(b.x - a.x, b.y - a.y);
+  /** La scala (verticale, senza il verso) di un fotogramma. */
+  const scala = (f: Keyframe): number => Number(/scale\(([-\d.e]+),\s*([-\d.e]+)\)/.exec(String(f.transform))![2]);
+  const P: Punto = { x: 198, y: 600 };
+  /** Un tiro di chi sta in basso ben oltre il recinto di g2 (3 giocatori), lungo la linea verso il suo centro spostato di `dx`. */
+  function tiroLungo(t: Teatro, o: { pieno: boolean; dx?: number; oltre?: number }): Punto {
+    const r = recinto('g2');
+    const c = { x: (r.x0 + r.x1) / 2 + (o.dx ?? 0), y: (r.y0 + r.y1) / 2 };
+    const k = o.oltre ?? 1.6;
+    const vero = { x: P.x + (c.x - P.x) * k, y: P.y + (c.y - P.y) * k };
+    expect(colpoLungo(P, vero, r), 'il tiro della prova è lungo').toBe(true);
+    t.ctx.regia.tiroLocale = { chi: 'g1', bersaglio: 'g2', esito: 0, arrivo: vero, recinto: { ...r }, partenza: P, pieno: o.pieno };
+    return vero;
+  }
+  interface Vista { e: HTMLElement; f: Keyframe[]; o: KeyframeAnimationOptions; ms: number; dietroLaCollina: boolean }
+  /** Tutte le animazioni della Testata, con l'elemento, i fotogrammi, le opzioni, il tempo della scena e se sta dietro la collina. */
+  function registraAnimazioni(t: Teatro): Vista[] {
+    const originale = t.ctx.anima.bind(t.ctx);
+    const viste: Vista[] = [];
+    vi.spyOn(t.ctx, 'anima').mockImplementation((e, f, o) => {
+      const collina = t.ctx.el.mondo.querySelector('.paesaggio')!;
+      const dietroLaCollina = !!(e.compareDocumentPosition(collina) & Node.DOCUMENT_POSITION_FOLLOWING);
+      viste.push({ e: e as HTMLElement, f, o, ms: t.ctx.orologio.ms, dietroLaCollina });
+      return originale(e, f, o);
+    });
+    return viste;
+  }
+  const del = (viste: Vista[], classe: string): Vista[] => viste.filter((v) => v.e.classList.contains(classe));
+
+  /** Il ritorno di corsa: entra da un lato fuori dallo schermo, si ferma davanti al recinto, esce dall'altro lato. */
+  function controllaRitorno(viste: Vista[], r: Rett, nota: string): void {
+    const corse = del(viste, 'montone').filter((v) => !v.e.classList.contains('montone-dietro')).slice(-2);
+    expect(corse, nota).toHaveLength(2);
+    const [entra, esce] = corse as [Vista, Vista];
+    const da = piedi(entra.f[0]!), fermo = piedi(entra.f.at(-1)!), fuori = piedi(esce.f.at(-1)!);
+    expect(da.x < -50 || da.x > W + 50, `${nota}: entra da fuori`).toBe(true);
+    expect(fermo.y, `${nota}: davanti al recinto`).toBeCloseTo(yRitorno(r), 3);
+    expect(zonaDi(fermo, r), nota).toBe(0);
+    vicino(piedi(esce.f[0]!), fermo);
+    expect(fuori.x < -50 || fuori.x > W + 50, `${nota}: esce`).toBe(true);
+    expect(Math.sign(fuori.x - fermo.x), `${nota}: dall'altra parte`).toBe(Math.sign(fermo.x - da.x));
+    // Guarda dove corre
+    for (const v of [entra, esce]) for (const k of v.f) expect(verso(k), nota).toBe(Math.sign(fermo.x - da.x));
+  }
+
+  it('dietro la collina: segue la linea del tiro (mai di lato), passa dietro collina e recinti, cade e sparisce; niente testata', async () => {
+    const t = manuale();
+    animazioniSulOrologio(t);
+    t.allinea(fotoIniziale(3), 'calmo');
+    const r = recinto('g2');
+    const vero = tiroLungo(t, { pieno: false });
+    const viste = registraAnimazioni(t);
+    const reagisci = vi.spyOn(presa.palco as Palco, 'reagisci');
+    const suona = vi.spyOn(t.ctx, 'suona');
+    const prima = t.stato().agnellini;
+    await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 7));
+    const volo = del(viste, 'montone')[0]!;
+    // Il volo: dalla partenza lungo la linea verso il punto mirato, fino a dove esce dalla fascia del recinto (più in là
+    // sarebbe in cima allo schermo); l'arco alza il Montone, ma in pianta resta sulla linea
+    const E = fineDietroLaCollina(P, vero, r);
+    expect(Math.abs((vero.x - P.x) * (E.y - P.y) - (vero.y - P.y) * (E.x - P.x))).toBeLessThan(1e-6);
+    expect(zonaDi(E, r)).toBe(0);
+    expect(E.y).toBeLessThan(r.y0);
+    const n = volo.f.length - 1;
+    volo.f.forEach((k, i) => expect(piedi(k).x, `passo ${i}`).toBeCloseTo(P.x + ((E.x - P.x) * i) / n, 3));
+    vicino(piedi(volo.f[0]!), P);
+    vicino(piedi(volo.f[n]!), E);
+    // Una copia dietro la collina (prima del paesaggio) prende il suo posto in dissolvenza, oltre il recinto, e cade giù
+    const dietro = del(viste, 'montone-dietro');
+    expect(dietro.length).toBeGreaterThanOrEqual(2);
+    expect(dietro.every((v) => v.dietroLaCollina)).toBe(true);
+    expect(volo.dietroLaCollina).toBe(false);
+    expect(Number(volo.f.at(-1)!.opacity)).toBe(0);
+    expect(Number(dietro[0]!.f[0]!.opacity)).toBe(0);
+    const caduta = dietro.at(-1)!.f;
+    expect(piedi(caduta.at(-1)!).y).toBeGreaterThan(E.y + 100);
+    expect(Number(caduta.at(-1)!.opacity)).toBe(0);
+    // Niente testata: né polvere, né paura, né agnellini che si spostano, né botta o stordito
+    expect(del(viste, 'sbuffo-testata')).toHaveLength(0);
+    expect(reagisci).not.toHaveBeenCalled();
+    expect(suona).not.toHaveBeenCalledWith('tonfo', 0.5);
+    expect(t.stato().agnellini).toEqual(prima);
+    expect(poseMontone().map((x) => x.posa)).toEqual(['volo', 'corre', 'scuote', 'corre']);
+    controllaRitorno(viste, r, 'dietro la collina');
+    expect(radice.querySelectorAll('.montone, .ombra-montone, .luccichio-testata')).toHaveLength(0);
+    expect(errori).not.toHaveBeenCalled();
+  });
+
+  it('tirato al massimo: vola nel cielo lungo la linea, rimpicciolisce fino a un puntino e sparisce con un luccichio', async () => {
+    const t = manuale();
+    animazioniSulOrologio(t);
+    t.allinea(fotoIniziale(3), 'calmo');
+    const r = recinto('g2');
+    const vero = tiroLungo(t, { pieno: true, dx: 20 });
+    const viste = registraAnimazioni(t);
+    const suona = vi.spyOn(t.ctx, 'suona');
+    await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 7));
+    const volo = del(viste, 'montone')[0]!;
+    const F = puntoInCielo(P, vero);
+    expect(F.y).toBeCloseTo(FIONDA.cielo.y, 3);
+    // Sempre sulla linea del tiro (niente arco), dalla partenza al punto nel cielo, sempre più su e più piccolo
+    for (const k of volo.f) expect(dallaRetta(piedi(k), P, vero)).toBeLessThan(0.01);
+    vicino(piedi(volo.f[0]!), P);
+    vicino(piedi(volo.f.at(-1)!), F);
+    for (let i = 1; i < volo.f.length; i++) {
+      expect(piedi(volo.f[i]!).y).toBeLessThanOrEqual(piedi(volo.f[i - 1]!).y + 1e-9);
+      expect(scala(volo.f[i]!)).toBeLessThanOrEqual(scala(volo.f[i - 1]!) * 1.0001);
+    }
+    expect(scala(volo.f.at(-1)!)).toBeLessThanOrEqual(scala(volo.f[0]!) * FIONDA.cielo.puntino * 1.01);
+    expect(del(viste, 'montone-dietro')).toHaveLength(0);
+    // Il luccichio dove sparisce, quando il volo finisce: compare e se ne va
+    const luccichio = del(viste, 'luccichio-testata');
+    expect(luccichio).toHaveLength(1);
+    expect(luccichio[0]!.ms - volo.ms).toBe(volo.o.duration);
+    expect(luccichio[0]!.e.dataset.x).toBe(String(F.x));
+    expect(luccichio[0]!.e.dataset.y).toBe(String(F.y));
+    expect(suona).toHaveBeenCalledWith('ting');
+    expect(poseMontone().map((x) => x.posa)).toEqual(['volo', 'corre', 'scuote', 'corre']);
+    controllaRitorno(viste, r, 'nel cielo');
+    expect(radice.querySelectorAll('.montone, .ombra-montone, .luccichio-testata')).toHaveLength(0);
+    expect(errori).not.toHaveBeenCalled();
+  });
+
+  it('colpito, corto a vuoto, lungo dietro la collina e lungo nel cielo durano uguale, quanto dice durate.json', async () => {
+    const t = manuale();
+    animazioniSulOrologio(t);
+    t.allinea(fotoIniziale(3), 'calmo');
+    const colpo = await finoAllaFine(t, t.ordini.testata('g1', 'g2', 2, 4));
+    const corto = await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 5));
+    tiroLungo(t, { pieno: false });
+    const collina = await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 7));
+    tiroLungo(t, { pieno: true });
+    const cielo = await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, 7));
+    expect([corto, collina, cielo]).toEqual([colpo, colpo, colpo]);
+    expect(colpo).toBeLessThanOrEqual(DURATE_NORMALI.testata);
+    expect(colpo).toBeGreaterThan(DURATE_NORMALI.testata - 100);
+  });
+
+  it('sugli altri telefoni: il mancato di scena lungo sparisce, nel cielo o dietro la collina secondo seq (uguale ogni volta); il corto atterra', async () => {
+    const t = manuale();
+    t.allinea(fotoIniziale(3), 'calmo');
+    const r = recinto('g2');
+    const pari = Array.from({ length: 30 }, (_, i) => 2 * i + 2);
+    const lunghi = pari.filter((seq) => colpoLungo(partenzaScena('g1', seq), puntoDiScena(r, 0, seq), r));
+    const cielo = lunghi.find((s) => cieloDaSeq(s));
+    const collina = lunghi.find((s) => !cieloDaSeq(s));
+    expect(cielo).toBeDefined();
+    expect(collina).toBeDefined();
+    const prova = async (seq: number) => {
+      const viste = registraAnimazioni(t);
+      pose.elenco = [];
+      await finoAllaFine(t, t.ordini.testata('g1', 'g2', 0, seq));
+      vi.mocked(t.ctx.anima).mockRestore();
+      return {
+        volo: del(viste, 'montone')[0]!.f.map((k) => String(k.transform)),
+        cielo: del(viste, 'luccichio-testata').length,
+        dietro: del(viste, 'montone-dietro').length,
+        pose: poseMontone().map((x) => x.posa),
+      };
+    };
+    const c1 = await prova(cielo!);
+    expect(c1.cielo).toBe(1);
+    expect(c1.dietro).toBe(0);
+    expect(await prova(cielo!)).toEqual(c1);
+    const h1 = await prova(collina!);
+    expect(h1.cielo).toBe(0);
+    expect(h1.dietro).toBeGreaterThan(0);
+    expect(await prova(collina!)).toEqual(h1);
+    // Il volo di scena va dalla partenza di scena verso il punto di scena, lungo la linea
+    const da = partenzaScena('g1', collina!), E = fineDietroLaCollina(da, puntoDiScena(r, 0, collina!), r);
+    const n = h1.volo.length - 1;
+    h1.volo.forEach((tr, i) => expect(piedi({ transform: tr }).x).toBeCloseTo(da.x + ((E.x - da.x) * i) / n, 3));
+    // Il mancato corto atterra come prima
+    const corto = [1, 3, 5, 7, 9].find((seq) => !colpoLungo(partenzaScena('g1', seq), puntoDiScena(r, 0, seq), r))!;
+    expect((await prova(corto)).pose).toEqual(['volo', 'botta', 'stordito', 'scuote', 'corre']);
+  });
+
+  it.each([false, true])('movimento ridotto (nel cielo: %s): niente volo; il Montone fermo davanti al recinto per 800 ms (nel cielo anche il luccichio fermo), poi via', async (pieno) => {
+    const t = manuale();
+    t.allinea(fotoIniziale(3), 'calmo');
+    t.ctx.ridotto = true;
+    const r = recinto('g2');
+    const vero = tiroLungo(t, { pieno });
+    const viste = registraAnimazioni(t);
+    const inizio = t.ctx.orologio.ms;
+    let finito = false;
+    void t.ordini.testata('g1', 'g2', 0, 7).then(() => (finito = true));
+    await scarica();
+    const luccichio = radice.querySelector<HTMLElement>('.luccichio-testata');
+    const fermo = radice.querySelector('.montone');
+    while (!finito && t.ctx.orologio.ms - inizio < 5000) await scorri(t, 100);
+    const ms = t.ctx.orologio.ms - inizio;
+    expect(ms).toBeGreaterThanOrEqual(800);
+    expect(ms).toBeLessThanOrEqual(1000);
+    for (const v of viste) expect(v.o.duration).toBe(1);
+    expect(fermo).not.toBeNull();
+    expect(fermo!.classList.contains('ferma')).toBe(true);
+    expect(piedi(del(viste, 'montone')[0]!.f[0]!).y).toBeCloseTo(yRitorno(r), 3);
+    expect(del(viste, 'montone-dietro')).toHaveLength(0);
+    if (pieno) {
+      expect(luccichio).not.toBeNull();
+      expect(luccichio!.dataset.x).toBe(String(puntoInCielo(P, vero).x));
+    } else expect(luccichio).toBeNull();
+    expect(radice.querySelectorAll('.montone, .luccichio-testata')).toHaveLength(0);
+  });
+
+  it.each([
+    { nome: 'mentre passa dietro la collina', pieno: false, dopo: 1000, vede: '.montone-dietro' },
+    { nome: 'durante il luccichio', pieno: true, dopo: 1300, vede: '.luccichio-testata' },
+    { nome: 'mentre aspetta di tornare', pieno: false, dopo: 1600, vede: null },
+    { nome: 'mentre torna di corsa', pieno: true, dopo: 2800, vede: '.montone' },
+  ])('interrompi $nome: via tutto, evento chiuso, recinto normale', async ({ pieno, dopo, vede }) => {
+    const t = manuale();
+    animazioniSulOrologio(t);
+    t.allinea(fotoIniziale(3), 'calmo');
+    tiroLungo(t, { pieno });
+    let finito = false;
+    void t.ordini.testata('g1', 'g2', 0, 7).then(() => (finito = true));
+    await scarica();
+    await scorri(t, dopo);
+    if (vede) expect(radice.querySelectorAll(vede)).toHaveLength(1);
+    else expect(radice.querySelectorAll('.montone, .luccichio-testata')).toHaveLength(0);
+    (t.ordini as OrdiniDelTeatro).interrompi();
+    await scorri(t, 100);
+    expect(finito).toBe(true);
+    expect(radice.querySelectorAll('.montone, .ombra-montone, .luccichio-testata')).toHaveLength(0);
+    expect(t.eventoInCorso()).toBe(false);
+    expect(t.stato().recintiAlterati).toBe(0);
+    const n = poseMontone().length;
+    await scorri(t, 3000);
+    expect(poseMontone()).toHaveLength(n);
+    expect(errori).not.toHaveBeenCalled();
   });
 });

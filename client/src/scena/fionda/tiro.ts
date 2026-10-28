@@ -33,6 +33,13 @@
 // - `puntiScia`: quanti puntini ha la scia;
 // - `altezzaArco`: altezza dell'arco in frazione della distanza;
 // - `fuori`: quanto oltre la fascia del bordo atterra un colpo a vuoto di scena;
+// - `lungo`: il colpo a vuoto lungo (`colpoLungo`: oltre il recinto, dove non può atterrare) vola oltre e sparisce dietro
+//   la collina: `caduta` quanto scende (unità del mondo) dietro la collina, `dissolvenza` in che parte del volo (0–1), da
+//   quando esce dalla fascia, passa dietro la collina e i recinti; `cima`: in volo i piedi non salgono sopra questa y (l'arco
+//   di un volo così lungo uscirebbe dallo schermo);
+// - `cielo`: tirato al massimo (entro `pieno` unità di elastico da `tiroMassimo`) il colpo lungo vola invece nel cielo e
+//   sparisce in lontananza con un luccichio, a `y` (sotto la striscia in cima, sopra le colline), piccolo fino a `puntino`
+//   della sua misura; sugli altri telefoni succede a circa `quota` dei colpi lunghi, scelti da `seq`;
 // - `scansa`: chi sta sotto il Montone atterrato si sposta di lato. `raggio`: fino a quale distanza dal suo corpo (in
 //   larghezze del Montone nel punto d'arrivo, 150 × profondità × 1.1: mezzo Montone); `margine`: quanto più in là si ferma
 //   (sempre in larghezze del Montone), per non restare proprio sul bordo; `ventaglio`: fin dove possono andare ancora più
@@ -62,6 +69,8 @@ export interface DatiFionda {
   puntiScia: number;
   altezzaArco: number;
   fuori: number;
+  lungo: { caduta: number; dissolvenza: number; cima: number };
+  cielo: { pieno: number; quota: number; y: number; puntino: number };
   scansa: { raggio: number; margine: number; ventaglio: number };
 }
 
@@ -200,19 +209,9 @@ const dentroRett = (p: Punto, r: Rett): boolean => p.x >= r.x0 && p.x <= r.x1 &&
  * riceve: uguale su tutti i telefoni.
  */
 export function arrivoInScena(partenza: Punto, vero: Punto, r: Rett, altri: readonly Rett[] = []): Punto {
-  const { lati, alto, prato } = FIONDA.atterraggio;
-  const aVuoto = zonaDi(vero, r) === 0;
-  const cima = aVuoto ? prato : alto;
-  const va = (p: Punto): boolean => p.y >= cima && p.x >= lati && p.x <= W - lati;
+  const { lati } = FIONDA.atterraggio;
+  const { aVuoto, va, p } = indietroSullaLinea(partenza, vero, r);
   if (va(vero)) return vero;
-  // Lungo la linea dalla partenza al punto vero, fin dove resta nei limiti
-  const dx = vero.x - partenza.x, dy = vero.y - partenza.y;
-  let t = 1;
-  if (vero.y < cima && dy < 0) t = Math.min(t, (cima - partenza.y) / dy);
-  if (vero.x < lati && dx < 0) t = Math.min(t, (lati - partenza.x) / dx);
-  if (vero.x > W - lati && dx > 0) t = Math.min(t, (W - lati - partenza.x) / dx);
-  t = Math.max(0, t);
-  const p = { x: partenza.x + dx * t, y: Math.max(cima, partenza.y + dy * t) };
   if (!aVuoto || zonaDi(p, r) === 0) return p;
   // Di lato, appena oltre la fascia (e il margine dei colpi a vuoto di scena), dalla parte verso cui andava il volo
   const fuori = FIONDA.fasciaBordo.x * (r.x1 - r.x0) + FIONDA.fuori;
@@ -223,6 +222,95 @@ export function arrivoInScena(partenza: Punto, vero: Punto, r: Rett, altri: read
   if (diLato) return diLato;
   // Davanti al recinto, appena oltre la fascia
   return { x: Math.min(W - lati, Math.max(lati, p.x)), y: r.y1 + FIONDA.fasciaBordo.y * (r.y1 - r.y0) + FIONDA.fuori };
+}
+
+/**
+ * Il punto vero riportato indietro lungo la linea dalla partenza fin dove resta nei limiti di `atterraggio` (`p`; il punto
+ * stesso se ci sta), se è a vuoto e la regola dei limiti (`va`).
+ */
+function indietroSullaLinea(partenza: Punto, vero: Punto, r: Rett): { aVuoto: boolean; va: (p: Punto) => boolean; p: Punto } {
+  const { lati, alto, prato } = FIONDA.atterraggio;
+  const aVuoto = zonaDi(vero, r) === 0;
+  const cima = aVuoto ? prato : alto;
+  const va = (p: Punto): boolean => p.y >= cima && p.x >= lati && p.x <= W - lati;
+  if (va(vero)) return { aVuoto, va, p: vero };
+  const dx = vero.x - partenza.x, dy = vero.y - partenza.y;
+  let t = 1;
+  if (vero.y < cima && dy < 0) t = Math.min(t, (cima - partenza.y) / dy);
+  if (vero.x < lati && dx < 0) t = Math.min(t, (lati - partenza.x) / dx);
+  if (vero.x > W - lati && dx > 0) t = Math.min(t, (W - lati - partenza.x) / dx);
+  t = Math.max(0, t);
+  return { aVuoto, va, p: { x: partenza.x + dx * t, y: Math.max(cima, partenza.y + dy * t) } };
+}
+
+/**
+ * Il colpo a vuoto lungo: va oltre il recinto `r`, verso l'alto, dove non può atterrare (sulla collina, sotto la striscia
+ * in cima o fuori dai lati) e tornando indietro lungo la linea cadrebbe nella fascia del recinto (un colpo, a vederlo).
+ * Non atterra: vola oltre lungo la linea e sparisce (dietro la collina o nel cielo). Uguale su tutti i telefoni.
+ */
+export function colpoLungo(partenza: Punto, vero: Punto, r: Rett): boolean {
+  if (vero.y >= partenza.y) return false;
+  const { aVuoto, va, p } = indietroSullaLinea(partenza, vero, r);
+  return aVuoto && !va(vero) && zonaDi(p, r) !== 0;
+}
+
+/** L'elastico tirato al massimo (entro `cielo.pieno` da `tiroMassimo`): un colpo lungo così vola nel cielo. */
+export function tiroPieno(tiro: Punto): boolean {
+  return Math.hypot(tiro.x, tiro.y) >= FIONDA.tiroMassimo - FIONDA.cielo.pieno;
+}
+
+/** Sugli altri telefoni un colpo lungo vola nel cielo per circa `cielo.quota` dei `seq`: sempre lo stesso per lo stesso `seq`. */
+export function cieloDaSeq(seq: number): boolean {
+  return variazioneDaSeq(seq * 3 + 1) < FIONDA.cielo.quota;
+}
+
+/**
+ * Dove il colpo lungo nel cielo sparisce: sulla linea dalla partenza verso `vero`, all'altezza `cielo.y` (o prima, al
+ * limite dei lati dello schermo).
+ */
+export function puntoInCielo(partenza: Punto, vero: Punto): Punto {
+  const { lati } = FIONDA.atterraggio;
+  const dx = vero.x - partenza.x, dy = vero.y - partenza.y;
+  let t = dy < 0 ? (FIONDA.cielo.y - partenza.y) / dy : 1;
+  if (dx < 0) t = Math.min(t, (lati - partenza.x) / dx);
+  if (dx > 0) t = Math.min(t, (W - lati - partenza.x) / dx);
+  t = Math.max(0, t);
+  return { x: partenza.x + dx * t, y: partenza.y + dy * t };
+}
+
+/**
+ * La parte della linea da `partenza` a `vero` (0–1) in cui il volo esce dalla fascia del recinto `r` (il recinto con la sua
+ * zona 1 attorno), dalla parte lontana: da lì in poi il Montone è oltre il recinto. 0 se la linea non la attraversa.
+ */
+export function uscitaDallaFascia(partenza: Punto, vero: Punto, r: Rett): number {
+  const a = allargato(r);
+  const d = { x: vero.x - partenza.x, y: vero.y - partenza.y };
+  let entra = 0, esce = 1;
+  for (const [p, v, lo, hi] of [[partenza.x, d.x, a.x0, a.x1], [partenza.y, d.y, a.y0, a.y1]] as const) {
+    if (!v) {
+      if (p < lo || p > hi) return 0;
+      continue;
+    }
+    const t0 = (lo - p) / v, t1 = (hi - p) / v;
+    entra = Math.max(entra, Math.min(t0, t1));
+    esce = Math.min(esce, Math.max(t0, t1));
+  }
+  return entra <= esce ? Math.max(0, Math.min(1, esce)) : 0;
+}
+
+/**
+ * Dove finisce il volo del colpo lungo dietro la collina: sulla linea verso `vero`, appena uscito dalla fascia del recinto
+ * `r` (di `fuori`), o `vero` se è più vicino. Più in là sarebbe in cielo, in cima allo schermo: da lì cade dietro la collina.
+ */
+export function fineDietroLaCollina(partenza: Punto, vero: Punto, r: Rett): Punto {
+  const d = Math.hypot(vero.x - partenza.x, vero.y - partenza.y);
+  const t = d ? Math.min(1, uscitaDallaFascia(partenza, vero, r) + FIONDA.fuori / d) : 1;
+  return { x: partenza.x + (vero.x - partenza.x) * t, y: partenza.y + (vero.y - partenza.y) * t };
+}
+
+/** Dove torna di corsa il Montone dopo un colpo lungo: sul prato davanti al recinto `r`, appena oltre la fascia. */
+export function yRitorno(r: Rett): number {
+  return r.y1 + FIONDA.fasciaBordo.y * (r.y1 - r.y0) + FIONDA.fuori;
 }
 
 /** Un recinto con la sua fascia della zona 1 attorno (lì un Montone a terra sembrerebbe un colpo). */

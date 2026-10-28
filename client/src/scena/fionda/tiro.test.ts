@@ -3,9 +3,12 @@ import { H, W } from '../misure';
 import {
   arrivoInScena,
   basePartenza,
+  cieloDaSeq,
+  colpoLungo,
   coperto,
   esitoTiro,
   fasciaDi,
+  fineDietroLaCollina,
   FIONDA,
   forzaPerDistanza,
   latoCorsa,
@@ -14,14 +17,18 @@ import {
   posizioneInVolo,
   puntoArrivo,
   puntoDiScena,
+  puntoInCielo,
   riportaSuRecinto,
   scansa,
   scia,
   spazioPerTirare,
   strisciaCorsa,
+  tiroPieno,
+  uscitaDallaFascia,
   valoriCerchi,
   variazioneDaSeq,
   ventaglio,
+  yRitorno,
   zonaDi,
   type Punto,
   type Rett,
@@ -428,5 +435,77 @@ describe('fionda: la corsa via', () => {
     expect(latoCorsa(A, corpo, [sopra, sotto], -1)).toBe(-1);
     expect(strisciaCorsa(A, corpo, -1)).toEqual({ x0: -Infinity, y0: 150, x1: 190, y1: 200 });
     expect(strisciaCorsa(A, corpo, 1)).toEqual({ x0: 110, y0: 150, x1: Infinity, y1: 200 });
+  });
+});
+
+describe('fionda: il colpo lungo (vola oltre e sparisce)', () => {
+  // Un recinto in alto, come quello di un avversario a 3 giocatori, e la partenza accanto alla pecora in basso
+  const R: Rett = { x0: 100, y0: 114, x1: 273, y1: 193 };
+  const P: Punto = { x: 198, y: 600 };
+  const sullaLinea = (q: Punto, a: Punto, b: Punto): number =>
+    Math.abs((b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x)) / Math.hypot(b.x - a.x, b.y - a.y);
+
+  it('lungo: oltre il recinto, dove tornando indietro lungo la linea cadrebbe nella fascia (prima andava di lato)', () => {
+    const vero = { x: 184, y: 52 };
+    expect(zonaDi(vero, R)).toBe(0);
+    expect(colpoLungo(P, vero, R)).toBe(true);
+    // Prima: atterrava di lato, lontano dalla linea del tiro
+    expect(sullaLinea(arrivoInScena(P, vero, R), P, vero)).toBeGreaterThan(50);
+    // Non lunghi: un colpo, un mancato corto davanti, un mancato che atterra sulla linea, una linea che scende
+    expect(colpoLungo(P, { x: 186, y: 150 }, R)).toBe(false);
+    expect(colpoLungo(P, { x: 186, y: 300 }, R)).toBe(false);
+    expect(colpoLungo(P, { x: 380, y: 200 }, R)).toBe(false);
+    expect(colpoLungo({ x: 186, y: 40 }, { x: 186, y: 400 }, R)).toBe(false);
+  });
+
+  it('tirato al massimo: l\x27elastico pieno, o quasi (entro cielo.pieno)', () => {
+    const m = FIONDA.tiroMassimo;
+    expect(tiroPieno({ x: 0, y: m })).toBe(true);
+    expect(tiroPieno({ x: m, y: 0 })).toBe(true);
+    expect(tiroPieno({ x: 0, y: m - FIONDA.cielo.pieno })).toBe(true);
+    expect(tiroPieno({ x: 0, y: m - FIONDA.cielo.pieno - 0.5 })).toBe(false);
+  });
+
+  it('sugli altri telefoni, nel cielo per circa cielo.quota dei seq: sempre lo stesso per lo stesso seq', () => {
+    const scelte = Array.from({ length: 600 }, (_, s) => cieloDaSeq(s));
+    expect(Array.from({ length: 600 }, (_, s) => cieloDaSeq(s))).toEqual(scelte);
+    const quota = scelte.filter(Boolean).length / scelte.length;
+    expect(quota).toBeGreaterThan(FIONDA.cielo.quota - 0.08);
+    expect(quota).toBeLessThan(FIONDA.cielo.quota + 0.08);
+  });
+
+  it('il punto nel cielo sta sulla linea del tiro, ad altezza cielo.y, o prima al lato dello schermo', () => {
+    const vero = { x: 150, y: 30 };
+    const F = puntoInCielo(P, vero);
+    expect(F.y).toBeCloseTo(FIONDA.cielo.y, 6);
+    expect(sullaLinea(F, P, vero)).toBeLessThan(1e-9);
+    const storto = { x: -300, y: 100 };
+    const G = puntoInCielo(P, storto);
+    expect(G.x).toBeCloseTo(FIONDA.atterraggio.lati, 6);
+    expect(sullaLinea(G, P, storto)).toBeLessThan(1e-9);
+  });
+
+  it('esce dalla fascia del recinto: dritto su, dove la linea lascia la fascia dalla parte lontana', () => {
+    const vero = { x: 186, y: 0 };
+    const t = uscitaDallaFascia({ x: 186, y: 600 }, vero, R);
+    const yUscita = R.y0 - FIONDA.fasciaBordo.y * (R.y1 - R.y0);
+    expect(600 + (0 - 600) * t).toBeCloseTo(yUscita, 6);
+    expect(uscitaDallaFascia({ x: 186, y: 600 }, { x: 186, y: 300 }, R)).toBe(0);
+  });
+
+  it('dietro la collina il volo finisce sulla linea appena uscito dalla fascia (di fuori), o prima se il punto vero è più vicino', () => {
+    const vero = { x: 186, y: 0 };
+    const E = fineDietroLaCollina({ x: 186, y: 600 }, vero, R);
+    expect(E.x).toBeCloseTo(186, 9);
+    expect(E.y).toBeCloseTo(R.y0 - FIONDA.fasciaBordo.y * (R.y1 - R.y0) - FIONDA.fuori, 6);
+    expect(zonaDi(E, R)).toBe(0);
+    const vicino = { x: 186, y: 70 };
+    expect(fineDietroLaCollina({ x: 186, y: 600 }, vicino, R)).toEqual(vicino);
+  });
+
+  it('torna di corsa sul prato davanti al recinto, appena oltre la fascia (a vuoto)', () => {
+    const y = yRitorno(R);
+    expect(y).toBeCloseTo(R.y1 + FIONDA.fasciaBordo.y * (R.y1 - R.y0) + FIONDA.fuori, 6);
+    expect(zonaDi({ x: (R.x0 + R.x1) / 2, y }, R)).toBe(0);
   });
 });

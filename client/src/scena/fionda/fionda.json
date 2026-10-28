@@ -16,5 +16,7 @@
   "puntiScia": 7,
   "altezzaArco": 0.35,
   "fuori": 18,
+  "lungo": { "caduta": 150, "dissolvenza": 0.15, "cima": 72 },
+  "cielo": { "pieno": 6, "quota": 0.34, "y": 64, "puntino": 0.06 },
   "scansa": { "raggio": 0.5, "margine": 0.05, "ventaglio": 0.35 }
 }

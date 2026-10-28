@@ -17,17 +17,24 @@ import { mettiPosa, montoneSVG } from './fionda/montone';
 import {
   arrivoInScena,
   basePartenza,
+  cieloDaSeq,
+  colpoLungo,
+  fineDietroLaCollina,
   coperto,
+  FIONDA,
   latoCorsa,
   partenzaDi,
   posizioneInVolo,
   puntoDiScena,
+  puntoInCielo,
   riportaSuRecinto,
   scansa,
   siToccano,
   strisciaCorsa,
+  uscitaDallaFascia,
   variazioneDaSeq,
   ventaglio,
+  yRitorno,
   type Ingombro,
   type Punto,
   type Rett,
@@ -77,9 +84,12 @@ export interface Ordini {
   /**
    * Il Montone vola ad arco da vicino alla pecora di chi tira al recinto del bersaglio e ci dà una testata: con `quanti` > 0
    * lo colpisce e quegli agnellini volano verso il gregge, con 0 atterra fuori; poi resta stordito, scuote la testa e corre
-   * via. Parte e atterra dove ha tirato chi ha la fionda su questo telefono (`regia.tiroLocale`); altrimenti parte vicino
+   * via. Parte e atterra dove ha tirato chi ha la fionda su questo telefono (`regia.tiroLocale`), sulla linea della scia e
+   * sul recinto ancora ingrandito della mira, che torna normale quando il Montone se n'è andato; altrimenti parte vicino
    * alla pecora di chi tira e atterra in un punto "di scena" della zona del risultato, l'una e l'altro ricavati da `seq`
-   * (gli stessi su tutti i telefoni).
+   * (gli stessi su tutti i telefoni). Un mancato lungo (oltre il recinto, dove non può atterrare) non atterra: vola oltre
+   * lungo la linea e sparisce dietro la collina, o nel cielo con un luccichio (tirato al massimo; sugli altri telefoni un
+   * colpo su tre, da `seq`), poi torna di corsa. Tutte le strade durano uguale (`durate.json`).
    */
   testata(chi: IdGiocatore, bersaglio: IdGiocatore, quanti: number, seq?: number): Promise<void>;
   beeeNo(chi: IdGiocatore): Promise<void>;
@@ -111,7 +121,7 @@ interface Tappa {
 }
 
 /** Elementi degli ordini sul prato e nell'interfaccia: si tolgono quando il tavolo si ricostruisce. */
-export const ELEMENTI_ORDINI = '.volante, .montone, .ombra-montone, .sbuffo-testata, .linee-zoom, .annuncio, .coriandolo';
+export const ELEMENTI_ORDINI = '.volante, .montone, .ombra-montone, .sbuffo-testata, .luccichio-testata, .linee-zoom, .annuncio, .coriandolo';
 
 /** Il centro della tovaglia: la carta ferma degli ordini, la carta "solo da guardare" delle scelte, la partenza della fionda. */
 export const CENTRO_TAVOLO = { x: 195, y: 360, k: 0.5 };
@@ -129,8 +139,8 @@ const CORIANDOLI = 70;
 /**
  * La Testata (tempo della scena), con il Montone animato (fionda/montone.ts, pose in scena.css): il volo ad arco dalla pecora
  * di chi tira (posa-volo, con la scia del vento), la testata sul punto d'arrivo (posa-botta), stordito (posa-stordito), scuote
- * la testa (posa-scuote) e corre via arrabbiato (posa-corre). Colpito o a vuoto cambiano solo suoni ed effetti: le due strade
- * durano uguale (`durate.json`, voce `testata`, quella che chi ospita usa per tutti i telefoni):
+ * la testa (posa-scuote) e corre via arrabbiato (posa-corre). Colpito o a vuoto cambiano solo suoni ed effetti; il mancato
+ * lungo vola oltre e sparisce, poi torna di corsa (`voloLungo`). Tutte le strade durano uguale (`durate.json`, voce `testata`, quella che chi ospita usa per tutti i telefoni):
  * 800 + 700 + 2000 + 800 + 700 = 5000 ms. Dopo il tiro nessun cerchio: si vede solo il recinto (con la polvere dove atterra).
  */
 const DURATA_VOLO_TESTATA_MS = 800;
@@ -141,6 +151,24 @@ const DURATA_STORDITO_MS = 2000;
 /** Una scrollata intera della posa-scuote (0,8 s in scena.css). */
 const DURATA_SCUOTE_MS = 800;
 const DURATA_USCITA_MONTONE_MS = 700;
+/** Quanto dura ogni Testata: colpo, mancato corto e mancato lungo (`durate.json`, voce `testata`). */
+const DURATA_TESTATA_MS = DURATA_VOLO_TESTATA_MS + DURATA_BOTTA_MS + DURATA_STORDITO_MS + DURATA_SCUOTE_MS + DURATA_USCITA_MONTONE_MS;
+/**
+ * Il mancato lungo (`voloLungo`): dietro la collina vola come gli altri (800 ms) e cade giù (400); nel cielo vola dritto
+ * (1100) e luccica (600). Poi una pausa, torna di corsa (1000), scuote la testa (800) ed esce (1000): la pausa è quanto
+ * manca per arrivare a `DURATA_TESTATA_MS` (1000 dietro la collina, 500 nel cielo).
+ */
+const DURATA_CADUTA_COLLINA_MS = 400;
+const DURATA_VOLO_CIELO_MS = 1100;
+const DURATA_LUCCICHIO_MS = 600;
+const DURATA_RITORNO_MS = 1000;
+const DURATA_USCITA_RITORNO_MS = 1000;
+/** Il luccichio: lato del disegno (unità del mondo). */
+const LARGO_LUCCICHIO = 34;
+/** Oltre il recinto il Montone del mancato lungo rimpicciolisce di tanto (in lontananza). */
+const RIMPICCIOLISCE_LONTANO = 0.4;
+/** La parte del volo lungo in cui l'ombra a terra svanisce. */
+const OMBRA_LUNGO = 0.3;
 /** In volo il muso sale alla partenza e scende all'arrivo (gradi): arriva di testa. */
 const GIRO_PARTENZA = -16;
 const GIRO_ARRIVO = 20;
@@ -494,6 +522,11 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     return { x0, y0, x1, y1 };
   }
 
+  /** Il recinto `a` è adesso proprio `r` (entro mezza unità del mondo): per esempio ancora com'era al tiro della mira. */
+  function stessoRett(a: Area, r: Rett): boolean {
+    return Math.max(Math.abs(a.x0 - r.x0), Math.abs(a.y0 - r.y0), Math.abs(a.x1 - r.x1), Math.abs(a.y1 - r.y1)) <= 0.5;
+  }
+
   /** Uno sbuffo di polvere a terra nel punto `p` (circa un secondo): si allarga e svanisce; col movimento ridotto svanisce e basta. */
   function sbuffo(p: Punto): void {
     const k = palco.profondita(p.y) * SCALA_MONTONE;
@@ -845,20 +878,241 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     const zArrivo = Math.round(100 + arrivo.y + 8);
     const k = palco.profondita(arrivo.y) * SCALA_MONTONE;
     const corpo = { mezzo: CORPO_MONTONE.mezzo * k, alto: CORPO_MONTONE.alto * k };
-    const dietro = palco.giocatori().flatMap((c) => {
-      const p = palco.pecora(c), g = palco.posto(c);
-      if (!p || !g) return [];
-      const zp = Number(p.el.style.zIndex);
-      if (!(zp <= zArrivo)) return [];
-      const cx = g.x + g.w / 2, dx = daParte.spostata(c), mezzo = PECORA_MEZZA * g.w;
-      const r: Rett = { x0: Math.min(cx, cx + dx) - mezzo, y0: g.y + PECORA_CIMA * g.w, x1: Math.max(cx, cx + dx) + mezzo, y1: g.y + PECORA_PIEDI * g.w };
-      return [{ r, z: zp }];
-    });
+    const dietro = pecoreDietro(zArrivo, daParte.spostata);
     const vicino: -1 | 1 = arrivo.x < W / 2 ? -1 : 1;
     const lato = latoCorsa(arrivo, corpo, dietro.map((d) => d.r), vicino);
     if (lato !== null) return { lato, z: zArrivo };
     const strada = strisciaCorsa(arrivo, corpo, vicino);
     return { lato: vicino, z: Math.min(zArrivo, ...dietro.filter((d) => siToccano(strada, d.r)).map((d) => d.z - 1)) };
+  }
+
+  /**
+   * Le pecore disegnate sotto la profondità `z` (chi passa lì le avrebbe dietro: quelle davanti le passa dietro comunque),
+   * con il corpo: per chi si è scansata (`spostata`) tutta la strada del ritorno, da dove si è fermata fino a casa.
+   */
+  function pecoreDietro(z: number, spostata: (c: IdGiocatore) => number = () => 0): Array<{ r: Rett; z: number }> {
+    return palco.giocatori().flatMap((c) => {
+      const p = palco.pecora(c), g = palco.posto(c);
+      if (!p || !g) return [];
+      const zp = Number(p.el.style.zIndex);
+      if (!(zp <= z)) return [];
+      const cx = g.x + g.w / 2, dx = spostata(c), mezzo = PECORA_MEZZA * g.w;
+      const r: Rett = { x0: Math.min(cx, cx + dx) - mezzo, y0: g.y + PECORA_CIMA * g.w, x1: Math.max(cx, cx + dx) + mezzo, y1: g.y + PECORA_PIEDI * g.w };
+      return [{ r, z: zp }];
+    });
+  }
+
+  /** Il luccichio dei cartoni animati dove sparisce nel cielo il Montone (una stellina di limone col bordo notte). */
+  function luccichio(p: Punto): HTMLElement {
+    const l = document.createElement('div');
+    l.className = 'abs luccichio-testata' + (ctx.ridotto ? ' ferma' : '');
+    l.dataset.x = String(p.x);
+    l.dataset.y = String(p.y);
+    const m = LARGO_LUCCICHIO / 2;
+    l.style.cssText =
+      `left:0;top:0;width:${LARGO_LUCCICHIO}px;height:${LARGO_LUCCICHIO}px;z-index:${Z_MONTONE_IN_ARIA};pointer-events:none;` +
+      `transform-origin:${m}px ${m}px;transform:translate(${p.x - m}px,${p.y - m}px)`;
+    l.innerHTML =
+      `<svg viewBox="-20 -20 40 40" style="display:block;width:100%;height:100%;overflow:visible" aria-hidden="true">` +
+      `<path d="M0 -17 Q2.6 -2.6 17 0 Q2.6 2.6 0 17 Q-2.6 2.6 -17 0 Q-2.6 -2.6 0 -17Z" fill="${P.limone}" stroke="${P.notte}" stroke-width="2.2" stroke-linejoin="round"/>` +
+      `<path d="M0 -6 L0 6 M-6 0 L6 0" stroke="${P.gesso}" stroke-width="2" stroke-linecap="round"/>` +
+      `<circle cx="13" cy="-12" r="2.2" fill="${P.gesso}" stroke="${P.notte}" stroke-width="1.4"/>` +
+      `<circle cx="-12" cy="11" r="1.8" fill="${P.gesso}" stroke="${P.notte}" stroke-width="1.4"/></svg>`;
+    return l;
+  }
+
+  /**
+   * Il colpo a vuoto lungo (fionda/tiro.ts, `colpoLungo`): oltre il recinto, dove non può atterrare. Non atterra né dà una
+   * testata (niente polvere, botta, stordito, né chi si scansa): vola lungo la linea del tiro e sparisce.
+   * - Dietro la collina: ad arco come gli altri voli fino al punto mirato, sempre più piccolo oltre il recinto; uscito dalla
+   *   fascia del recinto passa, in dissolvenza, a una copia disegnata dietro il paesaggio (dietro colline, casetta e recinti),
+   *   che cade giù dietro la collina e svanisce.
+   * - Nel cielo (`cielo`: tirato al massimo, o un colpo su tre di scena): dritto lungo la linea sopra le colline, sempre più
+   *   piccolo fino a un puntino, e sparisce con un luccichio.
+   * Poi, dopo una pausa, torna di corsa arrabbiato: entra da un lato dello schermo sul prato davanti al recinto, si ferma e
+   * scuote la testa, ed esce dall'altra parte (senza passare sopra le pecore che gli stanno dietro: altrimenti dietro di
+   * loro). Tutto dura quanto le altre Testate (`durate.json`). Il recinto della mira torna normale quando il Montone è sparito.
+   * Con il movimento ridotto niente volo: il Montone fermo davanti al recinto (è già tornato) per un attimo, e nel cielo anche
+   * il luccichio fermo dove è sparito, come il Montone fermo nel punto d'arrivo degli altri tiri.
+   */
+  async function voloLungo(o: { partenza: Punto; vero: Punto; recinto: Rett; riposo: Rett; cielo: boolean; sulMirato: boolean; vivo: () => boolean }): Promise<void> {
+    const { partenza, vero, recinto, riposo, vivo } = o;
+    const elementi: Element[] = [];
+    let tornato = !o.sulMirato;
+    const recintoNormale = (): void => {
+      if (tornato) return;
+      tornato = true;
+      void camera.ingrandisciRecinto(null);
+    };
+    const via = (): void => {
+      for (const e of elementi) e.remove();
+      recintoNormale();
+    };
+    const aggiungi = <E extends Element>(e: E, prima: Element | null = null): E => {
+      elementi.push(e);
+      el.mondo.insertBefore(e, prima);
+      return e;
+    };
+    const nuovoMontone = (classe = ''): HTMLElement => {
+      const m = document.createElement('div');
+      m.className = 'abs montone' + classe + (ctx.ridotto ? ' ferma' : '');
+      m.style.cssText =
+        `left:0;top:0;width:${LARGO_MONTONE}px;pointer-events:none;transform-origin:${PIEDI_MONTONE_X}px ${PIEDI_MONTONE_Y}px`;
+      m.innerHTML = montoneSVG();
+      return m;
+    };
+    /** Il Montone con i piedi in `p` (alzato di `alto`), grande `k`, con il verso e girato di `giro` gradi. */
+    const posa = (p: Punto, k: number, verso: number, giro = 0, alto = 0): string =>
+      `translate(${p.x - PIEDI_MONTONE_X}px,${p.y - alto - PIEDI_MONTONE_Y}px) scale(${verso * k},${k}) rotate(${giro}deg)`;
+    const kDi = (y: number): number => palco.profondita(y) * SCALA_MONTONE;
+    const F = o.cielo ? puntoInCielo(partenza, vero) : null;
+    // Dove torna: sul prato davanti al recinto a riposo (uguale su tutti i telefoni), in mezzo
+    const { lati } = FIONDA.atterraggio;
+    const S: Punto = { x: Math.min(W - lati, Math.max(lati, (riposo.x0 + riposo.x1) / 2)), y: yRitorno(riposo) };
+    const kS = kDi(S.y);
+    const zS = Math.round(100 + S.y + 8);
+    const corpo = { mezzo: CORPO_MONTONE.mezzo * kS, alto: CORPO_MONTONE.alto * kS };
+    const dietro = pecoreDietro(zS);
+    const vicino: -1 | 1 = S.x < W / 2 ? -1 : 1;
+    // Entra dal lato più vicino se lì non passa sopra una pecora che gli sta dietro, se no dall'altro; esce dall'altra parte
+    const entra = latoCorsa(S, corpo, dietro.map((d) => d.r), vicino) ?? vicino;
+    const strade = [strisciaCorsa(S, corpo, entra), strisciaCorsa(S, corpo, entra < 0 ? 1 : -1)];
+    const zCorsa = Math.min(zS, ...dietro.filter((d) => strade.some((s) => siToccano(s, d.r))).map((d) => d.z - 1));
+    const corre = -entra;
+    const daFuori = { x: entra < 0 ? -FUORI_SCHERMO : W + FUORI_SCHERMO, y: S.y };
+    const aFuori = { x: entra < 0 ? W + FUORI_SCHERMO : -FUORI_SCHERMO, y: S.y };
+
+    if (ctx.ridotto) {
+      recintoNormale();
+      const r = aggiungi(nuovoMontone());
+      r.style.zIndex = String(zCorsa);
+      mettiPosa(r, 'corre');
+      if (F) aggiungi(luccichio(F));
+      await anima(r, [{ transform: posa(S, kS, corre) }, { transform: posa(S, kS, corre) }], { duration: 1, fill: 'forwards' });
+      if (vivo()) await attendi(SOSTA_RIDOTTA_MS);
+      return void via();
+    }
+
+    ctx.suona('beee', 0.6);
+    const m = aggiungi(nuovoMontone());
+    m.style.zIndex = String(Z_MONTONE_IN_ARIA);
+    mettiPosa(m, 'volo');
+    const fine = F ?? fineDietroLaCollina(partenza, vero, recinto);
+    const versoVolo = fine.x < partenza.x ? -1 : 1;
+    const girata = (t: number): number => Math.min(1, t / GIRATA_VOLO);
+    // L'ombra a terra all'inizio del volo, lungo la linea: svanisce presto (il Montone sale o va oltre il recinto)
+    const ombra = aggiungi(document.createElement('div'));
+    ombra.className = 'abs ombra-montone';
+    ombra.style.cssText =
+      `left:0;top:0;width:${LARGO_OMBRA}px;height:${ALTO_OMBRA}px;z-index:${Math.round(100 + partenza.y + 7)};pointer-events:none;` +
+      `transform-origin:${LARGO_OMBRA / 2}px ${ALTO_OMBRA / 2}px`;
+    ombra.innerHTML =
+      `<svg viewBox="0 0 ${LARGO_OMBRA} ${ALTO_OMBRA}" style="display:block;width:100%;height:100%" aria-hidden="true">` +
+      `<ellipse cx="${LARGO_OMBRA / 2}" cy="${ALTO_OMBRA / 2}" rx="${LARGO_OMBRA / 2 - 4}" ry="${ALTO_OMBRA / 2 - 1}" fill="${P.notte}" opacity=".15"/></svg>`;
+    const ombraIn = (t: number): Keyframe => {
+      const p = { x: partenza.x + (fine.x - partenza.x) * t, y: partenza.y + (fine.y - partenza.y) * t };
+      return { transform: `translate(${p.x - LARGO_OMBRA / 2}px,${p.y - ALTO_OMBRA / 2}px) scale(${kDi(p.y)})`, opacity: 1 - t / OMBRA_LUNGO };
+    };
+    const durataVolo = F ? DURATA_VOLO_CIELO_MS : DURATA_VOLO_TESTATA_MS;
+    void anima(ombra, [ombraIn(0), ombraIn(OMBRA_LUNGO)], { duration: durataVolo * OMBRA_LUNGO, easing: 'linear', fill: 'forwards' });
+    let sparizione: number;
+    if (F) {
+      // Nel cielo: dritto lungo la linea (sale sopra le colline), rallentando in lontananza e sempre più piccolo
+      const k0 = kDi(partenza.y);
+      const volo: Keyframe[] = [];
+      for (let i = 0; i <= PASSI_VOLO; i++) {
+        const t = i / PASSI_VOLO, e = 1 - (1 - t) * (1 - t), g = girata(t);
+        const p = { x: partenza.x + (F.x - partenza.x) * e, y: partenza.y + (F.y - partenza.y) * e };
+        volo.push({ transform: posa(p, k0 * (1 - (1 - FIONDA.cielo.puntino) * e), 1 + (versoVolo - 1) * g, GIRO_PARTENZA * g) });
+      }
+      await anima(m, volo, { duration: DURATA_VOLO_CIELO_MS, easing: 'linear', fill: 'forwards' });
+      m.remove();
+      ombra.remove();
+      if (!vivo()) return void via();
+      const l = aggiungi(luccichio(F));
+      ctx.suona('ting');
+      const t = (k: number, giro: number): string => `translate(${F.x - LARGO_LUCCICHIO / 2}px,${F.y - LARGO_LUCCICHIO / 2}px) scale(${k}) rotate(${giro}deg)`;
+      await anima(
+        l,
+        [
+          { transform: t(0, 0), opacity: 0 },
+          { transform: t(1.3, 25), opacity: 1, offset: 0.25 },
+          { transform: t(0.8, 50), opacity: 1, offset: 0.55 },
+          { transform: t(0, 90), opacity: 0 },
+        ],
+        { duration: DURATA_LUCCICHIO_MS, easing: 'ease-out', fill: 'forwards' },
+      );
+      l.remove();
+      if (!vivo()) return void via();
+      sparizione = DURATA_VOLO_CIELO_MS + DURATA_LUCCICHIO_MS;
+    } else {
+      // Dietro la collina: ad arco lungo la linea fino a dove esce dalla fascia del recinto (più in là sarebbe in cima allo
+      // schermo); lì, in dissolvenza, la copia dietro il paesaggio prende il suo posto, sempre più piccola
+      const E = fineDietroLaCollina(partenza, vero, recinto);
+      const d = FIONDA.lungo.dissolvenza;
+      const ta = Math.min(uscitaDallaFascia(partenza, E, recinto), 1 - d);
+      const lontano = (t: number): number => Math.max(0, (t - ta) / (1 - ta));
+      const copia = aggiungi(nuovoMontone(' montone-dietro'), el.mondo.querySelector('.paesaggio'));
+      mettiPosa(copia, 'volo');
+      const volo: Keyframe[] = [], voloDietro: Keyframe[] = [];
+      for (let i = 0; i <= PASSI_VOLO; i++) {
+        const t = i / PASSI_VOLO, g = girata(t);
+        const p = posizioneInVolo(partenza, E, t);
+        const k = kDi(p.y) * (1 + CRESCITA_IN_VOLO * 4 * t * (1 - t)) * (1 - RIMPICCIOLISCE_LONTANO * lontano(t));
+        // L'arco di un volo così lungo uscirebbe dallo schermo: i piedi non salgono sopra `lungo.cima`
+        const alto = Math.min(p.alto, Math.max(0, p.y - FIONDA.lungo.cima));
+        const transform = posa(p, k, 1 + (versoVolo - 1) * g, (GIRO_PARTENZA + (GIRO_ARRIVO - GIRO_PARTENZA) * t) * g, alto);
+        const passato = Math.min(1, Math.max(0, (t - ta) / d));
+        volo.push({ transform, opacity: 1 - passato });
+        voloDietro.push({ transform, opacity: passato });
+      }
+      const volato = anima(m, volo, { duration: DURATA_VOLO_TESTATA_MS, easing: 'linear', fill: 'forwards' });
+      void anima(copia, voloDietro, { duration: DURATA_VOLO_TESTATA_MS, easing: 'linear', fill: 'forwards' });
+      await volato;
+      m.remove();
+      ombra.remove();
+      if (!vivo()) return void via();
+      // Cade giù dietro la collina e svanisce; un tonfo lontano
+      const k = kDi(E.y) * (1 - RIMPICCIOLISCE_LONTANO);
+      const giu = { x: E.x, y: E.y + FIONDA.lungo.caduta };
+      await anima(
+        copia,
+        [
+          { transform: posa(E, k, versoVolo, GIRO_ARRIVO), opacity: 1 },
+          { transform: posa(giu, k, versoVolo, GIRO_ARRIVO + 15), opacity: 1, offset: 0.7 },
+          { transform: posa(giu, k, versoVolo, GIRO_ARRIVO + 15), opacity: 0 },
+        ],
+        { duration: DURATA_CADUTA_COLLINA_MS, easing: 'ease-in', fill: 'forwards' },
+      );
+      copia.remove();
+      if (!vivo()) return void via();
+      ctx.suona('tonfo', 0.25);
+      sparizione = DURATA_VOLO_TESTATA_MS + DURATA_CADUTA_COLLINA_MS;
+    }
+    // Sparito: il recinto della mira torna normale; poi torna di corsa, arrabbiato
+    recintoNormale();
+    await attendi(DURATA_TESTATA_MS - sparizione - DURATA_RITORNO_MS - DURATA_SCUOTE_MS - DURATA_USCITA_RITORNO_MS);
+    if (!vivo()) return void via();
+    const r = aggiungi(nuovoMontone());
+    r.style.zIndex = String(zCorsa);
+    mettiPosa(r, 'corre');
+    ctx.suona('beee', 0.5);
+    await anima(r, [{ transform: posa(daFuori, kS, corre) }, { transform: posa(S, kS, corre) }], {
+      duration: DURATA_RITORNO_MS,
+      easing: 'ease-out',
+      fill: 'forwards',
+    });
+    if (!vivo()) return void via();
+    mettiPosa(r, 'scuote');
+    await attendi(DURATA_SCUOTE_MS);
+    if (!vivo()) return void via();
+    mettiPosa(r, 'corre');
+    await anima(r, [{ transform: posa(S, kS, corre) }, { transform: posa(aFuori, kS, corre) }], {
+      duration: DURATA_USCITA_RITORNO_MS,
+      easing: 'ease-in',
+      fill: 'forwards',
+    });
+    via();
   }
 
   async function testata(chi: IdGiocatore, bersaglio: IdGiocatore, quanti: number, seq = 0): Promise<void> {
@@ -882,15 +1136,30 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
       : posto
         ? partenzaDi(basePartenza(posto), variazioneDaSeq(seq))
         : { x: CENTRO_TAVOLO.x, y: CENTRO_TAVOLO.y };
-    // Il tiro vero era sul recinto ingrandito: riportato in proporzione su quello normale. Altri telefoni: il punto di scena
-    const vero: Punto = mio ? riportaSuRecinto(mio.arrivo, mio.recinto, recinto) : puntoDiScena(recinto, quanti, seq);
+    // Su chi ha tirato il recinto è ancora quello della mira (ingrandito: dopo il lancio la mira lo lascia così): il Montone
+    // atterra proprio dove si è mirato, sulla linea della scia e nella zona dell'esito, e il recinto torna normale quando lui
+    // se n'è andato. Il recinto ingrandito non è il normale in scala attorno alla partenza (è attaccato al bordo davanti e
+    // al lato della pecora, con le proporzioni del tuo): riportare lì l'arrivo cambierebbe la direzione del volo
+    const sulMirato = !!mio && stessoRett(a, mio.recinto);
+    // Altrimenti (altri telefoni, il tiro di un altro, tavolo ricostruito) si vola sul recinto normale: se è rimasto
+    // ingrandito da una mira, torna normale adesso
+    if (!sulMirato) void camera.ingrandisciRecinto(null);
+    const bersaglioVolo: Rett = sulMirato ? { ...mio.recinto } : recinto;
+    // Tavolo ricostruito dopo il tiro: il tiro riportato in proporzione sul recinto normale. Altri telefoni: il punto di scena
+    const vero: Punto = mio ? (sulMirato ? mio.arrivo : riportaSuRecinto(mio.arrivo, mio.recinto, recinto)) : puntoDiScena(recinto, quanti, seq);
     // Si disegna nello schermo; un colpo a vuoto sul prato, mai sulla collina o sulla casetta, sempre a vuoto e fuori dagli
     // altri recinti (fionda/tiro.ts, `arrivoInScena`: lungo la linea del volo, o di lato)
     const altri = palco.giocatori().flatMap((c) => {
       const r = c === bersaglio ? undefined : palco.area(c);
       return r ? [recintoARiposo(r)] : [];
     });
-    const arrivo = arrivoInScena(partenza, vero, recinto, altri);
+    // Un colpo a vuoto lungo non atterra: vola oltre lungo la linea del tiro e sparisce (nel cielo tirando al massimo; sugli
+    // altri telefoni un colpo su tre, da `seq`), poi torna di corsa
+    if (quanti === 0 && colpoLungo(partenza, vero, bersaglioVolo)) {
+      const cielo = mio ? !!mio.pieno : cieloDaSeq(seq);
+      return voloLungo({ partenza, vero, recinto: bersaglioVolo, riposo: recinto, cielo, sulMirato, vivo });
+    }
+    const arrivo = arrivoInScena(partenza, vero, bersaglioVolo, altri);
     /** Il disegno guarda a destra: verso -1 lo specchia. */
     const verso = arrivo.x < partenza.x ? -1 : 1;
     // In volo sopra tutto, come nella mira (niente salti di profondità al lancio); l'ombra a terra, alla profondità del
@@ -948,11 +1217,12 @@ export function creaOrdini(palco: Palco, camera: Camera, meteo: Meteo): OrdiniDe
     void anima(ombra, voloOmbra, { duration: durataVolo, easing: 'linear', fill: 'forwards' });
     const volato = anima(m, volo, { duration: durataVolo, easing: 'linear', fill: 'forwards' });
     // Chi resterebbe sotto il Montone se ne accorge verso la fine del volo e si scansa; torna quando il Montone corre via.
-    // Finita (o interrotta) la Testata, ognuno è al suo posto
+    // Finita (o interrotta) la Testata, ognuno è al suo posto, e il recinto della mira torna normale (senza aspettarlo)
     const daParte = scansaDalMontone(arrivo, ACCORTO_VOLO * durataVolo);
     const via = (): void => {
       m.remove();
       daParte.fine();
+      if (sulMirato) void camera.ingrandisciRecinto(null);
     };
     await volato;
     ombra.remove();

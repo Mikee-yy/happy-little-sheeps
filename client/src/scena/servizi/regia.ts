@@ -23,11 +23,13 @@ export interface Regia {
   /**
    * Il tiro della fionda fatto su questo telefono: lo scrive la mira al lancio (`fionda/mira.ts`), la regia della Testata
    * lo legge (il volo segue il tiro vero, non quello "di scena") e lo azzera. `recinto`: il recinto del bersaglio com'era al
-   * tiro (una copia: la regia riporta `arrivo` in proporzione sul recinto normale); `partenza`: da dove è partito il Montone
+   * tiro (una copia: se il recinto è ancora così il volo atterra proprio su `arrivo`; se no lo riporta in proporzione sul
+   * recinto normale); `partenza`: da dove è partito il Montone
    * (vicino alla pecora di chi tira, con la variazione di quella mira); `chi`: chi ha tirato (un tiro rimasto lì, se la sua
-   * recita è saltata, non vale per il volo di un altro). null se non c'è.
+   * recita è saltata, non vale per il volo di un altro); `pieno`: l'elastico era tirato al massimo (un colpo lungo così vola
+   * nel cielo, `fionda/tiro.ts` `tiroPieno`). null se non c'è.
    */
-  tiroLocale: { chi: IdGiocatore | null; bersaglio: IdGiocatore; esito: number; arrivo: Punto; recinto: Rett; partenza: Punto } | null;
+  tiroLocale: { chi: IdGiocatore | null; bersaglio: IdGiocatore; esito: number; arrivo: Punto; recinto: Rett; partenza: Punto; pieno?: boolean } | null;
 }
 
 export function creaRegia(c: { orologio: Orologio; meteoAttivo: () => boolean; inViaggioValido: (g: unknown) => boolean }): Regia {

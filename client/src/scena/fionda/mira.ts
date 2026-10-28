@@ -11,7 +11,8 @@
 // girano la direzione e cambiano la forza, Invio o Spazio lancia (subito: appena fuori dalla staccionata davanti, 1 agnellino).
 // Un tiro solo: al lancio la zona di tocco se ne va, l'elastico si allenta e il Montone torna alla partenza a riposo (da lì
 // parte il volo), e il tiro vero (con la sua partenza) si ricorda in
-// `ctx.regia.tiroLocale` (il volo lo recita la regia). Con lo stesso `tentativo` il tiro resta fatto anche se la domanda si
+// `ctx.regia.tiroLocale` (il volo lo recita la regia, sul recinto ancora ingrandito: togliendo la mira dopo il lancio il
+// recinto resta grande, lo rimette normale la Testata). Con lo stesso `tentativo` il tiro resta fatto anche se la domanda si
 // toglie e torna (la scena recita); con un tentativo nuovo (mossa rifiutata, attesa scaduta) si mira di nuovo, da una partenza
 // nuova. Finché il recinto non ha finito di ingrandirsi i cerchi non si vedono e non si tira.
 // Il disegno sta nel mondo (sotto la camera); la zona di tocco nello strato `.ui`, posizionata con `camera.inScenaDaMondo`.
@@ -38,6 +39,7 @@ import {
   puntoArrivo,
   scia,
   spazioPerTirare,
+  tiroPieno,
   type Punto,
   type Rett,
 } from './tiro';
@@ -49,7 +51,8 @@ export interface Mira {
    */
   mostra(f: Fionda, suGesto: (g: Gesto) => void): void;
   /**
-   * Toglie Montone, elastico, scia, cerchi e zona di tocco; il recinto del bersaglio torna normale. Con `dimentica` (la
+   * Toglie Montone, elastico, scia, cerchi e zona di tocco; il recinto del bersaglio torna normale, se il tiro non è già
+   * partito (allora resta grande per il volo e lo rimette normale la Testata degli ordini). Con `dimentica` (la
    * domanda non ha più la fionda) si scorda anche il tiro fatto.
    */
   togli(dimentica?: boolean): void;
@@ -265,6 +268,7 @@ export function creaMira(ctx: Contesto, palco: Palco, camera: Camera): Mira {
       arrivo,
       recinto: { x0: area.x0, y0: area.y0, x1: area.x1, y1: area.y1 },
       partenza: { ...s.partenza },
+      pieno: tiroPieno(tiro),
     };
     ctx.regia.tiroLocale = locale;
     ricordo = s.f.tentativo !== undefined ? { f: { ...s.f }, tiro, locale } : null;
@@ -505,7 +509,9 @@ export function creaMira(ctx: Contesto, palco: Palco, camera: Camera): Mira {
       const giochi = palco.branco()?.giochi;
       if (giochi && giochiPrima !== null) giochi.attivo = giochiPrima;
       giochiPrima = null;
-      void camera.ingrandisciRecinto(null);
+      // Già lanciato, il recinto resta grande: il volo atterra proprio dove si è mirato, sulla linea della scia, e lo rimette
+      // normale la Testata degli ordini quando il Montone se n'è andato (una mira nuova lo rimette a posto anche lei)
+      if (!s.lanciato) void camera.ingrandisciRecinto(null);
     },
     riposiziona() {
       const s = m;
